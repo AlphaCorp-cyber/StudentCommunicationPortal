@@ -70,12 +70,17 @@
                             </span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ url_for('account_settings') }}">
+                                <i data-feather="user" class="me-2"></i>Account Settings
+                            </a></li>
                             {% if current_user.is_super_admin() %}
+                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('super_admin_dashboard') }}">
                                 <i data-feather="settings" class="me-2"></i>System Settings
                             </a></li>
                             {% endif %}
                             {% if current_user.is_admin() or current_user.is_super_admin() %}
+                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">
                                 <i data-feather="briefcase" class="me-2"></i>Admin Panel
                             </a></li>

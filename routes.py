@@ -177,12 +177,48 @@ def admin_dashboard():
     # Get pending lessons
     pending_lessons = Lesson.query.filter_by(status=LESSON_SCHEDULED).count()
     
+    # Revenue calculations
+    from sqlalchemy import func
+    total_revenue = db.session.query(func.sum(Payment.amount)).scalar() or 0
+    
+    # This month's revenue
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+    this_month_revenue = db.session.query(func.sum(Payment.amount)).filter(
+        func.extract('month', Payment.created_at) == current_month,
+        func.extract('year', Payment.created_at) == current_year
+    ).scalar() or 0
+    
+    # Outstanding balances (negative account balances)
+    outstanding_balance = db.session.query(func.sum(Student.account_balance)).filter(
+        Student.account_balance < 0
+    ).scalar() or 0
+    outstanding_balance = abs(outstanding_balance)
+    
+    # Total account credits (positive balances)
+    total_credits = db.session.query(func.sum(Student.account_balance)).filter(
+        Student.account_balance > 0
+    ).scalar() or 0
+    
+    # Revenue by payment method this month
+    payment_methods = db.session.query(
+        Payment.payment_method,
+        func.sum(Payment.amount).label('total')
+    ).filter(
+        func.extract('month', Payment.created_at) == current_month,
+        func.extract('year', Payment.created_at) == current_year
+    ).group_by(Payment.payment_method).all()
+    
     stats = {
         'total_students': len(students),
         'total_instructors': len(instructors),
         'todays_lessons': len(today_lessons),
         'pending_lessons': pending_lessons,
-        'completed_lessons': Lesson.query.filter_by(status=LESSON_COMPLETED).count()
+        'completed_lessons': Lesson.query.filter_by(status=LESSON_COMPLETED).count(),
+        'total_revenue': total_revenue,
+        'this_month_revenue': this_month_revenue,
+        'outstanding_balance': outstanding_balance,
+        'total_credits': total_credits
     }
     
     return render_template('admin_dashboard.html', 
@@ -191,6 +227,7 @@ def admin_dashboard():
                          vehicles=vehicles,
                          recent_payments=recent_payments,
                          today_lessons=today_lessons,
+                         payment_methods=payment_methods,
                          stats=stats)
 
 @app.route('/super-admin')
@@ -707,6 +744,139 @@ def update_config():
         flash(f'Error updating configuration: {str(e)}', 'error')
     
     return redirect(url_for('super_admin_dashboard'))
+
+@app.route('/settings')
+@require_login
+def account_settings():
+    """Account settings page"""
+    users = []
+    if current_user.is_admin() or current_user.is_super_admin():
+        users = User.query.all()
+    
+    return render_template('account_settings.html', users=users)
+
+@app.route('/add-user', methods=['POST'])
+@require_role('admin')
+def add_user():
+    """Add a new user"""
+    username = request.form.get('username')
+    email = request.form.get('email')
+    password = request.form.get('password')
+    first_name = request.form.get('first_name')
+    last_name = request.form.get('last_name')
+    role = request.form.get('role')
+    
+    if not all([username, email, password, role]):
+        flash('All required fields must be filled.', 'error')
+        return redirect(url_for('account_settings'))
+    
+    # Check if username or email already exists
+    if User.query.filter_by(username=username).first():
+        flash('Username already exists.', 'error')
+        return redirect(url_for('account_settings'))
+    
+    if User.query.filter_by(email=email).first():
+        flash('Email already exists.', 'error')
+        return redirect(url_for('account_settings'))
+    
+    try:
+        new_user = User(
+            username=username,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            role=role
+        )
+        new_user.set_password(password)
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        flash(f'User "{username}" added successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error adding user: {str(e)}', 'error')
+    
+    return redirect(url_for('account_settings'))
+
+@app.route('/change-password', methods=['POST'])
+@require_login
+def change_password():
+    """Change user password"""
+    user_id = request.form.get('user_id')
+    new_password = request.form.get('new_password')
+    confirm_password = request.form.get('confirm_password')
+    current_password = request.form.get('current_password')
+    
+    if not new_password or not confirm_password:
+        flash('New password and confirmation are required.', 'error')
+        return redirect(url_for('account_settings'))
+    
+    if new_password != confirm_password:
+        flash('Password confirmation does not match.', 'error')
+        return redirect(url_for('account_settings'))
+    
+    # If changing own password, verify current password
+    if not user_id or int(user_id) == current_user.id:
+        if not current_password or not current_user.check_password(current_password):
+            flash('Current password is incorrect.', 'error')
+            return redirect(url_for('account_settings'))
+        user = current_user
+    else:
+        # Admin changing another user's password
+        if not (current_user.is_admin() or current_user.is_super_admin()):
+            flash('Access denied.', 'error')
+            return redirect(url_for('account_settings'))
+        user = User.query.get(user_id)
+        if not user:
+            flash('User not found.', 'error')
+            return redirect(url_for('account_settings'))
+    
+    try:
+        user.set_password(new_password)
+        db.session.commit()
+        flash('Password changed successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error changing password: {str(e)}', 'error')
+    
+    return redirect(url_for('account_settings'))
+
+@app.route('/deactivate-user/<int:user_id>', methods=['POST'])
+@require_role('admin')
+def deactivate_user(user_id):
+    """Deactivate a user account"""
+    user = User.query.get_or_404(user_id)
+    
+    if user.id == current_user.id:
+        flash('You cannot deactivate your own account.', 'error')
+        return redirect(url_for('account_settings'))
+    
+    try:
+        user.active = False
+        db.session.commit()
+        flash(f'User "{user.username}" deactivated successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deactivating user: {str(e)}', 'error')
+    
+    return redirect(url_for('account_settings'))
+
+@app.route('/activate-user/<int:user_id>', methods=['POST'])
+@require_role('admin')
+def activate_user(user_id):
+    """Activate a user account"""
+    user = User.query.get_or_404(user_id)
+    
+    try:
+        user.active = True
+        db.session.commit()
+        flash(f'User "{user.username}" activated successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error activating user: {str(e)}', 'error')
+    
+    return redirect(url_for('account_settings'))
 
 @app.errorhandler(403)
 def forbidden(error):

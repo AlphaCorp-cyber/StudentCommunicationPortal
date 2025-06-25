@@ -1,7 +1,7 @@
 
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from flask import request, jsonify
 from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
@@ -169,8 +169,8 @@ Type 'menu' to see all options or 'help' for assistance."""
         return response
     
     def handle_schedule(self, student):
-        """Handle schedule inquiry"""
-        # Get lessons for the next 7 days
+        """Handle schedule inquiry with instructor availability"""
+        # Get student's upcoming lessons
         end_date = datetime.now() + timedelta(days=7)
         upcoming_lessons = Lesson.query.filter(
             Lesson.student_id == student.id,
@@ -179,25 +179,119 @@ Type 'menu' to see all options or 'help' for assistance."""
             Lesson.scheduled_date <= end_date
         ).order_by(Lesson.scheduled_date).all()
         
-        if not upcoming_lessons:
-            return "📅 No lessons scheduled for the next 7 days.\n\nContact your instructor to schedule lessons!"
+        # Get instructor's available slots
+        instructor = student.instructor
+        available_slots = self.get_instructor_available_slots(instructor, days_ahead=7)
         
-        response = f"📅 *Your 7-Day Schedule:*\n\n"
+        response = "📅 *Schedule & Available Times*\n\n"
         
-        current_date = None
-        for lesson in upcoming_lessons:
-            lesson_date = lesson.scheduled_date.date()
+        # Show student's upcoming lessons
+        if upcoming_lessons:
+            response += "*Your Upcoming Lessons:*\n"
+            for lesson in upcoming_lessons:
+                date_str = lesson.scheduled_date.strftime('%B %d, %Y')
+                time_str = lesson.scheduled_date.strftime('%I:%M %p')
+                response += f"• {date_str} at {time_str}\n"
+                response += f"  Duration: {lesson.duration_minutes} min\n"
+                response += f"  Instructor: {lesson.instructor.get_full_name()}\n\n"
+        else:
+            response += "You have no upcoming lessons scheduled.\n\n"
+        
+        # Show instructor's available slots
+        if instructor and available_slots:
+            response += f"*Available Times with {instructor.get_full_name()}:*\n"
+            current_date = None
+            slot_count = 0
             
-            if current_date != lesson_date:
-                current_date = lesson_date
-                response += f"📅 *{lesson_date.strftime('%A, %B %d')}*\n"
+            for slot in available_slots:
+                if slot_count >= 10:  # Limit to 10 slots
+                    break
+                    
+                slot_date = slot['start'].date()
+                if slot_date != current_date:
+                    response += f"\n*{slot['start'].strftime('%A, %B %d')}*\n"
+                    current_date = slot_date
+                
+                start_time = slot['start'].strftime('%I:%M %p')
+                end_time = slot['end'].strftime('%I:%M %p')
+                response += f"• {start_time} - {end_time}\n"
+                slot_count += 1
             
-            time_str = lesson.scheduled_date.strftime('%H:%M')
-            response += f"  🕐 {time_str} - {lesson.lesson_type.title()} ({lesson.duration_minutes}min)\n"
-            if lesson.location:
-                response += f"  📍 {lesson.location}\n"
+            response += f"\n💡 To book a lesson, reply:\n*book [date] [time]*\n\nExample: *book Dec 25 2:00 PM*"
+        else:
+            response += "No available time slots found. Contact your instructor directly."
         
         return response
+    
+    def get_instructor_available_slots(self, instructor, days_ahead=7):
+        """Get available time slots for an instructor"""
+        if not instructor:
+            return []
+        
+        available_slots = []
+        current_date = datetime.now().date()
+        
+        # Define working hours (9 AM to 6 PM, Monday to Saturday)
+        working_hours = {
+            0: [(9, 0), (18, 0)],  # Monday
+            1: [(9, 0), (18, 0)],  # Tuesday
+            2: [(9, 0), (18, 0)],  # Wednesday
+            3: [(9, 0), (18, 0)],  # Thursday
+            4: [(9, 0), (18, 0)],  # Friday
+            5: [(9, 0), (17, 0)],  # Saturday (shorter day)
+            6: []  # Sunday (closed)
+        }
+        
+        for day_offset in range(days_ahead):
+            check_date = current_date + timedelta(days=day_offset)
+            weekday = check_date.weekday()
+            
+            # Skip if no working hours for this day
+            if weekday not in working_hours or not working_hours[weekday]:
+                continue
+            
+            # Get existing lessons for this instructor on this date
+            existing_lessons = Lesson.query.filter(
+                Lesson.instructor_id == instructor.id,
+                Lesson.status == LESSON_SCHEDULED,
+                Lesson.scheduled_date >= datetime.combine(check_date, datetime.min.time()),
+                Lesson.scheduled_date < datetime.combine(check_date + timedelta(days=1), datetime.min.time())
+            ).all()
+            
+            # Create list of busy time slots
+            busy_slots = []
+            for lesson in existing_lessons:
+                start_time = lesson.scheduled_date
+                end_time = start_time + timedelta(minutes=lesson.duration_minutes)
+                busy_slots.append((start_time, end_time))
+            
+            # Generate available slots
+            start_hour, start_min = working_hours[weekday][0]
+            end_hour, end_min = working_hours[weekday][1]
+            
+            current_slot = datetime.combine(check_date, time(start_hour, start_min))
+            end_of_day = datetime.combine(check_date, time(end_hour, end_min))
+            
+            while current_slot < end_of_day:
+                slot_end = current_slot + timedelta(minutes=60)  # 1-hour slots
+                
+                # Check if this slot conflicts with existing lessons
+                is_available = True
+                for busy_start, busy_end in busy_slots:
+                    if (current_slot < busy_end and slot_end > busy_start):
+                        is_available = False
+                        break
+                
+                # Only show future slots (not past ones for today)
+                if is_available and current_slot > datetime.now():
+                    available_slots.append({
+                        'start': current_slot,
+                        'end': slot_end
+                    })
+                
+                current_slot += timedelta(minutes=60)  # Move to next hour
+        
+        return available_slots
     
     def handle_progress(self, student):
         """Handle progress inquiry"""
