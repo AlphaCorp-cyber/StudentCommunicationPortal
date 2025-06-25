@@ -23,20 +23,34 @@ class WhatsAppBot:
             'menu': self.handle_menu
         }
         
-        # Initialize Twilio client
+        # Initialize Twilio client - will be done later with app context
         self.twilio_client = None
-        self.initialize_twilio()
+        self.twilio_phone = None
     
     def initialize_twilio(self):
         """Initialize Twilio client with credentials from SystemConfig or environment"""
         try:
-            # Try to get credentials from SystemConfig first
-            account_sid = SystemConfig.get_config('TWILIO_ACCOUNT_SID') or os.getenv('TWILIO_ACCOUNT_SID')
-            auth_token = SystemConfig.get_config('TWILIO_AUTH_TOKEN') or os.getenv('TWILIO_AUTH_TOKEN')
+            # Try to get credentials from SystemConfig first (only if we have app context)
+            account_sid = None
+            auth_token = None
+            
+            try:
+                account_sid = SystemConfig.get_config('TWILIO_ACCOUNT_SID')
+                auth_token = SystemConfig.get_config('TWILIO_AUTH_TOKEN')
+            except Exception:
+                # No app context or database not available, try environment variables
+                pass
+            
+            # Fallback to environment variables
+            account_sid = account_sid or os.getenv('TWILIO_ACCOUNT_SID')
+            auth_token = auth_token or os.getenv('TWILIO_AUTH_TOKEN')
             
             if account_sid and auth_token:
                 self.twilio_client = Client(account_sid, auth_token)
-                self.twilio_phone = SystemConfig.get_config('TWILIO_WHATSAPP_NUMBER') or os.getenv('TWILIO_WHATSAPP_NUMBER')
+                try:
+                    self.twilio_phone = SystemConfig.get_config('TWILIO_WHATSAPP_NUMBER')
+                except Exception:
+                    self.twilio_phone = os.getenv('TWILIO_WHATSAPP_NUMBER')
                 logger.info("Twilio client initialized successfully")
             else:
                 logger.warning("Twilio credentials not found. WhatsApp messaging will be in mock mode.")
@@ -269,7 +283,7 @@ Please make sure you're registered as a student with myInstructor 2.0.
 
 Contact your driving school for assistance with registration."""
 
-# Global bot instance
+# Global bot instance - will be initialized later with app context
 whatsapp_bot = WhatsAppBot()
 
 def webhook_handler():

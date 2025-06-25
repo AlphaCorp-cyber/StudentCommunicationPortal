@@ -8,6 +8,12 @@ from models import User, Student, Lesson, WhatsAppSession, SystemConfig, LESSON_
 from auth import require_login, require_role
 from whatsappbot import whatsapp_bot, send_lesson_confirmation
 
+# Initialize WhatsApp bot with app context
+@app.before_first_request
+def initialize_whatsapp_bot():
+    with app.app_context():
+        whatsapp_bot.initialize_twilio()
+
 # Make session permanent
 @app.before_request
 def make_session_permanent():
@@ -407,6 +413,12 @@ def complete_lesson(lesson_id):
     return redirect(url_for('lessons'))
 
 @app.route('/whatsapp-bot')
+@require_role('admin')
+def whatsapp_bot():
+    """WhatsApp bot interface for demonstration and monitoring"""
+    return whatsapp_bot_interface()
+
+@app.route('/whatsapp-bot-interface')
 @require_role('admin')
 def whatsapp_bot_interface():
     """WhatsApp bot interface for demonstration and monitoring"""

@@ -216,7 +216,7 @@
                 </div>
                 <div class="modal-body">
                     <p>Mark lesson as completed for: <strong id="completeStudentName"></strong></p>
-                    
+
                     <div class="mb-3">
                         <label for="rating" class="form-label">Lesson Rating (1-5 stars)</label>
                         <select class="form-select" id="rating" name="rating">
@@ -228,13 +228,13 @@
                             <option value="5">⭐⭐⭐⭐⭐ - Excellent</option>
                         </select>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="notes" class="form-label">Lesson Notes (Internal)</label>
                         <textarea class="form-control" id="notes" name="notes" rows="3" 
                                   placeholder="Internal notes about the lesson, areas to focus on, etc."></textarea>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="feedback" class="form-label">Student Feedback</label>
                         <textarea class="form-control" id="feedback" name="feedback" rows="3" 
@@ -256,32 +256,32 @@ document.addEventListener('DOMContentLoaded', function() {
     const dateInput = document.getElementById('scheduled_date');
     const studentSelect = document.getElementById('student_id');
     const form = document.querySelector('#addLessonModal form');
-    
+
     if (dateInput) {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         dateInput.min = now.toISOString().slice(0, 16);
-        
+
         // Validate time constraints
         dateInput.addEventListener('change', function() {
             const selectedDate = new Date(this.value);
             const hours = selectedDate.getHours();
             const minutes = selectedDate.getMinutes();
-            
+
             // Check if time is between 6 AM and 4 PM
             if (hours < 6 || hours >= 16) {
                 alert('Lessons can only be scheduled between 6:00 AM and 4:00 PM');
                 this.value = '';
                 return;
             }
-            
+
             // Check if minutes are in 30-minute intervals
             if (minutes !== 0 && minutes !== 30) {
                 alert('Lessons must start at :00 or :30 minutes');
                 this.value = '';
                 return;
             }
-            
+
             // Check if selected time is in the past
             const now = new Date();
             if (selectedDate <= now) {
@@ -291,20 +291,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
+
     // Validate lesson limits when form is submitted
     if (form) {
         form.addEventListener('submit', function(e) {
             const studentId = studentSelect.value;
             const selectedDate = new Date(dateInput.value);
-            
+
             if (!studentId || !dateInput.value) {
                 return; // Let browser validation handle this
             }
-            
+
             // Check lesson limits for the day (this would need server-side validation too)
             const dateStr = selectedDate.toISOString().split('T')[0];
-            
+
             // Count existing lessons for this student on this date
             fetch(`/api/check_lesson_limit?student_id=${studentId}&date=${dateStr}`)
                 .then(response => response.json())
