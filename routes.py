@@ -1,13 +1,11 @@
 from datetime import datetime, timedelta
 from flask import render_template, request, redirect, url_for, flash, session, jsonify
-from flask_login import current_user
+from flask_login import current_user, login_user, logout_user
 from sqlalchemy import or_, and_
 
 from app import app, db
-from models import User, Student, Lesson, WhatsAppSession, SystemConfig, LESSON_SCHEDULED, LESSON_COMPLETED, LESSON_CANCELLED
-from replit_auth import require_login, require_role, make_replit_blueprint
-
-app.register_blueprint(make_replit_blueprint(), url_prefix="/auth")
+from models import User, Student, Lesson, WhatsAppSession, SystemConfig, LESSON_SCHEDULED, LESSON_COMPLETED, LESSON_CANCELLED, ROLE_INSTRUCTOR, ROLE_ADMIN, ROLE_SUPER_ADMIN
+from auth import require_login, require_role
 
 # Make session permanent
 @app.before_request
@@ -19,6 +17,75 @@ def index():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     return render_template('index.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        user = User.query.filter_by(username=username).first()
+        
+        if user and user.check_password(password) and user.active:
+            remember_me = bool(request.form.get('remember'))
+            login_user(user, remember=remember_me)
+            next_page = session.pop('next_url', None)
+            if next_page:
+                return redirect(next_page)
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Invalid username or password.', 'error')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+@require_login
+def logout():
+    logout_user()
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('index'))
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        first_name = request.form.get('first_name', '')
+        last_name = request.form.get('last_name', '')
+        
+        # Check if username or email already exists
+        if User.query.filter_by(username=username).first():
+            flash('Username already exists.', 'error')
+            return render_template('register.html')
+        
+        if User.query.filter_by(email=email).first():
+            flash('Email already exists.', 'error')
+            return render_template('register.html')
+        
+        # Create new user
+        user = User(
+            username=username,
+            email=email,
+            first_name=first_name,
+            last_name=last_name,
+            role=ROLE_INSTRUCTOR  # Default role
+        )
+        user.set_password(password)
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        flash('Registration successful! Please log in.', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('register.html')
 
 @app.route('/dashboard')
 @require_login

@@ -1,8 +1,7 @@
 from datetime import datetime
 from app import db
-from flask_dance.consumer.storage.sqla import OAuthConsumerMixin
 from flask_login import UserMixin
-from sqlalchemy import UniqueConstraint
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # User roles
 ROLE_INSTRUCTOR = 'instructor'
@@ -14,15 +13,17 @@ LESSON_SCHEDULED = 'scheduled'
 LESSON_COMPLETED = 'completed'
 LESSON_CANCELLED = 'cancelled'
 
-# (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
-    id = db.Column(db.String, primary_key=True)
-    email = db.Column(db.String, unique=True, nullable=True)
-    first_name = db.Column(db.String, nullable=True)
-    last_name = db.Column(db.String, nullable=True)
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
+    first_name = db.Column(db.String(100), nullable=True)
+    last_name = db.Column(db.String(100), nullable=True)
     profile_image_url = db.Column(db.String, nullable=True)
-    role = db.Column(db.String, default=ROLE_INSTRUCTOR)
+    role = db.Column(db.String(20), default=ROLE_INSTRUCTOR)
+    active = db.Column(db.Boolean, default=True)
     
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
@@ -31,10 +32,18 @@ class User(UserMixin, db.Model):
     instructor_students = db.relationship('Student', backref='instructor', lazy=True)
     instructor_lessons = db.relationship('Lesson', backref='instructor', lazy=True)
 
+    def set_password(self, password):
+        """Set password hash"""
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        """Check if provided password matches hash"""
+        return check_password_hash(self.password_hash, password)
+
     def get_full_name(self):
         if self.first_name and self.last_name:
             return f"{self.first_name} {self.last_name}"
-        return self.email or self.id
+        return self.username
 
     def is_instructor(self):
         return self.role == ROLE_INSTRUCTOR
@@ -45,18 +54,8 @@ class User(UserMixin, db.Model):
     def is_super_admin(self):
         return self.role == ROLE_SUPER_ADMIN
 
-# (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
-class OAuth(OAuthConsumerMixin, db.Model):
-    user_id = db.Column(db.String, db.ForeignKey(User.id))
-    browser_session_key = db.Column(db.String, nullable=False)
-    user = db.relationship(User)
-
-    __table_args__ = (UniqueConstraint(
-        'user_id',
-        'browser_session_key',
-        'provider',
-        name='uq_user_browser_session_key_provider',
-    ),)
+    def __repr__(self):
+        return f'<User {self.username}>'
 
 class Student(db.Model):
     __tablename__ = 'students'
@@ -69,7 +68,7 @@ class Student(db.Model):
     license_type = db.Column(db.String(10), default='B')
     
     # Foreign key to instructor
-    instructor_id = db.Column(db.String, db.ForeignKey('users.id'), nullable=True)
+    instructor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     
     # Status tracking
     registration_date = db.Column(db.DateTime, default=datetime.now)
@@ -92,7 +91,7 @@ class Lesson(db.Model):
     
     # Foreign keys
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
-    instructor_id = db.Column(db.String, db.ForeignKey('users.id'), nullable=False)
+    instructor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
     # Lesson details
     scheduled_date = db.Column(db.DateTime, nullable=False)
