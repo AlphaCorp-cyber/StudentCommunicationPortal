@@ -6,6 +6,7 @@ from sqlalchemy import or_, and_
 from app import app, db
 from models import User, Student, Lesson, WhatsAppSession, SystemConfig, LESSON_SCHEDULED, LESSON_COMPLETED, LESSON_CANCELLED, ROLE_INSTRUCTOR, ROLE_ADMIN, ROLE_SUPER_ADMIN
 from auth import require_login, require_role
+from whatsappbot import whatsapp_bot, send_lesson_confirmation
 
 # Make session permanent
 @app.before_request
@@ -283,10 +284,37 @@ def lessons():
     
     return render_template('lessons.html', lessons=lessons_list, students=students_list)
 
+@app.route('/api/check_lesson_limit')
+@require_login
+def check_lesson_limit():
+    """Check if student has reached daily lesson limit"""
+    student_id = request.args.get('student_id')
+    date_str = request.args.get('date')
+    
+    if not student_id or not date_str:
+        return jsonify({'error': 'Missing parameters'}), 400
+    
+    try:
+        lesson_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        
+        # Count lessons for this student on this date
+        lesson_count = Lesson.query.filter(
+            and_(
+                Lesson.student_id == student_id,
+                Lesson.scheduled_date >= datetime.combine(lesson_date, datetime.min.time()),
+                Lesson.scheduled_date < datetime.combine(lesson_date, datetime.min.time()) + timedelta(days=1),
+                Lesson.status != LESSON_CANCELLED
+            )
+        ).count()
+        
+        return jsonify({'lesson_count': lesson_count})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/lessons/add', methods=['POST'])
 @require_login
 def add_lesson():
-    """Add a new lesson"""
+    """Add a new lesson with validation for time constraints"""
     try:
         student_id = request.form['student_id']
         student = Student.query.get(student_id)
@@ -296,17 +324,56 @@ def add_lesson():
             flash('You can only schedule lessons for your assigned students.', 'error')
             return redirect(url_for('lessons'))
         
+        scheduled_date = datetime.strptime(request.form['scheduled_date'], '%Y-%m-%dT%H:%M')
+        
+        # Validate time constraints (6 AM to 4 PM)
+        if scheduled_date.hour < 6 or scheduled_date.hour >= 16:
+            flash('Lessons can only be scheduled between 6:00 AM and 4:00 PM', 'error')
+            return redirect(url_for('lessons'))
+        
+        # Validate 30-minute intervals
+        if scheduled_date.minute not in [0, 30]:
+            flash('Lessons must start at :00 or :30 minutes', 'error')
+            return redirect(url_for('lessons'))
+        
+        # Validate not in the past
+        if scheduled_date <= datetime.now():
+            flash('Cannot schedule lessons in the past', 'error')
+            return redirect(url_for('lessons'))
+        
+        # Check daily lesson limit (max 2 per day)
+        lesson_date = scheduled_date.date()
+        existing_lessons = Lesson.query.filter(
+            and_(
+                Lesson.student_id == student_id,
+                Lesson.scheduled_date >= datetime.combine(lesson_date, datetime.min.time()),
+                Lesson.scheduled_date < datetime.combine(lesson_date, datetime.min.time()) + timedelta(days=1),
+                Lesson.status != LESSON_CANCELLED
+            )
+        ).count()
+        
+        if existing_lessons >= 2:
+            flash('Student already has maximum 2 lessons scheduled for this day', 'error')
+            return redirect(url_for('lessons'))
+        
         lesson = Lesson(
             student_id=student_id,
             instructor_id=student.instructor_id or current_user.id,
-            scheduled_date=datetime.strptime(request.form['scheduled_date'], '%Y-%m-%dT%H:%M'),
-            duration_minutes=int(request.form.get('duration_minutes', 60)),
+            scheduled_date=scheduled_date,
+            duration_minutes=int(request.form.get('duration_minutes', 30)),
             lesson_type=request.form.get('lesson_type', 'practical'),
             location=request.form.get('location')
         )
         
         db.session.add(lesson)
         db.session.commit()
+        
+        # Send WhatsApp confirmation to student
+        try:
+            send_lesson_confirmation(lesson)
+        except Exception as e:
+            logger.warning(f"Failed to send WhatsApp confirmation: {str(e)}")
+        
         flash('Lesson scheduled successfully!', 'success')
     except Exception as e:
         db.session.rollback()
@@ -350,6 +417,29 @@ def whatsapp_bot():
     students_list = Student.query.filter_by(is_active=True).all()
     
     return render_template('whatsapp_bot.html', sessions=sessions, students=students_list)
+
+@app.route('/whatsapp/webhook', methods=['POST'])
+def whatsapp_webhook():
+    """Handle incoming WhatsApp messages"""
+    try:
+        data = request.get_json()
+        
+        # Mock webhook handling - in production this would be secured
+        if 'phone' in data and 'message' in data:
+            phone = data['phone']
+            message = data['message']
+            
+            response = whatsapp_bot.process_message(phone, message)
+            
+            return jsonify({
+                'status': 'success',
+                'response': response
+            })
+        
+        return jsonify({'error': 'Invalid data format'}), 400
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/whatsapp-bot/simulate', methods=['POST'])
 @require_role('admin')

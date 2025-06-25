@@ -172,16 +172,15 @@
                             <label for="scheduled_date" class="form-label">Date & Time *</label>
                             <input type="datetime-local" class="form-control" id="scheduled_date" 
                                    name="scheduled_date" required>
+                            <small class="text-muted">Available hours: 6:00 AM - 4:00 PM</small>
                         </div>
                         <div class="col-md-6">
                             <label for="duration_minutes" class="form-label">Duration (minutes)</label>
                             <select class="form-select" id="duration_minutes" name="duration_minutes">
-                                <option value="30">30 minutes</option>
-                                <option value="45">45 minutes</option>
-                                <option value="60" selected>1 hour</option>
-                                <option value="90">1.5 hours</option>
-                                <option value="120">2 hours</option>
+                                <option value="30" selected>30 minutes</option>
+                                <option value="60">1 hour (combined lesson)</option>
                             </select>
+                            <small class="text-muted">Maximum 2 lessons per day</small>
                         </div>
                         <div class="col-12">
                             <label for="location" class="form-label">Location</label>
@@ -252,13 +251,73 @@
 </div>
 
 <script>
-// Set minimum date to today for scheduling
+// Set minimum date to today for scheduling with time constraints
 document.addEventListener('DOMContentLoaded', function() {
     const dateInput = document.getElementById('scheduled_date');
+    const studentSelect = document.getElementById('student_id');
+    const form = document.querySelector('#addLessonModal form');
+    
     if (dateInput) {
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         dateInput.min = now.toISOString().slice(0, 16);
+        
+        // Validate time constraints
+        dateInput.addEventListener('change', function() {
+            const selectedDate = new Date(this.value);
+            const hours = selectedDate.getHours();
+            const minutes = selectedDate.getMinutes();
+            
+            // Check if time is between 6 AM and 4 PM
+            if (hours < 6 || hours >= 16) {
+                alert('Lessons can only be scheduled between 6:00 AM and 4:00 PM');
+                this.value = '';
+                return;
+            }
+            
+            // Check if minutes are in 30-minute intervals
+            if (minutes !== 0 && minutes !== 30) {
+                alert('Lessons must start at :00 or :30 minutes');
+                this.value = '';
+                return;
+            }
+            
+            // Check if selected time is in the past
+            const now = new Date();
+            if (selectedDate <= now) {
+                alert('Cannot schedule lessons in the past');
+                this.value = '';
+                return;
+            }
+        });
+    }
+    
+    // Validate lesson limits when form is submitted
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const studentId = studentSelect.value;
+            const selectedDate = new Date(dateInput.value);
+            
+            if (!studentId || !dateInput.value) {
+                return; // Let browser validation handle this
+            }
+            
+            // Check lesson limits for the day (this would need server-side validation too)
+            const dateStr = selectedDate.toISOString().split('T')[0];
+            
+            // Count existing lessons for this student on this date
+            fetch(`/api/check_lesson_limit?student_id=${studentId}&date=${dateStr}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.lesson_count >= 2) {
+                        e.preventDefault();
+                        alert('Student already has maximum 2 lessons scheduled for this day');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking lesson limits:', error);
+                });
+        });
     }
 });
 
