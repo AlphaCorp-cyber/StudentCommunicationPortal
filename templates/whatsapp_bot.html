@@ -391,8 +391,8 @@ document.getElementById('message').addEventListener('input', function() {
 
 /* Bot response preview styling */
 .bot-response-preview {
-    background-color: #f8f9fa;
-    color: #212529;
+    background-color: #f8f9fa !important;
+    color: #212529 !important;
     padding: 1rem;
     border-radius: 0.5rem;
     border: 1px solid #dee2e6;
@@ -402,7 +402,7 @@ document.getElementById('message').addEventListener('input', function() {
 
 .bot-response-preview p {
     margin-bottom: 0.5rem;
-    color: #212529;
+    color: #212529 !important;
 }
 
 .bot-response-preview p:last-child {
@@ -411,13 +411,13 @@ document.getElementById('message').addEventListener('input', function() {
 
 /* Dark mode support for bot response */
 [data-bs-theme="dark"] .bot-response-preview {
-    background-color: #343a40;
-    color: #f8f9fa;
+    background-color: #343a40 !important;
+    color: #f8f9fa !important;
     border-color: #495057;
 }
 
 [data-bs-theme="dark"] .bot-response-preview p {
-    color: #f8f9fa;
+    color: #f8f9fa !important;
 }
 </style>
 {% endblock %}
