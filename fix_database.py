@@ -59,10 +59,10 @@ def create_demo_users():
         # Create demo student
         student = Student(
             name='Demo Student',
-            phone='+1234567890',
+            phone='+263777123456',
             email='student@example.com',
             instructor_id=instructor.id,
-            license_type='B'
+            license_type='Class 4'
         )
         
         db.session.add(student)

@@ -65,7 +65,7 @@ class Student(db.Model):
     email = db.Column(db.String(120), nullable=True)
     address = db.Column(db.Text, nullable=True)
     date_of_birth = db.Column(db.Date, nullable=True)
-    license_type = db.Column(db.String(10), default='B')
+    license_type = db.Column(db.String(10), default='Class 4')
     
     # Foreign key to instructor
     instructor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)

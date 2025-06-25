@@ -228,7 +228,7 @@ def add_student():
             phone=request.form['phone'],
             email=request.form.get('email'),
             address=request.form.get('address'),
-            license_type=request.form.get('license_type', 'B'),
+            license_type=request.form.get('license_type', 'Class 4'),
             instructor_id=request.form.get('instructor_id') if request.form.get('instructor_id') else None,
             total_lessons_required=int(request.form.get('total_lessons_required', 20))
         )
