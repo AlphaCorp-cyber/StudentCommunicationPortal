@@ -259,9 +259,9 @@
                                   placeholder="Enter the message the student would send..." required>Hi</textarea>
                     </div>
                     
-                    <div class="bg-light p-3 rounded">
-                        <h6>Simulated Bot Response:</h6>
-                        <div id="botResponse" class="text-muted">
+                    <div class="bg-light p-3 rounded border">
+                        <h6 class="text-dark mb-3">Simulated Bot Response:</h6>
+                        <div id="botResponse" class="bot-response-preview">
                             <p>👋 Hello! Welcome to myInstructor 2.0</p>
                             <p>How can I help you today?</p>
                             <p>1️⃣ Book driving lesson<br>
@@ -387,6 +387,37 @@ document.getElementById('message').addEventListener('input', function() {
 .timeline-content h6 {
     margin-bottom: 5px;
     font-size: 0.9rem;
+}
+
+/* Bot response preview styling */
+.bot-response-preview {
+    background-color: #f8f9fa;
+    color: #212529;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #dee2e6;
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+}
+
+.bot-response-preview p {
+    margin-bottom: 0.5rem;
+    color: #212529;
+}
+
+.bot-response-preview p:last-child {
+    margin-bottom: 0;
+}
+
+/* Dark mode support for bot response */
+[data-bs-theme="dark"] .bot-response-preview {
+    background-color: #343a40;
+    color: #f8f9fa;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .bot-response-preview p {
+    color: #f8f9fa;
 }
 </style>
 {% endblock %}
