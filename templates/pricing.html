@@ -1,0 +1,234 @@
+
+{% extends "base.html" %}
+
+{% block title %}Lesson Pricing - myInstructor 2.0{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i data-feather="dollar-sign" class="me-2"></i>Lesson Pricing</h2>
+            <p class="text-muted mb-0">Manage pricing for different license classes and lesson durations</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPricingModal">
+            <i data-feather="plus" class="me-2"></i>
+            Add Pricing
+        </button>
+    </div>
+
+    <!-- Pricing Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Current Pricing Structure</h5>
+        </div>
+        <div class="card-body">
+            {% if pricing %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>License Class</th>
+                            <th>30 Minutes</th>
+                            <th>60 Minutes</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for price in pricing %}
+                        <tr>
+                            <td>
+                                <span class="badge bg-primary">{{ price.license_class }}</span>
+                            </td>
+                            <td>
+                                <strong>${{ "%.2f"|format(price.price_per_30min) }}</strong>
+                            </td>
+                            <td>
+                                <strong>${{ "%.2f"|format(price.price_per_60min) }}</strong>
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ price.created_at.strftime('%Y-%m-%d') }}</small>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="editPricing({{ price.id }}, '{{ price.license_class }}', {{ price.price_per_30min }}, {{ price.price_per_60min }})">
+                                    <i data-feather="edit-2" style="width: 16px; height: 16px;"></i>
+                                </button>
+                                {% if current_user.is_super_admin() %}
+                                <button class="btn btn-sm btn-outline-danger ms-1" 
+                                        onclick="deletePricing({{ price.id }}, '{{ price.license_class }}')">
+                                    <i data-feather="trash-2" style="width: 16px; height: 16px;"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i data-feather="dollar-sign" class="text-muted mb-3" style="width: 64px; height: 64px;"></i>
+                <h4 class="text-muted">No Pricing Set</h4>
+                <p class="text-muted">Add pricing for different license classes to get started.</p>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPricingModal">
+                    <i data-feather="plus" class="me-2"></i>
+                    Add First Pricing
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Pricing Info -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i data-feather="info" class="me-2"></i>Pricing Information</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li><i data-feather="check" class="me-2 text-success"></i>Prices are automatically applied when scheduling lessons</li>
+                        <li><i data-feather="check" class="me-2 text-success"></i>Student balance is checked before booking</li>
+                        <li><i data-feather="check" class="me-2 text-success"></i>Payment is deducted upon lesson completion</li>
+                        <li><i data-feather="check" class="me-2 text-success"></i>Different rates for 30min and 60min lessons</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i data-feather="users" class="me-2"></i>License Classes</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li><strong>Class 4:</strong> Light motor vehicles (cars)</li>
+                        <li><strong>Class 2:</strong> Heavy motor vehicles (trucks)</li>
+                        <li><strong>Class 1:</strong> Motorcycles</li>
+                        <li><strong>Class 3:</strong> Tractors and agricultural vehicles</li>
+                        <li><strong>Class 5:</strong> Minibuses and light buses</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Pricing Modal -->
+<div class="modal fade" id="addPricingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('add_pricing') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Lesson Pricing</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">License Class</label>
+                        <select class="form-select" name="license_class" required>
+                            <option value="">Select License Class</option>
+                            <option value="Class 4">Class 4 (Light Motor Vehicles)</option>
+                            <option value="Class 2">Class 2 (Heavy Motor Vehicles)</option>
+                            <option value="Class 1">Class 1 (Motorcycles)</option>
+                            <option value="Class 3">Class 3 (Tractors)</option>
+                            <option value="Class 5">Class 5 (Minibuses)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Price for 30 Minutes</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" name="price_per_30min" 
+                                   step="0.01" min="0" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Price for 60 Minutes</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" name="price_per_60min" 
+                                   step="0.01" min="0" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Pricing</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Pricing Modal -->
+<div class="modal fade" id="editPricingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="editPricingForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Lesson Pricing</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">License Class</label>
+                        <input type="text" class="form-control" id="editLicenseClass" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Price for 30 Minutes</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" name="price_per_30min" 
+                                   id="editPrice30" step="0.01" min="0" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Price for 60 Minutes</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" name="price_per_60min" 
+                                   id="editPrice60" step="0.01" min="0" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Pricing</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editPricing(id, licenseClass, price30, price60) {
+    document.getElementById('editLicenseClass').value = licenseClass;
+    document.getElementById('editPrice30').value = price30;
+    document.getElementById('editPrice60').value = price60;
+    document.getElementById('editPricingForm').action = `/pricing/${id}/update`;
+    
+    new bootstrap.Modal(document.getElementById('editPricingModal')).show();
+}
+
+function deletePricing(id, licenseClass) {
+    if (confirm(`Are you sure you want to delete pricing for ${licenseClass}?`)) {
+        fetch(`/pricing/${id}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Error deleting pricing');
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

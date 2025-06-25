@@ -501,6 +501,68 @@ def pricing():
     
     return render_template('pricing.html', pricing=pricing_list)
 
+@app.route('/pricing/add', methods=['POST'])
+@require_role('admin')
+def add_pricing():
+    """Add new lesson pricing"""
+    try:
+        license_class = request.form['license_class']
+        
+        # Check if pricing already exists for this license class
+        existing = LessonPricing.query.filter_by(license_class=license_class).first()
+        if existing:
+            flash(f'Pricing for {license_class} already exists. Use edit to update.', 'error')
+            return redirect(url_for('pricing'))
+        
+        pricing = LessonPricing()
+        pricing.license_class = license_class
+        pricing.price_per_30min = float(request.form['price_per_30min'])
+        pricing.price_per_60min = float(request.form['price_per_60min'])
+        
+        db.session.add(pricing)
+        db.session.commit()
+        flash(f'Pricing added for {license_class} successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error adding pricing: {str(e)}', 'error')
+    
+    return redirect(url_for('pricing'))
+
+@app.route('/pricing/<int:pricing_id>/update', methods=['POST'])
+@require_role('admin')
+def update_pricing(pricing_id):
+    """Update existing lesson pricing"""
+    try:
+        pricing = LessonPricing.query.get_or_404(pricing_id)
+        
+        pricing.price_per_30min = float(request.form['price_per_30min'])
+        pricing.price_per_60min = float(request.form['price_per_60min'])
+        pricing.updated_at = datetime.now()
+        
+        db.session.commit()
+        flash(f'Pricing updated for {pricing.license_class} successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error updating pricing: {str(e)}', 'error')
+    
+    return redirect(url_for('pricing'))
+
+@app.route('/pricing/<int:pricing_id>/delete', methods=['POST'])
+@require_role('super_admin')
+def delete_pricing(pricing_id):
+    """Delete lesson pricing (Super Admin only)"""
+    try:
+        pricing = LessonPricing.query.get_or_404(pricing_id)
+        license_class = pricing.license_class
+        
+        db.session.delete(pricing)
+        db.session.commit()
+        flash(f'Pricing deleted for {license_class} successfully!', 'success')
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/lessons/<int:lesson_id>/complete', methods=['POST'])
 @require_login
 def complete_lesson(lesson_id):
