@@ -144,55 +144,56 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="student_id" class="form-label">Student *</label>
-                            <select class="form-select" id="student_id" name="student_id" required>
-                                <option value="">Select a student</option>
-                                {% for student in students %}
-                                <option value="{{ student.id }}">
-                                    {{ student.name }} ({{ student.phone }})
-                                    {% if student.instructor %}
-                                    - {{ student.instructor.get_full_name() }}
-                                    {% endif %}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="lesson_type" class="form-label">Lesson Type</label>
-                            <select class="form-select" id="lesson_type" name="lesson_type">
-                                <option value="practical" selected>Practical</option>
-                                <option value="theory">Theory</option>
-                                <option value="test">Test</option>
-                                <option value="assessment">Assessment</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="scheduled_date" class="form-label">Date & Time *</label>
-                            <input type="datetime-local" class="form-control" id="scheduled_date" 
-                                   name="scheduled_date" required>
-                            <small class="text-muted">Available hours: 6:00 AM - 4:00 PM</small>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="duration_minutes" class="form-label">Duration (minutes)</label>
-                            <select class="form-select" id="duration_minutes" name="duration_minutes">
-                                <option value="30" selected>30 minutes</option>
-                                <option value="60">1 hour (combined lesson)</option>
-                            </select>
-                            <small class="text-muted">Maximum 2 lessons per day</small>
-                        </div>
-                        <div class="col-12">
-                            <label for="location" class="form-label">Location</label>
-                            <input type="text" class="form-control" id="location" name="location" 
-                                   placeholder="e.g., Driving school, Student's home, Test center">
+                    <div class="mb-3">
+                        <label for="student_id" class="form-label">Student *</label>
+                        <select class="form-select" id="student_id" name="student_id" required onchange="checkStudentBalance()">
+                            <option value="">Select student</option>
+                            {% for student in students %}
+                            <option value="{{ student.id }}" data-balance="{{ student.account_balance }}" data-license="{{ student.license_type }}">
+                                {{ student.name }} (Balance: ${{ student.account_balance }}, {{ student.license_type }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div id="balanceWarning" class="text-warning mt-1" style="display: none;">
+                            <small><i data-feather="alert-triangle"></i> Insufficient balance for this lesson</small>
                         </div>
                     </div>
-                    <div class="mt-3">
-                        <small class="text-muted">
-                            <i data-feather="info" class="me-1" style="width: 16px; height: 16px;"></i>
-                            The lesson will be assigned to the student's instructor automatically.
-                        </small>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="duration_minutes" class="form-label">Duration (minutes) *</label>
+                            <select class="form-select" id="duration_minutes" name="duration_minutes" required onchange="checkStudentBalance()">
+                                <option value="30">30 minutes</option>
+                                <option value="60">60 minutes (combined)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="lesson_type" class="form-label">Lesson Type</label>
+                            <select class="form-select" id="lesson_type" name="lesson_type">
+                                <option value="practical">Practical Driving</option>
+                                <option value="theory">Theory</option>
+                                <option value="test">Driving Test</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="vehicle_id" class="form-label">Vehicle</label>
+                            <select class="form-select" id="vehicle_id" name="vehicle_id">
+                                <option value="">Select vehicle</option>
+                                {% if current_user.is_instructor() %}
+                                    {% for vehicle in current_user.assigned_vehicles %}
+                                    <option value="{{ vehicle.id }}">{{ vehicle.registration_number }} ({{ vehicle.license_class }})</option>
+                                    {% endfor %}
+                                {% else %}
+                                    {% for vehicle in vehicles %}
+                                    <option value="{{ vehicle.id }}">{{ vehicle.registration_number }} ({{ vehicle.license_class }})</option>
+                                    {% endfor %}
+                                {% endif %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label for="location" class="form-label">Location</label>
+                        <input type="text" class="form-control" id="location" name="location" 
+                               placeholder="e.g., Driving school, Student's home, Test center">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -331,5 +332,50 @@ function viewLessonDetails(lessonId) {
     // This could be expanded to show a detailed lesson modal
     console.log('View lesson details for ID:', lessonId);
 }
+</script>
+<script>
+// Lesson pricing data (this would come from the backend in a real app)
+const lessonPricing = {
+    'Class 4': { '30': 25.00, '60': 45.00 },
+    'Class 2': { '30': 35.00, '60': 65.00 },
+    'Class 1': { '30': 40.00, '60': 75.00 },
+    'Class 3': { '30': 20.00, '60': 35.00 },
+    'Class 5': { '30': 30.00, '60': 55.00 }
+};
+
+function checkStudentBalance() {
+    const studentSelect = document.getElementById('student_id');
+    const durationSelect = document.getElementById('duration_minutes');
+    const warningDiv = document.getElementById('balanceWarning');
+    const submitBtn = document.querySelector('button[type="submit"]');
+
+    if (!studentSelect.value || !durationSelect.value) {
+        warningDiv.style.display = 'none';
+        if (submitBtn) submitBtn.disabled = false;
+        return;
+    }
+
+    const selectedOption = studentSelect.options[studentSelect.selectedIndex];
+    const balance = parseFloat(selectedOption.dataset.balance);
+    const licenseClass = selectedOption.dataset.license;
+    const duration = durationSelect.value;
+
+    const lessonPrice = lessonPricing[licenseClass] ? lessonPricing[licenseClass][duration] : 0;
+
+    if (balance < lessonPrice) {
+        warningDiv.style.display = 'block';
+        warningDiv.innerHTML = `<small><i data-feather="alert-triangle"></i> Insufficient balance. Need $${lessonPrice.toFixed(2)}, current balance: $${balance.toFixed(2)}</small>`;
+        if (submitBtn) submitBtn.disabled = true;
+        feather.replace();
+    } else {
+        warningDiv.style.display = 'none';
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
+
+// Initialize balance check when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    checkStudentBalance();
+});
 </script>
 {% endblock %}

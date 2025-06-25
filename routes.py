@@ -4,7 +4,7 @@ from flask_login import current_user, login_user, logout_user
 from sqlalchemy import or_, and_
 
 from app import app, db
-from models import User, Student, Lesson, WhatsAppSession, SystemConfig, LESSON_SCHEDULED, LESSON_COMPLETED, LESSON_CANCELLED, ROLE_INSTRUCTOR, ROLE_ADMIN, ROLE_SUPER_ADMIN
+from models import User, Student, Lesson, WhatsAppSession, SystemConfig, Vehicle, Payment, LessonPricing, LESSON_SCHEDULED, LESSON_COMPLETED, LESSON_CANCELLED, ROLE_INSTRUCTOR, ROLE_ADMIN, ROLE_SUPER_ADMIN
 from auth import require_login, require_role
 # WhatsApp functionality will be imported when needed
 
@@ -153,8 +153,16 @@ def admin_dashboard():
     # Get all students
     students = Student.query.filter_by(is_active=True).all()
     
-    # Get all instructors
+    # Get all instructors with vehicle assignments
     instructors = User.query.filter_by(role='instructor').all()
+    for instructor in instructors:
+        instructor.assigned_vehicles = Vehicle.query.filter_by(instructor_id=instructor.id, is_active=True).all()
+    
+    # Get vehicles
+    vehicles = Vehicle.query.filter_by(is_active=True).all()
+    
+    # Get recent payments
+    recent_payments = Payment.query.order_by(Payment.created_at.desc()).limit(5).all()
     
     # Get today's lessons
     today_lessons = Lesson.query.filter(
@@ -176,6 +184,8 @@ def admin_dashboard():
     return render_template('admin_dashboard.html', 
                          students=students[:10],  # Show first 10
                          instructors=instructors,
+                         vehicles=vehicles,
+                         recent_payments=recent_payments,
                          today_lessons=today_lessons,
                          stats=stats)
 
@@ -225,14 +235,18 @@ def students():
 def add_student():
     """Add a new student"""
     try:
+        instructor_id = request.form.get('instructor_id')
+        if not instructor_id:
+            flash('Instructor assignment is required.', 'error')
+            return redirect(url_for('students'))
+        
         student = Student()
         student.name = request.form['name']
         student.phone = request.form['phone']
         student.email = request.form.get('email')
         student.address = request.form.get('address')
         student.license_type = request.form.get('license_type', 'Class 4')
-        instructor_id = request.form.get('instructor_id')
-        student.instructor_id = int(instructor_id) if instructor_id else None
+        student.instructor_id = int(instructor_id)
         student.total_lessons_required = int(request.form.get('total_lessons_required', 20))
         
         db.session.add(student)
@@ -273,6 +287,8 @@ def lessons():
     if current_user.is_instructor():
         # Instructors see only their lessons
         lessons_list = Lesson.query.filter_by(instructor_id=current_user.id).order_by(Lesson.scheduled_date.desc()).all()
+        # Get instructor's assigned vehicles
+        current_user.assigned_vehicles = Vehicle.query.filter_by(instructor_id=current_user.id, is_active=True).all()
     else:
         # Admins and Super Admins see all lessons
         lessons_list = Lesson.query.order_by(Lesson.scheduled_date.desc()).all()
@@ -283,7 +299,10 @@ def lessons():
     else:
         students_list = Student.query.filter_by(is_active=True).all()
     
-    return render_template('lessons.html', lessons=lessons_list, students=students_list)
+    # Get all vehicles for admins
+    vehicles = Vehicle.query.filter_by(is_active=True).all() if not current_user.is_instructor() else []
+    
+    return render_template('lessons.html', lessons=lessons_list, students=students_list, vehicles=vehicles)
 
 @app.route('/api/check_lesson_limit')
 @require_login
@@ -315,7 +334,7 @@ def check_lesson_limit():
 @app.route('/lessons/add', methods=['POST'])
 @require_login
 def add_lesson():
-    """Add a new lesson with validation for time constraints"""
+    """Add a new lesson with validation for time constraints and balance checking"""
     try:
         student_id = request.form['student_id']
         student = Student.query.get(student_id)
@@ -326,6 +345,13 @@ def add_lesson():
             return redirect(url_for('lessons'))
         
         scheduled_date = datetime.strptime(request.form['scheduled_date'], '%Y-%m-%dT%H:%M')
+        duration_minutes = int(request.form.get('duration_minutes', 30))
+        
+        # Check if student has sufficient balance
+        if not student.has_sufficient_balance(duration_minutes):
+            lesson_price = student.get_lesson_price(duration_minutes)
+            flash(f'Student has insufficient balance. Lesson costs ${lesson_price:.2f}, current balance: ${student.account_balance:.2f}', 'error')
+            return redirect(url_for('lessons'))
         
         # Validate time constraints (6 AM to 4 PM)
         if scheduled_date.hour < 6 or scheduled_date.hour >= 16:
@@ -361,9 +387,15 @@ def add_lesson():
         lesson.student_id = student_id
         lesson.instructor_id = student.instructor_id or current_user.id
         lesson.scheduled_date = scheduled_date
-        lesson.duration_minutes = int(request.form.get('duration_minutes', 30))
+        lesson.duration_minutes = duration_minutes
         lesson.lesson_type = request.form.get('lesson_type', 'practical')
         lesson.location = request.form.get('location')
+        lesson.cost = student.get_lesson_price(duration_minutes)
+        
+        # Assign vehicle if specified
+        vehicle_id = request.form.get('vehicle_id')
+        if vehicle_id:
+            lesson.vehicle_id = int(vehicle_id)
         
         db.session.add(lesson)
         db.session.commit()
@@ -376,6 +408,98 @@ def add_lesson():
         flash(f'Error scheduling lesson: {str(e)}', 'error')
     
     return redirect(url_for('lessons'))
+
+@app.route('/vehicles/add', methods=['POST'])
+@require_role('admin')
+def add_vehicle():
+    """Add a new vehicle"""
+    try:
+        vehicle = Vehicle()
+        vehicle.registration_number = request.form['registration_number']
+        vehicle.make = request.form['make']
+        vehicle.model = request.form['model']
+        vehicle.year = int(request.form['year'])
+        vehicle.license_class = request.form['license_class']
+        
+        db.session.add(vehicle)
+        db.session.commit()
+        flash(f'Vehicle {vehicle.registration_number} added successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error adding vehicle: {str(e)}', 'error')
+    
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/vehicles/<int:vehicle_id>/assign', methods=['POST'])
+@require_role('admin')
+def assign_vehicle(vehicle_id):
+    """Assign a vehicle to an instructor"""
+    vehicle = Vehicle.query.get_or_404(vehicle_id)
+    instructor_id = request.form.get('instructor_id')
+    
+    if instructor_id:
+        instructor = User.query.get(instructor_id)
+        if instructor and instructor.is_instructor():
+            vehicle.instructor_id = instructor_id
+            flash(f'Vehicle {vehicle.registration_number} assigned to {instructor.get_full_name()}!', 'success')
+        else:
+            flash('Invalid instructor selected.', 'error')
+    else:
+        vehicle.instructor_id = None
+        flash(f'Vehicle {vehicle.registration_number} unassigned.', 'info')
+    
+    db.session.commit()
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/payments/add', methods=['POST'])
+@require_role('admin')
+def add_payment():
+    """Record a new payment"""
+    try:
+        student_id = request.form['student_id']
+        amount = float(request.form['amount'])
+        
+        student = Student.query.get(student_id)
+        if not student:
+            flash('Student not found.', 'error')
+            return redirect(url_for('admin_dashboard'))
+        
+        payment = Payment()
+        payment.student_id = student_id
+        payment.amount = amount
+        payment.payment_type = request.form['payment_type']
+        payment.payment_method = request.form.get('payment_method')
+        payment.reference_number = request.form.get('reference_number')
+        payment.processed_by = current_user.id
+        
+        # Update student's account balance
+        student.account_balance = float(student.account_balance) + amount
+        
+        db.session.add(payment)
+        db.session.commit()
+        flash(f'Payment of ${amount:.2f} recorded for {student.name}!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error recording payment: {str(e)}', 'error')
+    
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/payments')
+@require_role('admin')
+def payments():
+    """Payment management page"""
+    payments_list = Payment.query.order_by(Payment.created_at.desc()).all()
+    students_list = Student.query.filter_by(is_active=True).all()
+    
+    return render_template('payments.html', payments=payments_list, students=students_list)
+
+@app.route('/pricing')
+@require_role('admin')
+def pricing():
+    """Lesson pricing management page"""
+    pricing_list = LessonPricing.query.all()
+    
+    return render_template('pricing.html', pricing=pricing_list)
 
 @app.route('/lessons/<int:lesson_id>/complete', methods=['POST'])
 @require_login

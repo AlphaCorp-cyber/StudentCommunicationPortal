@@ -67,14 +67,17 @@ class Student(db.Model):
     date_of_birth = db.Column(db.Date, nullable=True)
     license_type = db.Column(db.String(10), default='Class 4')
     
-    # Foreign key to instructor
-    instructor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    # Foreign key to instructor (now required)
+    instructor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
     # Status tracking
     registration_date = db.Column(db.DateTime, default=datetime.now)
     is_active = db.Column(db.Boolean, default=True)
     total_lessons_required = db.Column(db.Integer, default=20)
     lessons_completed = db.Column(db.Integer, default=0)
+    
+    # Financial tracking
+    account_balance = db.Column(db.Numeric(10, 2), default=0.00)
     
     # Relationships
     lessons = db.relationship('Lesson', backref='student', lazy=True, cascade='all, delete-orphan')
@@ -84,6 +87,22 @@ class Student(db.Model):
         if self.total_lessons_required == 0:
             return 0
         return min(100, (self.lessons_completed / self.total_lessons_required) * 100)
+    
+    def get_lesson_price(self, duration_minutes):
+        """Get the price for a lesson based on duration and license class"""
+        pricing = LessonPricing.query.filter_by(license_class=self.license_type).first()
+        if not pricing:
+            return 0
+        
+        if duration_minutes <= 30:
+            return float(pricing.price_per_30min)
+        else:
+            return float(pricing.price_per_60min)
+    
+    def has_sufficient_balance(self, duration_minutes):
+        """Check if student has enough balance for the lesson"""
+        lesson_price = self.get_lesson_price(duration_minutes)
+        return float(self.account_balance) >= lesson_price
 
 class Lesson(db.Model):
     __tablename__ = 'lessons'
@@ -92,12 +111,16 @@ class Lesson(db.Model):
     # Foreign keys
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
     instructor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicles.id'), nullable=True)
     
     # Lesson details
     scheduled_date = db.Column(db.DateTime, nullable=False)
     duration_minutes = db.Column(db.Integer, default=60)
     lesson_type = db.Column(db.String(50), default='practical')  # practical, theory, test
     location = db.Column(db.String(200), nullable=True)
+    
+    # Financial tracking
+    cost = db.Column(db.Numeric(10, 2), nullable=False, default=0.00)
     
     # Status and tracking
     status = db.Column(db.String(20), default=LESSON_SCHEDULED)
@@ -115,6 +138,10 @@ class Lesson(db.Model):
         self.notes = notes
         self.feedback = feedback
         self.rating = rating
+        
+        # Deduct lesson cost from student's balance
+        if self.student and self.cost:
+            self.student.account_balance = float(self.student.account_balance) - float(self.cost)
         
         # Update student's completed lessons count
         if self.student:
@@ -134,6 +161,52 @@ class WhatsAppSession(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     
     created_at = db.Column(db.DateTime, default=datetime.now)
+
+class Vehicle(db.Model):
+    __tablename__ = 'vehicles'
+    id = db.Column(db.Integer, primary_key=True)
+    registration_number = db.Column(db.String(20), unique=True, nullable=False)
+    make = db.Column(db.String(50), nullable=False)
+    model = db.Column(db.String(50), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    license_class = db.Column(db.String(10), nullable=False)  # Class 4, Class 2, etc.
+    
+    # Assignment
+    instructor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    # Relationships
+    lessons = db.relationship('Lesson', backref='vehicle', lazy=True)
+
+class LessonPricing(db.Model):
+    __tablename__ = 'lesson_pricing'
+    id = db.Column(db.Integer, primary_key=True)
+    license_class = db.Column(db.String(10), nullable=False)  # Class 4, Class 2, etc.
+    price_per_30min = db.Column(db.Numeric(10, 2), nullable=False)
+    price_per_60min = db.Column(db.Numeric(10, 2), nullable=False)
+    
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+
+class Payment(db.Model):
+    __tablename__ = 'payments'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    amount = db.Column(db.Numeric(10, 2), nullable=False)
+    payment_type = db.Column(db.String(20), nullable=False)  # 'cash', 'online'
+    payment_method = db.Column(db.String(50), nullable=True)  # 'visa', 'mastercard', 'ecocash', etc.
+    reference_number = db.Column(db.String(100), nullable=True)
+    
+    # Admin who processed the payment
+    processed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    
+    # Relationships
+    student = db.relationship('Student', backref='payments')
+    admin = db.relationship('User', backref='processed_payments')
 
 class SystemConfig(db.Model):
     __tablename__ = 'system_config'

@@ -171,15 +171,113 @@
     </div>
 </div>
 
+<!-- Management Sections -->
+<div class="row g-4 mt-4">
+    <!-- Vehicle Management -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i data-feather="truck" class="me-2"></i>
+                    Vehicle Management
+                </h5>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addVehicleModal">
+                    <i data-feather="plus" class="me-1"></i>
+                    Add Vehicle
+                </button>
+            </div>
+            <div class="card-body">
+                {% if vehicles %}
+                <div class="list-group list-group-flush">
+                    {% for vehicle in vehicles %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">{{ vehicle.registration_number }}</h6>
+                            <small class="text-muted">{{ vehicle.make }} {{ vehicle.model }} ({{ vehicle.year }})</small>
+                            <br><span class="badge bg-info">{{ vehicle.license_class }}</span>
+                            {% if vehicle.instructor %}
+                            <br><small class="text-success">Assigned to: {{ vehicle.instructor.get_full_name() }}</small>
+                            {% else %}
+                            <br><small class="text-warning">Not assigned</small>
+                            {% endif %}
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="assignVehicle({{ vehicle.id }}, '{{ vehicle.registration_number }}')" data-bs-toggle="modal" data-bs-target="#assignVehicleModal">
+                                <i data-feather="user-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i data-feather="truck" class="text-muted mb-3" style="width: 48px; height: 48px;"></i>
+                    <p class="text-muted">No vehicles registered</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Management -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i data-feather="credit-card" class="me-2"></i>
+                    Payment Management
+                </h5>
+                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
+                    <i data-feather="plus" class="me-1"></i>
+                    Add Payment
+                </button>
+            </div>
+            <div class="card-body">
+                {% if recent_payments %}
+                <div class="list-group list-group-flush">
+                    {% for payment in recent_payments %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">${{ payment.amount }}</h6>
+                            <small class="text-muted">{{ payment.student.name }} - {{ payment.payment_type.title() }}</small>
+                            <br><small class="text-muted">{{ payment.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                        </div>
+                        <span class="badge bg-{% if payment.payment_type == 'cash' %}warning{% else %}success{% endif %}">
+                            {{ payment.payment_type.title() }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i data-feather="credit-card" class="text-muted mb-3" style="width: 48px; height: 48px;"></i>
+                    <p class="text-muted">No payments recorded</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('payments') }}" class="btn btn-outline-primary btn-sm">
+                    <i data-feather="arrow-right" class="me-1"></i>
+                    View All Payments
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Instructors Overview -->
 <div class="row g-4 mt-4">
     <div class="col-12">
         <div class="card">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
                     <i data-feather="user-check" class="me-2"></i>
                     Instructors Overview
                 </h5>
+                <a href="{{ url_for('pricing') }}" class="btn btn-outline-primary btn-sm">
+                    <i data-feather="dollar-sign" class="me-1"></i>
+                    Manage Pricing
+                </a>
             </div>
             <div class="card-body">
                 {% if instructors %}
@@ -201,6 +299,9 @@
                                     <div>
                                         <h6 class="mb-1">{{ instructor.get_full_name() }}</h6>
                                         <small class="text-muted">{{ instructor.instructor_students|length if instructor.instructor_students else 0 }} students</small>
+                                        {% if instructor.assigned_vehicles %}
+                                        <br><small class="text-info">{{ instructor.assigned_vehicles|length }} vehicle(s)</small>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -263,9 +364,9 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="instructor_id" class="form-label">Assign Instructor</label>
-                        <select class="form-select" id="instructor_id" name="instructor_id">
-                            <option value="">Select an instructor (optional)</option>
+                        <label for="instructor_id" class="form-label">Assign Instructor *</label>
+                        <select class="form-select" id="instructor_id" name="instructor_id" required>
+                            <option value="">Select an instructor</option>
                             {% for instructor in instructors %}
                             <option value="{{ instructor.id }}">{{ instructor.get_full_name() }}</option>
                             {% endfor %}
@@ -280,4 +381,148 @@
         </div>
     </div>
 </div>
+
+<!-- Add Vehicle Modal -->
+<div class="modal fade" id="addVehicleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('add_vehicle') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Vehicle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="registration_number" class="form-label">Registration Number *</label>
+                        <input type="text" class="form-control" id="registration_number" name="registration_number" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="make" class="form-label">Make *</label>
+                            <input type="text" class="form-control" id="make" name="make" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="model" class="form-label">Model *</label>
+                            <input type="text" class="form-control" id="model" name="model" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="year" class="form-label">Year *</label>
+                            <input type="number" class="form-control" id="year" name="year" min="1990" max="2030" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="license_class" class="form-label">License Class *</label>
+                            <select class="form-select" id="license_class" name="license_class" required>
+                                <option value="Class 4">Class 4 (Light Motor Vehicle)</option>
+                                <option value="Class 2">Class 2 (Heavy Motor Vehicle)</option>
+                                <option value="Class 1">Class 1 (Extra Heavy Motor Vehicle)</option>
+                                <option value="Class 3">Class 3 (Motor Cycle)</option>
+                                <option value="Class 5">Class 5 (Tractor)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Vehicle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Vehicle Modal -->
+<div class="modal fade" id="assignVehicleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="assignVehicleForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Assign Vehicle to Instructor</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Vehicle: <strong id="assignVehicleNumber"></strong></p>
+                    <div class="mb-3">
+                        <label for="vehicle_instructor_id" class="form-label">Select Instructor</label>
+                        <select class="form-select" id="vehicle_instructor_id" name="instructor_id">
+                            <option value="">Unassign vehicle</option>
+                            {% for instructor in instructors %}
+                            <option value="{{ instructor.id }}">{{ instructor.get_full_name() }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Assign Vehicle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Payment Modal -->
+<div class="modal fade" id="addPaymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('add_payment') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Record Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="payment_student_id" class="form-label">Student *</label>
+                        <select class="form-select" id="payment_student_id" name="student_id" required>
+                            <option value="">Select student</option>
+                            {% for student in students %}
+                            <option value="{{ student.id }}">{{ student.name }} (Balance: ${{ student.account_balance }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Amount *</label>
+                        <input type="number" class="form-control" id="amount" name="amount" step="0.01" min="0.01" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="payment_type" class="form-label">Payment Type *</label>
+                            <select class="form-select" id="payment_type" name="payment_type" required>
+                                <option value="cash">Cash</option>
+                                <option value="online">Online Payment</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="payment_method" class="form-label">Payment Method</label>
+                            <select class="form-select" id="payment_method" name="payment_method">
+                                <option value="">Select method</option>
+                                <option value="visa">Visa</option>
+                                <option value="mastercard">Mastercard</option>
+                                <option value="ecocash">EcoCash</option>
+                                <option value="paynow">PayNow</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reference_number" class="form-label">Reference Number</label>
+                        <input type="text" class="form-control" id="reference_number" name="reference_number">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Record Payment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function assignVehicle(vehicleId, registrationNumber) {
+    document.getElementById('assignVehicleNumber').textContent = registrationNumber;
+    document.getElementById('assignVehicleForm').action = '{{ url_for("assign_vehicle", vehicle_id=0) }}'.replace('0', vehicleId);
+}
+</script>
 {% endblock %}
