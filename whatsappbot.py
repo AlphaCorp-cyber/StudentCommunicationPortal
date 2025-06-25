@@ -1,8 +1,11 @@
 
 import logging
+import os
 from datetime import datetime, timedelta
 from flask import request, jsonify
-from models import Student, Lesson, WhatsAppSession, db, LESSON_SCHEDULED, LESSON_COMPLETED
+from twilio.rest import Client
+from twilio.twiml.messaging_response import MessagingResponse
+from models import Student, Lesson, WhatsAppSession, db, LESSON_SCHEDULED, LESSON_COMPLETED, SystemConfig
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -19,6 +22,27 @@ class WhatsAppBot:
             'help': self.handle_help,
             'menu': self.handle_menu
         }
+        
+        # Initialize Twilio client
+        self.twilio_client = None
+        self.initialize_twilio()
+    
+    def initialize_twilio(self):
+        """Initialize Twilio client with credentials from SystemConfig or environment"""
+        try:
+            # Try to get credentials from SystemConfig first
+            account_sid = SystemConfig.get_config('TWILIO_ACCOUNT_SID') or os.getenv('TWILIO_ACCOUNT_SID')
+            auth_token = SystemConfig.get_config('TWILIO_AUTH_TOKEN') or os.getenv('TWILIO_AUTH_TOKEN')
+            
+            if account_sid and auth_token:
+                self.twilio_client = Client(account_sid, auth_token)
+                self.twilio_phone = SystemConfig.get_config('TWILIO_WHATSAPP_NUMBER') or os.getenv('TWILIO_WHATSAPP_NUMBER')
+                logger.info("Twilio client initialized successfully")
+            else:
+                logger.warning("Twilio credentials not found. WhatsApp messaging will be in mock mode.")
+        except Exception as e:
+            logger.error(f"Failed to initialize Twilio client: {str(e)}")
+            self.twilio_client = None
     
     def process_message(self, phone_number, message):
         """Process incoming WhatsApp message"""
@@ -249,34 +273,62 @@ Contact your driving school for assistance with registration."""
 whatsapp_bot = WhatsAppBot()
 
 def webhook_handler():
-    """Handle incoming WhatsApp webhooks"""
+    """Handle incoming WhatsApp webhooks from Twilio"""
     try:
-        data = request.get_json()
+        # Get Twilio webhook data
+        from_number = request.form.get('From', '')
+        message_body = request.form.get('Body', '')
         
-        # Extract message data (format depends on WhatsApp API provider)
-        if 'messages' in data:
-            for message_data in data['messages']:
-                phone = message_data.get('from')
-                text = message_data.get('text', {}).get('body', '')
-                
-                if phone and text:
-                    response = whatsapp_bot.process_message(phone, text)
-                    
-                    # Here you would send the response back via WhatsApp API
-                    # This depends on your WhatsApp Business API provider
-                    logger.info(f"Response for {phone}: {response}")
+        if from_number and message_body:
+            # Clean the phone number (remove whatsapp: prefix)
+            clean_phone = from_number.replace('whatsapp:', '')
+            
+            # Process the message
+            response_text = whatsapp_bot.process_message(clean_phone, message_body)
+            
+            # Create TwiML response
+            twiml_response = MessagingResponse()
+            twiml_response.message(response_text)
+            
+            logger.info(f"Processed WhatsApp message from {clean_phone}: {message_body}")
+            
+            return str(twiml_response), 200, {'Content-Type': 'text/xml'}
         
-        return jsonify({'status': 'success'}), 200
+        return jsonify({'error': 'Missing required parameters'}), 400
         
     except Exception as e:
         logger.error(f"Webhook error: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        # Return empty TwiML response on error
+        twiml_response = MessagingResponse()
+        return str(twiml_response), 500, {'Content-Type': 'text/xml'}
 
 def send_whatsapp_message(phone_number, message):
-    """Send WhatsApp message (mock implementation)"""
-    # This would integrate with your WhatsApp Business API
-    logger.info(f"Sending WhatsApp to {phone_number}: {message}")
-    return True
+    """Send WhatsApp message via Twilio"""
+    try:
+        if not whatsapp_bot.twilio_client:
+            logger.warning(f"Twilio not configured. Mock sending to {phone_number}: {message}")
+            return False
+        
+        if not whatsapp_bot.twilio_phone:
+            logger.error("Twilio WhatsApp number not configured")
+            return False
+        
+        # Clean phone number format
+        clean_phone = whatsapp_bot.clean_phone_number(phone_number)
+        
+        # Send message via Twilio
+        message_instance = whatsapp_bot.twilio_client.messages.create(
+            body=message,
+            from_=f'whatsapp:{whatsapp_bot.twilio_phone}',
+            to=f'whatsapp:{clean_phone}'
+        )
+        
+        logger.info(f"WhatsApp message sent successfully to {clean_phone}, SID: {message_instance.sid}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send WhatsApp message to {phone_number}: {str(e)}")
+        return False
 
 def send_lesson_reminder(lesson):
     """Send lesson reminder to student"""

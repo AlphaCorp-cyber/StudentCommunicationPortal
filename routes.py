@@ -408,38 +408,24 @@ def complete_lesson(lesson_id):
 
 @app.route('/whatsapp-bot')
 @require_role('admin')
-def whatsapp_bot():
-    """Mock WhatsApp bot interface for demonstration"""
+def whatsapp_bot_interface():
+    """WhatsApp bot interface for demonstration and monitoring"""
     # Get recent WhatsApp sessions
     sessions = WhatsAppSession.query.order_by(WhatsAppSession.last_activity.desc()).limit(20).all()
     
     # Get students for simulation
     students_list = Student.query.filter_by(is_active=True).all()
     
-    return render_template('whatsapp_bot.html', sessions=sessions, students=students_list)
+    # Get Twilio configuration status
+    configs = {config.key: config.value for config in SystemConfig.query.all()}
+    
+    return render_template('whatsapp_bot.html', sessions=sessions, students=students_list, config=configs)
 
 @app.route('/whatsapp/webhook', methods=['POST'])
 def whatsapp_webhook():
-    """Handle incoming WhatsApp messages"""
-    try:
-        data = request.get_json()
-        
-        # Mock webhook handling - in production this would be secured
-        if 'phone' in data and 'message' in data:
-            phone = data['phone']
-            message = data['message']
-            
-            response = whatsapp_bot.process_message(phone, message)
-            
-            return jsonify({
-                'status': 'success',
-                'response': response
-            })
-        
-        return jsonify({'error': 'Invalid data format'}), 400
-        
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    """Handle incoming WhatsApp messages from Twilio"""
+    from whatsappbot import webhook_handler
+    return webhook_handler()
 
 @app.route('/whatsapp-bot/simulate', methods=['POST'])
 @require_role('admin')
@@ -496,13 +482,36 @@ def update_user_role(user_id):
 @require_role('super_admin')
 def update_config():
     """Update system configuration"""
-    key = request.form['key']
-    value = request.form['value']
-    description = request.form.get('description')
-    
     try:
-        SystemConfig.set_config(key, value, description)
-        flash(f'Configuration {key} updated successfully!', 'success')
+        # Handle Twilio configuration specially
+        if 'whatsapp_number' in request.form:
+            # Update Twilio Account SID
+            account_sid = request.form['value']
+            SystemConfig.set_config('TWILIO_ACCOUNT_SID', account_sid, 'Twilio Account SID for WhatsApp API')
+            
+            # Update Auth Token if provided
+            auth_token = request.form.get('auth_token')
+            if auth_token:
+                SystemConfig.set_config('TWILIO_AUTH_TOKEN', auth_token, 'Twilio Auth Token for WhatsApp API')
+            
+            # Update WhatsApp Number
+            whatsapp_number = request.form['whatsapp_number']
+            SystemConfig.set_config('TWILIO_WHATSAPP_NUMBER', whatsapp_number, 'Twilio WhatsApp Phone Number')
+            
+            # Reinitialize Twilio client
+            from whatsappbot import whatsapp_bot
+            whatsapp_bot.initialize_twilio()
+            
+            flash('Twilio configuration updated successfully!', 'success')
+        else:
+            # Handle regular configuration
+            key = request.form['key']
+            value = request.form['value']
+            description = request.form.get('description')
+            
+            SystemConfig.set_config(key, value, description)
+            flash(f'Configuration {key} updated successfully!', 'success')
+            
     except Exception as e:
         flash(f'Error updating configuration: {str(e)}', 'error')
     

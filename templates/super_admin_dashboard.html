@@ -105,7 +105,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Quick System Info -->
     <div class="col-lg-6">
         <div class="card">
@@ -202,48 +202,101 @@
 
     <!-- System Configuration -->
     <div class="col-lg-4">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i data-feather="sliders" class="me-2"></i>
-                    System Config
-                </h5>
-                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addConfigModal">
-                    <i data-feather="plus" class="me-1"></i>
-                    Add
-                </button>
-            </div>
-            <div class="card-body">
-                {% if configs %}
-                <div class="list-group list-group-flush">
-                    {% for config in configs %}
-                    <div class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h6 class="mb-1">{{ config.key }}</h6>
-                                {% if config.description %}
-                                <small class="text-muted">{{ config.description }}</small>
-                                {% endif %}
-                            </div>
-                            <button class="btn btn-outline-secondary btn-sm" 
-                                    onclick="openConfigModal('{{ config.key }}', '{{ config.value }}', '{{ config.description or '' }}')">
-                                <i data-feather="edit-2"></i>
-                            </button>
+        <!-- Twilio Configuration -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5>
+                                <i data-feather="message-circle" class="me-2"></i>
+                                Twilio WhatsApp Configuration
+                            </h5>
                         </div>
-                        <div class="mt-2">
-                            <code class="small">{{ config.value[:50] }}{% if config.value|length > 50 %}...{% endif %}</code>
+                        <div class="card-body">
+                            <div class="alert alert-info">
+                                <i data-feather="info" class="me-2"></i>
+                                Configure your Twilio credentials to enable WhatsApp messaging. These settings are encrypted and stored securely.
+                            </div>
+
+                            <form method="POST" action="{{ url_for('update_config') }}">
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Twilio Account SID</label>
+                                        <input type="text" class="form-control" name="value" 
+                                               value="{{ configs|selectattr('key', 'equalto', 'TWILIO_ACCOUNT_SID')|map(attribute='value')|first or '' }}"
+                                               placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" required>
+                                        <input type="hidden" name="key" value="TWILIO_ACCOUNT_SID">
+                                        <input type="hidden" name="description" value="Twilio Account SID for WhatsApp API">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Auth Token</label>
+                                        <input type="password" class="form-control" name="auth_token" 
+                                               placeholder="Enter new auth token to update">
+                                        <small class="text-muted">Leave blank to keep current token</small>
+                                    </div>
+                                </div>
+                                <div class="row g-3 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">WhatsApp Number</label>
+                                        <input type="text" class="form-control" name="whatsapp_number" 
+                                               value="{{ configs|selectattr('key', 'equalto', 'TWILIO_WHATSAPP_NUMBER')|map(attribute='value')|first or '' }}"
+                                               placeholder="+14155238886" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Webhook URL</label>
+                                        <input type="text" class="form-control" readonly 
+                                               value="{{ request.url_root }}whatsapp/webhook">
+                                        <small class="text-muted">Use this URL in your Twilio console</small>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-success">
+                                    <i data-feather="save" class="me-2"></i>
+                                    Update Twilio Configuration
+                                </button>
+                            </form>
                         </div>
                     </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="text-center py-4">
-                    <i data-feather="settings" class="text-muted mb-3" style="width: 48px; height: 48px;"></i>
-                    <p class="text-muted">No configurations yet</p>
-                </div>
-                {% endif %}
-            </div>
-        </div>
+
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i data-feather="sliders" class="me-2"></i>
+                                System Config
+                            </h5>
+                            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addConfigModal">
+                                <i data-feather="plus" class="me-1"></i>
+                                Add
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            {% if configs %}
+                            <div class="list-group list-group-flush">
+                                {% for config in configs %}
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1">{{ config.key }}</h6>
+                                            {% if config.description %}
+                                            <small class="text-muted">{{ config.description }}</small>
+                                            {% endif %}
+                                        </div>
+                                        <button class="btn btn-outline-secondary btn-sm" 
+                                                onclick="openConfigModal('{{ config.key }}', '{{ config.value }}', '{{ config.description or '' }}')">
+                                            <i data-feather="edit-2"></i>
+                                        </button>
+                                    </div>
+                                    <div class="mt-2">
+                                        <code class="small">{{ config.value[:50] }}{% if config.value|length > 50 %}...{% endif %}</code>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i data-feather="settings" class="text-muted mb-3" style="width: 48px; height: 48px;"></i>
+                                <p class="text-muted">No configurations yet</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
     </div>
 </div>
 

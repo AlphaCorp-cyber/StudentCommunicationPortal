@@ -9,9 +9,16 @@
         WhatsApp Bot Interface
     </h1>
     <div class="text-end">
-        <span class="badge bg-warning text-dark">Mock Mode</span>
-        <br>
-        <small class="text-muted">Simulation for demonstration</small>
+        {% set twilio_configured = config.get('TWILIO_ACCOUNT_SID') and config.get('TWILIO_AUTH_TOKEN') %}
+        {% if twilio_configured %}
+            <span class="badge bg-success">Twilio Connected</span>
+            <br>
+            <small class="text-muted">Live WhatsApp messaging</small>
+        {% else %}
+            <span class="badge bg-warning text-dark">Mock Mode</span>
+            <br>
+            <small class="text-muted">Configure Twilio in Super Admin</small>
+        {% endif %}
     </div>
 </div>
 
