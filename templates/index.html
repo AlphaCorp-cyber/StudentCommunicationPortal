@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <!-- Hero Section -->
+                <div class="mb-5">
+                    <i data-feather="navigation" style="width: 80px; height: 80px;" class="text-primary mb-4"></i>
+                    <h1 class="display-4 fw-bold mb-3">myInstructor 2.0</h1>
+                    <p class="lead text-muted mb-4">
+                        WhatsApp for Students | Web Portal for Instructors, Admins, and Super Admins
+                    </p>
+                    <p class="fs-5 mb-5">
+                        Modern driving school management platform designed to simplify student onboarding, 
+                        lesson bookings, instructor management, and progress tracking.
+                    </p>
+                </div>
+
+                <!-- Features Grid -->
+                <div class="row g-4 mb-5">
+                    <div class="col-md-4">
+                        <div class="card h-100 border-0 bg-secondary">
+                            <div class="card-body text-center">
+                                <i data-feather="users" class="text-primary mb-3" style="width: 48px; height: 48px;"></i>
+                                <h5>Students</h5>
+                                <p class="text-muted small">WhatsApp-only interface for easy lesson booking and tracking</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100 border-0 bg-secondary">
+                            <div class="card-body text-center">
+                                <i data-feather="user-check" class="text-primary mb-3" style="width: 48px; height: 48px;"></i>
+                                <h5>Instructors</h5>
+                                <p class="text-muted small">Web portal for managing students and tracking lesson progress</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100 border-0 bg-secondary">
+                            <div class="card-body text-center">
+                                <i data-feather="settings" class="text-primary mb-3" style="width: 48px; height: 48px;"></i>
+                                <h5>Admins</h5>
+                                <p class="text-muted small">Complete school management with system configuration</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Benefits -->
+                <div class="row justify-content-center mb-5">
+                    <div class="col-lg-8">
+                        <h3 class="mb-4">System Benefits</h3>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="check-circle" class="text-success me-3"></i>
+                                    <span>WhatsApp-only interface for students</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="check-circle" class="text-success me-3"></i>
+                                    <span>Web portal for instructors</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="check-circle" class="text-success me-3"></i>
+                                    <span>Admin dashboard for school management</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="check-circle" class="text-success me-3"></i>
+                                    <span>Cloud-hosted and scalable</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Login Section -->
+                <div class="card bg-primary text-white">
+                    <div class="card-body p-5">
+                        <h4 class="mb-3">Access Your Portal</h4>
+                        <p class="mb-4">
+                            Sign in to access your instructor, admin, or super admin dashboard
+                        </p>
+                        <a href="{{ url_for('replit_auth.login') }}" class="btn btn-light btn-lg">
+                            <i data-feather="log-in" class="me-2"></i>
+                            Sign In
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

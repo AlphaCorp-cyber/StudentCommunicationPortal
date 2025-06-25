@@ -1,0 +1,360 @@
+from datetime import datetime, timedelta
+from flask import render_template, request, redirect, url_for, flash, session, jsonify
+from flask_login import current_user
+from sqlalchemy import or_, and_
+
+from app import app, db
+from models import User, Student, Lesson, WhatsAppSession, SystemConfig, LESSON_SCHEDULED, LESSON_COMPLETED, LESSON_CANCELLED
+from replit_auth import require_login, require_role, make_replit_blueprint
+
+app.register_blueprint(make_replit_blueprint(), url_prefix="/auth")
+
+# Make session permanent
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
+
+@app.route('/')
+def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    return render_template('index.html')
+
+@app.route('/dashboard')
+@require_login
+def dashboard():
+    """Main dashboard that routes to role-specific dashboards"""
+    if current_user.is_super_admin():
+        return redirect(url_for('super_admin_dashboard'))
+    elif current_user.is_admin():
+        return redirect(url_for('admin_dashboard'))
+    else:
+        return redirect(url_for('instructor_dashboard'))
+
+@app.route('/instructor')
+@require_login
+def instructor_dashboard():
+    """Instructor dashboard showing assigned students and lessons"""
+    if not current_user.is_instructor() and not current_user.is_admin() and not current_user.is_super_admin():
+        flash('Access denied. Instructor privileges required.', 'error')
+        return redirect(url_for('index'))
+    
+    # Get instructor's students
+    students = Student.query.filter_by(instructor_id=current_user.id, is_active=True).all()
+    
+    # Get upcoming lessons for this instructor
+    upcoming_lessons = Lesson.query.filter(
+        and_(
+            Lesson.instructor_id == current_user.id,
+            Lesson.status == LESSON_SCHEDULED,
+            Lesson.scheduled_date >= datetime.now()
+        )
+    ).order_by(Lesson.scheduled_date).limit(10).all()
+    
+    # Get recent completed lessons
+    recent_lessons = Lesson.query.filter(
+        and_(
+            Lesson.instructor_id == current_user.id,
+            Lesson.status == LESSON_COMPLETED
+        )
+    ).order_by(Lesson.completed_date.desc()).limit(5).all()
+    
+    stats = {
+        'total_students': len(students),
+        'upcoming_lessons': len(upcoming_lessons),
+        'completed_today': Lesson.query.filter(
+            and_(
+                Lesson.instructor_id == current_user.id,
+                Lesson.status == LESSON_COMPLETED,
+                Lesson.completed_date >= datetime.now().date()
+            )
+        ).count()
+    }
+    
+    return render_template('instructor_dashboard.html', 
+                         students=students, 
+                         upcoming_lessons=upcoming_lessons,
+                         recent_lessons=recent_lessons,
+                         stats=stats)
+
+@app.route('/admin')
+@require_role('admin')
+def admin_dashboard():
+    """Admin dashboard for managing school operations"""
+    # Get all students
+    students = Student.query.filter_by(is_active=True).all()
+    
+    # Get all instructors
+    instructors = User.query.filter_by(role='instructor').all()
+    
+    # Get today's lessons
+    today_lessons = Lesson.query.filter(
+        Lesson.scheduled_date >= datetime.now().date(),
+        Lesson.scheduled_date < datetime.now().date() + timedelta(days=1)
+    ).all()
+    
+    # Get pending lessons
+    pending_lessons = Lesson.query.filter_by(status=LESSON_SCHEDULED).count()
+    
+    stats = {
+        'total_students': len(students),
+        'total_instructors': len(instructors),
+        'todays_lessons': len(today_lessons),
+        'pending_lessons': pending_lessons,
+        'completed_lessons': Lesson.query.filter_by(status=LESSON_COMPLETED).count()
+    }
+    
+    return render_template('admin_dashboard.html', 
+                         students=students[:10],  # Show first 10
+                         instructors=instructors,
+                         today_lessons=today_lessons,
+                         stats=stats)
+
+@app.route('/super-admin')
+@require_role('super_admin')
+def super_admin_dashboard():
+    """Super Admin dashboard for system configuration"""
+    # Get all users
+    all_users = User.query.all()
+    
+    # Get system statistics
+    stats = {
+        'total_users': len(all_users),
+        'instructors': len([u for u in all_users if u.is_instructor()]),
+        'admins': len([u for u in all_users if u.is_admin()]),
+        'super_admins': len([u for u in all_users if u.is_super_admin()]),
+        'total_students': Student.query.count(),
+        'total_lessons': Lesson.query.count(),
+        'active_whatsapp_sessions': WhatsAppSession.query.filter_by(is_active=True).count()
+    }
+    
+    # Get system configurations
+    configs = SystemConfig.query.all()
+    
+    return render_template('super_admin_dashboard.html', 
+                         users=all_users,
+                         stats=stats,
+                         configs=configs)
+
+@app.route('/students')
+@require_login
+def students():
+    """Student management page"""
+    if current_user.is_instructor():
+        # Instructors can only see their assigned students
+        students_list = Student.query.filter_by(instructor_id=current_user.id, is_active=True).all()
+    else:
+        # Admins and Super Admins can see all students
+        students_list = Student.query.filter_by(is_active=True).all()
+    
+    instructors = User.query.filter_by(role='instructor').all() if not current_user.is_instructor() else []
+    
+    return render_template('students.html', students=students_list, instructors=instructors)
+
+@app.route('/students/add', methods=['POST'])
+@require_role('admin')
+def add_student():
+    """Add a new student"""
+    try:
+        student = Student(
+            name=request.form['name'],
+            phone=request.form['phone'],
+            email=request.form.get('email'),
+            address=request.form.get('address'),
+            license_type=request.form.get('license_type', 'B'),
+            instructor_id=request.form.get('instructor_id') if request.form.get('instructor_id') else None,
+            total_lessons_required=int(request.form.get('total_lessons_required', 20))
+        )
+        
+        db.session.add(student)
+        db.session.commit()
+        flash(f'Student {student.name} added successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error adding student: {str(e)}', 'error')
+    
+    return redirect(url_for('students'))
+
+@app.route('/students/<int:student_id>/assign', methods=['POST'])
+@require_role('admin')
+def assign_instructor(student_id):
+    """Assign an instructor to a student"""
+    student = Student.query.get_or_404(student_id)
+    instructor_id = request.form.get('instructor_id')
+    
+    if instructor_id:
+        instructor = User.query.get(instructor_id)
+        if instructor and instructor.is_instructor():
+            student.instructor_id = instructor_id
+            db.session.commit()
+            flash(f'Instructor assigned to {student.name} successfully!', 'success')
+        else:
+            flash('Invalid instructor selected.', 'error')
+    else:
+        student.instructor_id = None
+        db.session.commit()
+        flash(f'Instructor unassigned from {student.name}.', 'info')
+    
+    return redirect(url_for('students'))
+
+@app.route('/lessons')
+@require_login
+def lessons():
+    """Lesson management page"""
+    if current_user.is_instructor():
+        # Instructors see only their lessons
+        lessons_list = Lesson.query.filter_by(instructor_id=current_user.id).order_by(Lesson.scheduled_date.desc()).all()
+    else:
+        # Admins and Super Admins see all lessons
+        lessons_list = Lesson.query.order_by(Lesson.scheduled_date.desc()).all()
+    
+    # Get students for lesson booking (based on user role)
+    if current_user.is_instructor():
+        students_list = Student.query.filter_by(instructor_id=current_user.id, is_active=True).all()
+    else:
+        students_list = Student.query.filter_by(is_active=True).all()
+    
+    return render_template('lessons.html', lessons=lessons_list, students=students_list)
+
+@app.route('/lessons/add', methods=['POST'])
+@require_login
+def add_lesson():
+    """Add a new lesson"""
+    try:
+        student_id = request.form['student_id']
+        student = Student.query.get(student_id)
+        
+        # Verify instructor can schedule for this student
+        if current_user.is_instructor() and student.instructor_id != current_user.id:
+            flash('You can only schedule lessons for your assigned students.', 'error')
+            return redirect(url_for('lessons'))
+        
+        lesson = Lesson(
+            student_id=student_id,
+            instructor_id=student.instructor_id or current_user.id,
+            scheduled_date=datetime.strptime(request.form['scheduled_date'], '%Y-%m-%dT%H:%M'),
+            duration_minutes=int(request.form.get('duration_minutes', 60)),
+            lesson_type=request.form.get('lesson_type', 'practical'),
+            location=request.form.get('location')
+        )
+        
+        db.session.add(lesson)
+        db.session.commit()
+        flash('Lesson scheduled successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error scheduling lesson: {str(e)}', 'error')
+    
+    return redirect(url_for('lessons'))
+
+@app.route('/lessons/<int:lesson_id>/complete', methods=['POST'])
+@require_login
+def complete_lesson(lesson_id):
+    """Mark a lesson as completed"""
+    lesson = Lesson.query.get_or_404(lesson_id)
+    
+    # Verify instructor can complete this lesson
+    if current_user.is_instructor() and lesson.instructor_id != current_user.id:
+        flash('You can only complete your own lessons.', 'error')
+        return redirect(url_for('lessons'))
+    
+    try:
+        lesson.mark_completed(
+            notes=request.form.get('notes'),
+            feedback=request.form.get('feedback'),
+            rating=int(request.form['rating']) if request.form.get('rating') else None
+        )
+        db.session.commit()
+        flash('Lesson marked as completed!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error completing lesson: {str(e)}', 'error')
+    
+    return redirect(url_for('lessons'))
+
+@app.route('/whatsapp-bot')
+@require_role('admin')
+def whatsapp_bot():
+    """Mock WhatsApp bot interface for demonstration"""
+    # Get recent WhatsApp sessions
+    sessions = WhatsAppSession.query.order_by(WhatsAppSession.last_activity.desc()).limit(20).all()
+    
+    # Get students for simulation
+    students_list = Student.query.filter_by(is_active=True).all()
+    
+    return render_template('whatsapp_bot.html', sessions=sessions, students=students_list)
+
+@app.route('/whatsapp-bot/simulate', methods=['POST'])
+@require_role('admin')
+def simulate_whatsapp():
+    """Simulate a WhatsApp interaction"""
+    try:
+        student_id = request.form['student_id']
+        message = request.form['message']
+        
+        student = Student.query.get(student_id)
+        if not student:
+            flash('Student not found.', 'error')
+            return redirect(url_for('whatsapp_bot'))
+        
+        # Create or update WhatsApp session
+        session_id = f"whatsapp_{student.phone}_{datetime.now().strftime('%Y%m%d')}"
+        whatsapp_session = WhatsAppSession.query.filter_by(session_id=session_id).first()
+        
+        if not whatsapp_session:
+            whatsapp_session = WhatsAppSession(
+                student_id=student_id,
+                session_id=session_id
+            )
+            db.session.add(whatsapp_session)
+        
+        whatsapp_session.last_message = message
+        whatsapp_session.last_activity = datetime.now()
+        
+        db.session.commit()
+        flash(f'WhatsApp message simulated for {student.name}', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error simulating WhatsApp: {str(e)}', 'error')
+    
+    return redirect(url_for('whatsapp_bot'))
+
+@app.route('/users/<user_id>/role', methods=['POST'])
+@require_role('super_admin')
+def update_user_role(user_id):
+    """Update user role (Super Admin only)"""
+    user = User.query.get_or_404(user_id)
+    new_role = request.form['role']
+    
+    if new_role in ['instructor', 'admin', 'super_admin']:
+        user.role = new_role
+        db.session.commit()
+        flash(f'Role updated for {user.get_full_name()}', 'success')
+    else:
+        flash('Invalid role specified.', 'error')
+    
+    return redirect(url_for('super_admin_dashboard'))
+
+@app.route('/config/update', methods=['POST'])
+@require_role('super_admin')
+def update_config():
+    """Update system configuration"""
+    key = request.form['key']
+    value = request.form['value']
+    description = request.form.get('description')
+    
+    try:
+        SystemConfig.set_config(key, value, description)
+        flash(f'Configuration {key} updated successfully!', 'success')
+    except Exception as e:
+        flash(f'Error updating configuration: {str(e)}', 'error')
+    
+    return redirect(url_for('super_admin_dashboard'))
+
+@app.errorhandler(403)
+def forbidden(error):
+    return render_template('403.html'), 403
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('403.html'), 404

@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+
+{% block title %}Super Admin Dashboard - myInstructor 2.0{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>
+        <i data-feather="settings" class="me-2"></i>
+        Super Admin Dashboard
+    </h1>
+    <div class="text-end">
+        <span class="badge bg-danger">Super Admin</span>
+        <br>
+        <small class="text-muted">{{ current_user.get_full_name() }}</small>
+    </div>
+</div>
+
+<!-- System Stats -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Total Users</h6>
+                        <h2 class="mb-0">{{ stats.total_users }}</h2>
+                    </div>
+                    <i data-feather="users" style="width: 32px; height: 32px;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Students</h6>
+                        <h2 class="mb-0">{{ stats.total_students }}</h2>
+                    </div>
+                    <i data-feather="graduation-cap" style="width: 32px; height: 32px;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Total Lessons</h6>
+                        <h2 class="mb-0">{{ stats.total_lessons }}</h2>
+                    </div>
+                    <i data-feather="calendar" style="width: 32px; height: 32px;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">WhatsApp Sessions</h6>
+                        <h2 class="mb-0">{{ stats.active_whatsapp_sessions }}</h2>
+                    </div>
+                    <i data-feather="message-circle" style="width: 32px; height: 32px;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Role Breakdown -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i data-feather="pie-chart" class="me-2"></i>
+                    User Role Distribution
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-4 text-center">
+                        <div class="bg-primary text-white rounded p-3">
+                            <h3 class="mb-1">{{ stats.instructors }}</h3>
+                            <small>Instructors</small>
+                        </div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="bg-success text-white rounded p-3">
+                            <h3 class="mb-1">{{ stats.admins }}</h3>
+                            <small>Admins</small>
+                        </div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="bg-danger text-white rounded p-3">
+                            <h3 class="mb-1">{{ stats.super_admins }}</h3>
+                            <small>Super Admins</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick System Info -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i data-feather="activity" class="me-2"></i>
+                    System Health
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>Database Status</span>
+                        <span class="badge bg-success">Connected</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>WhatsApp Integration</span>
+                        <span class="badge bg-warning">Mock Mode</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>Authentication</span>
+                        <span class="badge bg-success">Active</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- User Management -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i data-feather="users" class="me-2"></i>
+                    User Management
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if user.profile_image_url %}
+                                        <img src="{{ user.profile_image_url }}" alt="{{ user.get_full_name() }}" 
+                                             class="rounded-circle me-2" width="32" height="32" style="object-fit: cover;">
+                                        {% else %}
+                                        <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-2" 
+                                             style="width: 32px; height: 32px;">
+                                            <i data-feather="user" style="width: 16px; height: 16px;"></i>
+                                        </div>
+                                        {% endif %}
+                                        {{ user.get_full_name() }}
+                                    </div>
+                                </td>
+                                <td>{{ user.email or 'N/A' }}</td>
+                                <td>
+                                    <span class="badge bg-{% if user.is_super_admin() %}danger{% elif user.is_admin() %}success{% else %}primary{% endif %}">
+                                        {{ user.role.title().replace('_', ' ') }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if user.id != current_user.id %}
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-secondary" 
+                                                onclick="openRoleModal('{{ user.id }}', '{{ user.get_full_name() }}', '{{ user.role }}')">
+                                            <i data-feather="edit-2"></i>
+                                        </button>
+                                    </div>
+                                    {% else %}
+                                    <small class="text-muted">Current User</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Configuration -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i data-feather="sliders" class="me-2"></i>
+                    System Config
+                </h5>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addConfigModal">
+                    <i data-feather="plus" class="me-1"></i>
+                    Add
+                </button>
+            </div>
+            <div class="card-body">
+                {% if configs %}
+                <div class="list-group list-group-flush">
+                    {% for config in configs %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">{{ config.key }}</h6>
+                                {% if config.description %}
+                                <small class="text-muted">{{ config.description }}</small>
+                                {% endif %}
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm" 
+                                    onclick="openConfigModal('{{ config.key }}', '{{ config.value }}', '{{ config.description or '' }}')">
+                                <i data-feather="edit-2"></i>
+                            </button>
+                        </div>
+                        <div class="mt-2">
+                            <code class="small">{{ config.value[:50] }}{% if config.value|length > 50 %}...{% endif %}</code>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i data-feather="settings" class="text-muted mb-3" style="width: 48px; height: 48px;"></i>
+                    <p class="text-muted">No configurations yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Role Change Modal -->
+<div class="modal fade" id="roleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="roleForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Change User Role</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Change role for: <strong id="roleUserName"></strong></p>
+                    <div class="mb-3">
+                        <label for="role" class="form-label">New Role</label>
+                        <select class="form-select" id="role" name="role" required>
+                            <option value="instructor">Instructor</option>
+                            <option value="admin">Admin</option>
+                            <option value="super_admin">Super Admin</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Role</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Config Modal -->
+<div class="modal fade" id="configModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('update_config') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="configModalTitle">System Configuration</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="configKey" class="form-label">Configuration Key</label>
+                        <input type="text" class="form-control" id="configKey" name="key" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="configValue" class="form-label">Value</label>
+                        <textarea class="form-control" id="configValue" name="value" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="configDescription" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="configDescription" name="description">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Configuration</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Config Modal -->
+<div class="modal fade" id="addConfigModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('update_config') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add System Configuration</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="newConfigKey" class="form-label">Configuration Key</label>
+                        <input type="text" class="form-control" id="newConfigKey" name="key" required
+                               placeholder="e.g., twilio_api_key, school_name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="newConfigValue" class="form-label">Value</label>
+                        <textarea class="form-control" id="newConfigValue" name="value" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="newConfigDescription" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="newConfigDescription" name="description"
+                               placeholder="Brief description of this configuration">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Configuration</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openRoleModal(userId, userName, currentRole) {
+    document.getElementById('roleUserName').textContent = userName;
+    document.getElementById('role').value = currentRole;
+    document.getElementById('roleForm').action = `/users/${userId}/role`;
+    new bootstrap.Modal(document.getElementById('roleModal')).show();
+}
+
+function openConfigModal(key, value, description) {
+    document.getElementById('configModalTitle').textContent = 'Update Configuration';
+    document.getElementById('configKey').value = key;
+    document.getElementById('configValue').value = value;
+    document.getElementById('configDescription').value = description;
+    new bootstrap.Modal(document.getElementById('configModal')).show();
+}
+</script>
+{% endblock %}

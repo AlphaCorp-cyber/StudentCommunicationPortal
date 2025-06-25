@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+
+{% block title %}WhatsApp Bot - myInstructor 2.0{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>
+        <i data-feather="message-circle" class="me-2"></i>
+        WhatsApp Bot Interface
+    </h1>
+    <div class="text-end">
+        <span class="badge bg-warning text-dark">Mock Mode</span>
+        <br>
+        <small class="text-muted">Simulation for demonstration</small>
+    </div>
+</div>
+
+<!-- Alert about mock functionality -->
+<div class="alert alert-info d-flex align-items-center mb-4" role="alert">
+    <i data-feather="info" class="me-3"></i>
+    <div>
+        <strong>Mock WhatsApp Integration</strong>
+        <p class="mb-0">This is a simulation of the WhatsApp bot functionality for demonstration purposes. In production, this would integrate with Twilio or similar WhatsApp Business API.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- WhatsApp Sessions -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i data-feather="message-square" class="me-2"></i>
+                    Recent WhatsApp Sessions
+                </h5>
+                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#simulateModal">
+                    <i data-feather="plus" class="me-1"></i>
+                    Simulate Message
+                </button>
+            </div>
+            <div class="card-body">
+                {% if sessions %}
+                <div class="list-group list-group-flush">
+                    {% for session in sessions %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="bg-success rounded-circle d-flex align-items-center justify-content-center me-3" 
+                                         style="width: 40px; height: 40px;">
+                                        <i data-feather="user" class="text-white" style="width: 20px; height: 20px;"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1">{{ session.student.name }}</h6>
+                                        <small class="text-muted">{{ session.student.phone }}</small>
+                                    </div>
+                                </div>
+                                {% if session.last_message %}
+                                <div class="bg-light p-3 rounded mb-2">
+                                    <small class="text-muted d-block mb-1">Last message:</small>
+                                    <p class="mb-0">{{ session.last_message }}</p>
+                                </div>
+                                {% endif %}
+                                <small class="text-muted">
+                                    <i data-feather="clock" class="me-1" style="width: 14px; height: 14px;"></i>
+                                    Last activity: {{ session.last_activity.strftime('%Y-%m-%d %H:%M') }}
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <span class="badge bg-{% if session.is_active %}success{% else %}secondary{% endif %}">
+                                    {% if session.is_active %}Active{% else %}Inactive{% endif %}
+                                </span>
+                                {% if session.student.instructor %}
+                                <br><small class="text-muted">Instructor: {{ session.student.instructor.get_full_name() }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i data-feather="message-circle" class="text-muted mb-3" style="width: 64px; height: 64px;"></i>
+                    <h4 class="text-muted">No WhatsApp Sessions</h4>
+                    <p class="text-muted">No students have interacted with the WhatsApp bot yet. Simulate a conversation to see how it works.</p>
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#simulateModal">
+                        <i data-feather="play" class="me-2"></i>
+                        Start Simulation
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- WhatsApp Bot Flow -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i data-feather="git-branch" class="me-2"></i>
+                    Bot Flow Overview
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-primary"></div>
+                        <div class="timeline-content">
+                            <h6>Student says "Hi"</h6>
+                            <small class="text-muted">System identifies student by phone number</small>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-info"></div>
+                        <div class="timeline-content">
+                            <h6>Bot responds with menu</h6>
+                            <small class="text-muted">Available options displayed</small>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-success"></div>
+                        <div class="timeline-content">
+                            <h6>Student selects option</h6>
+                            <small class="text-muted">Book lesson, view schedule, etc.</small>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-marker bg-warning"></div>
+                        <div class="timeline-content">
+                            <h6>Bot processes request</h6>
+                            <small class="text-muted">System handles the action</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Available Commands -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i data-feather="command" class="me-2"></i>
+                    Available Commands
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item d-flex align-items-center">
+                        <span class="badge bg-primary me-3">1</span>
+                        <span>Book driving lesson</span>
+                    </div>
+                    <div class="list-group-item d-flex align-items-center">
+                        <span class="badge bg-info me-3">2</span>
+                        <span>View lesson schedule</span>
+                    </div>
+                    <div class="list-group-item d-flex align-items-center">
+                        <span class="badge bg-success me-3">3</span>
+                        <span>Track progress</span>
+                    </div>
+                    <div class="list-group-item d-flex align-items-center">
+                        <span class="badge bg-warning me-3">4</span>
+                        <span>Get reminders</span>
+                    </div>
+                    <div class="list-group-item d-flex align-items-center">
+                        <span class="badge bg-danger me-3">Hi</span>
+                        <span>Start conversation</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Row -->
+<div class="row g-4 mt-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <i data-feather="users" class="mb-2" style="width: 32px; height: 32px;"></i>
+                <h4>{{ students|length }}</h4>
+                <small>Registered Students</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <i data-feather="message-circle" class="mb-2" style="width: 32px; height: 32px;"></i>
+                <h4>{{ sessions|length }}</h4>
+                <small>WhatsApp Sessions</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <i data-feather="clock" class="mb-2" style="width: 32px; height: 32px;"></i>
+                <h4>{{ sessions|selectattr('is_active')|list|length }}</h4>
+                <small>Active Sessions</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body text-center">
+                <i data-feather="trending-up" class="mb-2" style="width: 32px; height: 32px;"></i>
+                <h4>95%</h4>
+                <small>Response Rate</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Simulate WhatsApp Modal -->
+<div class="modal fade" id="simulateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('simulate_whatsapp') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Simulate WhatsApp Interaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i data-feather="info" class="me-2"></i>
+                        This simulates a WhatsApp message from a student. In production, messages would come automatically from the WhatsApp Business API.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="student_id" class="form-label">Select Student *</label>
+                        <select class="form-select" id="student_id" name="student_id" required>
+                            <option value="">Choose a student to simulate...</option>
+                            {% for student in students %}
+                            <option value="{{ student.id }}">
+                                {{ student.name }} ({{ student.phone }})
+                                {% if student.instructor %} - {{ student.instructor.get_full_name() }}{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="message" class="form-label">Message Content</label>
+                        <div class="btn-group d-flex mb-2" role="group">
+                            <button type="button" class="btn btn-outline-secondary" onclick="setMessage('Hi')">Hi</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="setMessage('1')">Book Lesson</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="setMessage('2')">View Schedule</button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="setMessage('3')">Track Progress</button>
+                        </div>
+                        <textarea class="form-control" id="message" name="message" rows="3" 
+                                  placeholder="Enter the message the student would send..." required>Hi</textarea>
+                    </div>
+                    
+                    <div class="bg-light p-3 rounded">
+                        <h6>Simulated Bot Response:</h6>
+                        <div id="botResponse" class="text-muted">
+                            <p>👋 Hello! Welcome to myInstructor 2.0</p>
+                            <p>How can I help you today?</p>
+                            <p>1️⃣ Book driving lesson<br>
+                            2️⃣ View lesson schedule<br>
+                            3️⃣ Track your progress<br>
+                            4️⃣ Get reminders</p>
+                            <p>Just reply with the number of your choice!</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Send Simulated Message</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function setMessage(message) {
+    document.getElementById('message').value = message;
+    updateBotResponse(message);
+}
+
+function updateBotResponse(message) {
+    const responseDiv = document.getElementById('botResponse');
+    let response = '';
+    
+    switch(message.toLowerCase()) {
+        case 'hi':
+        case 'hello':
+            response = `
+                <p>👋 Hello! Welcome to myInstructor 2.0</p>
+                <p>How can I help you today?</p>
+                <p>1️⃣ Book driving lesson<br>
+                2️⃣ View lesson schedule<br>
+                3️⃣ Track your progress<br>
+                4️⃣ Get reminders</p>
+                <p>Just reply with the number of your choice!</p>
+            `;
+            break;
+        case '1':
+            response = `
+                <p>📅 Let's book a driving lesson!</p>
+                <p>Please choose your preferred:</p>
+                <p>🗓️ When would you like your lesson?<br>
+                1. Tomorrow<br>
+                2. This week<br>
+                3. Next week<br>
+                4. Specific date</p>
+            `;
+            break;
+        case '2':
+            response = `
+                <p>📋 Your upcoming lessons:</p>
+                <p>🚗 Next lesson: [Date & Time]<br>
+                📍 Location: [Pickup location]<br>
+                👨‍🏫 Instructor: [Instructor name]</p>
+                <p>Reply CANCEL to cancel a lesson</p>
+            `;
+            break;
+        case '3':
+            response = `
+                <p>📊 Your progress:</p>
+                <p>✅ Lessons completed: [X/Y]<br>
+                📈 Progress: [X]%<br>
+                🎯 Next milestone: [Description]</p>
+                <p>Keep up the great work! 🚗💨</p>
+            `;
+            break;
+        default:
+            response = `
+                <p>❓ I didn't understand that.</p>
+                <p>Please choose from the menu:</p>
+                <p>1️⃣ Book driving lesson<br>
+                2️⃣ View lesson schedule<br>
+                3️⃣ Track your progress<br>
+                4️⃣ Get reminders</p>
+            `;
+    }
+    
+    responseDiv.innerHTML = response;
+}
+
+// Update bot response when message changes
+document.getElementById('message').addEventListener('input', function() {
+    updateBotResponse(this.value);
+});
+</script>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 20px;
+}
+
+.timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: -22px;
+    top: 20px;
+    width: 2px;
+    height: calc(100% - 10px);
+    background-color: var(--bs-border-color);
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -30px;
+    top: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--bs-body-bg);
+}
+
+.timeline-content h6 {
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}

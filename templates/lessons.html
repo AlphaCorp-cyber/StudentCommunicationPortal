@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}Lessons - myInstructor 2.0{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>
+        <i data-feather="calendar" class="me-2"></i>
+        Lessons Management
+    </h1>
+    {% if students %}
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLessonModal">
+        <i data-feather="plus" class="me-2"></i>
+        Schedule Lesson
+    </button>
+    {% endif %}
+</div>
+
+<!-- Lessons Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            {% if current_user.is_instructor() %}
+            Your Lessons
+            {% else %}
+            All Lessons
+            {% endif %}
+            <span class="badge bg-primary ms-2">{{ lessons|length }}</span>
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if lessons %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Instructor</th>
+                        <th>Date & Time</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Duration</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lesson in lessons %}
+                    <tr>
+                        <td>
+                            <div>
+                                <h6 class="mb-1">{{ lesson.student.name }}</h6>
+                                <small class="text-muted">{{ lesson.student.phone }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                {% if lesson.instructor.profile_image_url %}
+                                <img src="{{ lesson.instructor.profile_image_url }}" alt="{{ lesson.instructor.get_full_name() }}" 
+                                     class="rounded-circle me-2" width="24" height="24" style="object-fit: cover;">
+                                {% else %}
+                                <i data-feather="user" class="me-2" style="width: 20px; height: 20px;"></i>
+                                {% endif %}
+                                <small>{{ lesson.instructor.get_full_name() }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <div>
+                                <strong>{{ lesson.scheduled_date.strftime('%Y-%m-%d') }}</strong>
+                                <br>
+                                <small class="text-muted">{{ lesson.scheduled_date.strftime('%H:%M') }}</small>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ lesson.lesson_type.title() }}</span>
+                            {% if lesson.location %}
+                            <br><small class="text-muted">@ {{ lesson.location }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-{% if lesson.status == 'completed' %}success{% elif lesson.status == 'cancelled' %}danger{% else %}warning{% endif %}">
+                                {{ lesson.status.title() }}
+                            </span>
+                            {% if lesson.status == 'completed' and lesson.completed_date %}
+                            <br><small class="text-muted">{{ lesson.completed_date.strftime('%Y-%m-%d') }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ lesson.duration_minutes }} min</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                {% if lesson.status == 'scheduled' and (current_user.is_instructor() and lesson.instructor_id == current_user.id or current_user.is_admin() or current_user.is_super_admin()) %}
+                                <button class="btn btn-outline-success" 
+                                        onclick="openCompleteModal({{ lesson.id }}, '{{ lesson.student.name }}')">
+                                    <i data-feather="check" style="width: 16px; height: 16px;"></i>
+                                </button>
+                                {% endif %}
+                                {% if lesson.status == 'completed' %}
+                                <button class="btn btn-outline-info" 
+                                        onclick="viewLessonDetails({{ lesson.id }})">
+                                    <i data-feather="eye" style="width: 16px; height: 16px;"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i data-feather="calendar" class="text-muted mb-3" style="width: 64px; height: 64px;"></i>
+            <h4 class="text-muted">No Lessons Found</h4>
+            <p class="text-muted">
+                {% if current_user.is_instructor() %}
+                No lessons scheduled yet. Start by scheduling lessons for your assigned students.
+                {% else %}
+                No lessons have been scheduled yet. Add students and assign instructors to get started.
+                {% endif %}
+            </p>
+            {% if students %}
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addLessonModal">
+                <i data-feather="plus" class="me-2"></i>
+                Schedule First Lesson
+            </button>
+            {% else %}
+            <a href="{{ url_for('students') }}" class="btn btn-outline-primary">
+                <i data-feather="users" class="me-2"></i>
+                Manage Students First
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Schedule Lesson Modal -->
+{% if students %}
+<div class="modal fade" id="addLessonModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('add_lesson') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Schedule New Lesson</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="student_id" class="form-label">Student *</label>
+                            <select class="form-select" id="student_id" name="student_id" required>
+                                <option value="">Select a student</option>
+                                {% for student in students %}
+                                <option value="{{ student.id }}">
+                                    {{ student.name }} ({{ student.phone }})
+                                    {% if student.instructor %}
+                                    - {{ student.instructor.get_full_name() }}
+                                    {% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="lesson_type" class="form-label">Lesson Type</label>
+                            <select class="form-select" id="lesson_type" name="lesson_type">
+                                <option value="practical" selected>Practical</option>
+                                <option value="theory">Theory</option>
+                                <option value="test">Test</option>
+                                <option value="assessment">Assessment</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="scheduled_date" class="form-label">Date & Time *</label>
+                            <input type="datetime-local" class="form-control" id="scheduled_date" 
+                                   name="scheduled_date" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="duration_minutes" class="form-label">Duration (minutes)</label>
+                            <select class="form-select" id="duration_minutes" name="duration_minutes">
+                                <option value="30">30 minutes</option>
+                                <option value="45">45 minutes</option>
+                                <option value="60" selected>1 hour</option>
+                                <option value="90">1.5 hours</option>
+                                <option value="120">2 hours</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label for="location" class="form-label">Location</label>
+                            <input type="text" class="form-control" id="location" name="location" 
+                                   placeholder="e.g., Driving school, Student's home, Test center">
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i data-feather="info" class="me-1" style="width: 16px; height: 16px;"></i>
+                            The lesson will be assigned to the student's instructor automatically.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Schedule Lesson</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Complete Lesson Modal -->
+<div class="modal fade" id="completeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" id="completeForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Complete Lesson</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Mark lesson as completed for: <strong id="completeStudentName"></strong></p>
+                    
+                    <div class="mb-3">
+                        <label for="rating" class="form-label">Lesson Rating (1-5 stars)</label>
+                        <select class="form-select" id="rating" name="rating">
+                            <option value="">No rating</option>
+                            <option value="1">⭐ - Needs Improvement</option>
+                            <option value="2">⭐⭐ - Below Average</option>
+                            <option value="3">⭐⭐⭐ - Average</option>
+                            <option value="4">⭐⭐⭐⭐ - Good</option>
+                            <option value="5">⭐⭐⭐⭐⭐ - Excellent</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Lesson Notes (Internal)</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                  placeholder="Internal notes about the lesson, areas to focus on, etc."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="feedback" class="form-label">Student Feedback</label>
+                        <textarea class="form-control" id="feedback" name="feedback" rows="3" 
+                                  placeholder="Feedback to share with the student about their performance"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Complete Lesson</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Set minimum date to today for scheduling
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('scheduled_date');
+    if (dateInput) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        dateInput.min = now.toISOString().slice(0, 16);
+    }
+});
+
+function openCompleteModal(lessonId, studentName) {
+    document.getElementById('completeStudentName').textContent = studentName;
+    document.getElementById('completeForm').action = `/lessons/${lessonId}/complete`;
+    new bootstrap.Modal(document.getElementById('completeModal')).show();
+}
+
+function viewLessonDetails(lessonId) {
+    // This could be expanded to show a detailed lesson modal
+    console.log('View lesson details for ID:', lessonId);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Access Denied - myInstructor 2.0{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 text-center">
+                <!-- Error Icon -->
+                <div class="mb-4">
+                    <i data-feather="shield-off" style="width: 80px; height: 80px;" class="text-danger mb-4"></i>
+                </div>
+                
+                <!-- Error Message -->
+                <h1 class="display-4 fw-bold text-danger mb-3">403</h1>
+                <h2 class="h4 mb-3">Access Denied</h2>
+                <p class="lead text-muted mb-4">
+                    You don't have permission to access this resource.
+                </p>
+                
+                <!-- Error Details -->
+                <div class="card bg-secondary mb-4">
+                    <div class="card-body">
+                        <div class="row g-3 text-start">
+                            <div class="col-sm-6">
+                                <small class="text-muted">Error Code:</small>
+                                <div class="fw-bold">403 Forbidden</div>
+                            </div>
+                            <div class="col-sm-6">
+                                <small class="text-muted">Resource:</small>
+                                <div class="fw-bold">{{ request.path }}</div>
+                            </div>
+                            {% if current_user.is_authenticated %}
+                            <div class="col-sm-6">
+                                <small class="text-muted">Your Role:</small>
+                                <div>
+                                    <span class="badge bg-{% if current_user.is_super_admin() %}danger{% elif current_user.is_admin() %}success{% else %}primary{% endif %}">
+                                        {{ current_user.role.title().replace('_', ' ') }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <small class="text-muted">Logged in as:</small>
+                                <div class="fw-bold">{{ current_user.get_full_name() }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Possible Causes -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i data-feather="help-circle" class="me-2"></i>
+                            Why am I seeing this?
+                        </h5>
+                    </div>
+                    <div class="card-body text-start">
+                        <ul class="list-unstyled">
+                            <li class="mb-2">
+                                <i data-feather="x-circle" class="text-danger me-2" style="width: 16px; height: 16px;"></i>
+                                You need higher privileges to access this page
+                            </li>
+                            <li class="mb-2">
+                                <i data-feather="user-x" class="text-warning me-2" style="width: 16px; height: 16px;"></i>
+                                Your account role doesn't have the required permissions
+                            </li>
+                            <li class="mb-2">
+                                <i data-feather="clock" class="text-info me-2" style="width: 16px; height: 16px;"></i>
+                                Your session may have expired
+                            </li>
+                            <li class="mb-2">
+                                <i data-feather="link" class="text-muted me-2" style="width: 16px; height: 16px;"></i>
+                                The URL may be incorrect or outdated
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Role-specific Access Information -->
+                {% if current_user.is_authenticated %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i data-feather="users" class="me-2"></i>
+                            Access Levels
+                        </h5>
+                    </div>
+                    <div class="card-body text-start">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="text-center p-3 border rounded">
+                                    <i data-feather="user-check" class="text-primary mb-2"></i>
+                                    <h6>Instructor</h6>
+                                    <small class="text-muted">Student management, lessons, progress tracking</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center p-3 border rounded">
+                                    <i data-feather="briefcase" class="text-success mb-2"></i>
+                                    <h6>Admin</h6>
+                                    <small class="text-muted">All instructor features plus system management</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center p-3 border rounded">
+                                    <i data-feather="settings" class="text-danger mb-2"></i>
+                                    <h6>Super Admin</h6>
+                                    <small class="text-muted">Full system access and configuration</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Action Buttons -->
+                <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+                    {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+                        <i data-feather="home" class="me-2"></i>
+                        Go to Dashboard
+                    </a>
+                    <a href="javascript:history.back()" class="btn btn-outline-secondary">
+                        <i data-feather="arrow-left" class="me-2"></i>
+                        Go Back
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('replit_auth.login') }}" class="btn btn-primary">
+                        <i data-feather="log-in" class="me-2"></i>
+                        Sign In
+                    </a>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                        <i data-feather="home" class="me-2"></i>
+                        Home Page
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <!-- Contact Information -->
+                <div class="mt-5 pt-4 border-top">
+                    <p class="text-muted">
+                        <i data-feather="mail" class="me-2"></i>
+                        Need help? Contact your system administrator for access permissions.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
