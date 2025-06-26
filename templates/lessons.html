@@ -99,6 +99,12 @@
                                     <i data-feather="eye" style="width: 16px; height: 16px;"></i>
                                 </button>
                                 {% endif %}
+                                {% if lesson.status == 'scheduled' and (current_user.is_instructor() and lesson.instructor_id == current_user.id or current_user.is_admin() or current_user.is_super_admin()) %}
+                                <button class="btn btn-outline-danger"
+                                        onclick="confirmDeleteLesson({{ lesson.id }}, '{{ lesson.student.name|replace("'", "\\'") }}', '{{ lesson.scheduled_date.strftime('%Y-%m-%d') }}')">
+                                    <i data-feather="trash-2" style="width: 16px; height: 16px;"></i>
+                                </button>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -181,7 +187,7 @@
                             </select>
                         </div>
                     </div>
-                    
+
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">Schedule Lesson</button>
@@ -288,7 +294,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function loadAvailableTimeslots(studentId) {
     const container = document.getElementById('timeslotContainer');
     const listDiv = document.getElementById('timeslotList');
-    
+
     if (!studentId) {
         container.style.display = 'none';
         availableTimeslots = [];
@@ -320,7 +326,7 @@ function loadAvailableTimeslots(studentId) {
 
 function renderTimeslots() {
     const listDiv = document.getElementById('timeslotList');
-    
+
     if (availableTimeslots.length === 0) {
         listDiv.innerHTML = '<p class="text-muted text-center">No available timeslots found</p>';
         return;
@@ -328,7 +334,7 @@ function renderTimeslots() {
 
     let html = '';
     let currentDay = '';
-    
+
     availableTimeslots.forEach((slot, index) => {
         // Group by day
         if (slot.day_name !== currentDay) {
@@ -338,10 +344,10 @@ function renderTimeslots() {
                         <h6 class="text-primary mb-2">${slot.display.split(' - ')[0]}</h6>
                         <div class="d-flex flex-wrap gap-2">`;
         }
-        
+
         const timeOnly = slot.display.split(' - ')[1];
         const isSelected = selectedTimeslot && selectedTimeslot.datetime === slot.datetime;
-        
+
         html += `<button type="button" 
                     class="btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline-primary'} timeslot-btn" 
                     onclick="selectTimeslot(${index})"
@@ -350,20 +356,20 @@ function renderTimeslots() {
                     ${timeOnly}
                  </button>`;
     });
-    
+
     if (currentDay !== '') html += '</div>';
     html += '</div>';
-    
+
     listDiv.innerHTML = html;
 }
 
 function selectTimeslot(index) {
     selectedTimeslot = availableTimeslots[index];
     document.getElementById('scheduled_date').value = selectedTimeslot.datetime;
-    
+
     // Update UI
     renderTimeslots();
-    
+
     // Update help text
     document.getElementById('timeslotHelp').textContent = `Selected: ${selectedTimeslot.display}`;
 }
@@ -371,17 +377,17 @@ function selectTimeslot(index) {
 function filterTimeslots() {
     const searchValue = document.getElementById('timeslotSearch').value.toLowerCase();
     const buttons = document.querySelectorAll('.timeslot-btn');
-    
+
     buttons.forEach(button => {
         const display = button.dataset.display.toLowerCase();
         const parentGroup = button.closest('.mb-3');
-        
+
         if (display.includes(searchValue)) {
             button.style.display = 'inline-block';
         } else {
             button.style.display = 'none';
         }
-        
+
         // Hide day groups with no visible slots
         const visibleButtons = parentGroup.querySelectorAll('.timeslot-btn:not([style*="none"])');
         if (visibleButtons.length === 0) {
@@ -395,14 +401,24 @@ function filterTimeslots() {
 function openCompleteModal(lessonId, studentName) {
     document.getElementById('completeStudentName').textContent = studentName;
     document.getElementById('completeForm').action = `/lessons/${lessonId}/complete`;
-    
+
     // Clear previous form data
     document.getElementById('rating').value = '';
     document.getElementById('notes').value = '';
     document.getElementById('feedback').value = '';
-    
+
     var modal = new bootstrap.Modal(document.getElementById('completeModal'));
     modal.show();
+}
+
+function confirmDeleteLesson(lessonId, studentName, lessonDate) {
+    if (confirm(`Are you sure you want to delete the lesson for ${studentName} scheduled on ${lessonDate}?\n\nThis action cannot be undone.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/lessons/${lessonId}/delete`;
+        document.body.appendChild(form);
+        form.submit();
+    }
 }
 
 function viewLessonDetails(lessonId) {
@@ -454,16 +470,16 @@ function filterStudents() {
     const searchValue = document.getElementById('studentSearch').value.toLowerCase();
     const select = document.getElementById('student_id');
     const options = select.querySelectorAll('option');
-    
+
     options.forEach(option => {
         if (option.value === '') {
             option.style.display = 'block';
             return;
         }
-        
+
         const name = option.dataset.name || '';
         const phone = option.dataset.phone || '';
-        
+
         if (name.includes(searchValue) || phone.includes(searchValue)) {
             option.style.display = 'block';
         } else {

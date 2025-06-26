@@ -811,6 +811,39 @@ def complete_lesson(lesson_id):
     
     return redirect(url_for('lessons'))
 
+@app.route('/lessons/<int:lesson_id>/delete', methods=['POST'])
+@require_login
+def delete_lesson(lesson_id):
+    """Delete a scheduled lesson"""
+    lesson = Lesson.query.get_or_404(lesson_id)
+    
+    # Verify user has permission to delete this lesson
+    if current_user.is_instructor() and lesson.instructor_id != current_user.id:
+        flash('You can only delete your own lessons.', 'error')
+        return redirect(url_for('lessons'))
+    elif not (current_user.is_instructor() or current_user.is_admin() or current_user.is_super_admin()):
+        flash('Access denied.', 'error')
+        return redirect(url_for('lessons'))
+    
+    # Only allow deletion of scheduled lessons
+    if lesson.status != LESSON_SCHEDULED:
+        flash('Only scheduled lessons can be deleted.', 'error')
+        return redirect(url_for('lessons'))
+    
+    try:
+        student_name = lesson.student.name
+        lesson_date = lesson.scheduled_date.strftime('%Y-%m-%d %H:%M')
+        
+        db.session.delete(lesson)
+        db.session.commit()
+        
+        flash(f'Lesson for {student_name} on {lesson_date} has been deleted successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting lesson: {str(e)}', 'error')
+    
+    return redirect(url_for('lessons'))
+
 @app.route('/whatsapp-bot')
 @require_role('admin')
 def whatsapp_bot():
