@@ -276,23 +276,52 @@ def students():
 def add_student():
     """Add a new student"""
     try:
+        license_type = request.form.get('license_type', 'Class 4')
+        
+        # Auto-assign instructor based on license class
         instructor_id = request.form.get('instructor_id')
         if not instructor_id:
-            flash('Instructor assignment is required.', 'error')
-            return redirect(url_for('students'))
+            # Find an instructor with vehicles for this license class
+            from sqlalchemy import func
+            available_instructor = db.session.query(User).join(Vehicle).filter(
+                User.role == 'instructor',
+                User.active == True,
+                Vehicle.license_class == license_type,
+                Vehicle.is_active == True
+            ).group_by(User.id).order_by(func.count(Student.id)).first()
+            
+            if available_instructor:
+                instructor_id = available_instructor.id
+            else:
+                # Fallback to any available instructor
+                available_instructor = User.query.filter_by(role='instructor', active=True).first()
+                if available_instructor:
+                    instructor_id = available_instructor.id
+                else:
+                    flash('No instructors available. Please create an instructor first.', 'error')
+                    return redirect(url_for('students'))
+        
+        # Format phone number with +263 prefix
+        phone = request.form['phone'].strip()
+        if not phone.startswith('+'):
+            # Remove any leading zeros or spaces
+            phone = phone.lstrip('0').strip()
+            phone = f'+263{phone}'
         
         student = Student()
         student.name = request.form['name']
-        student.phone = request.form['phone']
+        student.phone = phone
         student.email = request.form.get('email')
         student.address = request.form.get('address')
-        student.license_type = request.form.get('license_type', 'Class 4')
+        student.license_type = license_type
         student.instructor_id = int(instructor_id)
         student.total_lessons_required = int(request.form.get('total_lessons_required', 20))
         
         db.session.add(student)
         db.session.commit()
-        flash(f'Student {student.name} added successfully!', 'success')
+        
+        instructor_name = User.query.get(instructor_id).get_full_name()
+        flash(f'Student {student.name} added successfully! Auto-assigned to instructor: {instructor_name}', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Error adding student: {str(e)}', 'error')

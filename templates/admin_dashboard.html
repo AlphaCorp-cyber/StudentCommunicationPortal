@@ -391,16 +391,24 @@
                         <input type="text" class="form-control" id="name" name="name" required>
                     </div>
                     <div class="mb-3">
-                        <label for="phone" class="form-label">WhatsApp Phone Number *</label>
-                        <input type="tel" class="form-control" id="phone" name="phone" placeholder="+1234567890" required>
+                        <label for="phone" class="form-label">Phone Number *</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" required placeholder="+263771234567">
+                        <small class="text-muted">Will automatically add +263 prefix</small>
                     </div>
+
                     <div class="mb-3">
                         <label for="email" class="form-label">Email Address</label>
                         <input type="email" class="form-control" id="email" name="email">
                     </div>
+
                     <div class="mb-3">
                         <label for="address" class="form-label">Address</label>
                         <textarea class="form-control" id="address" name="address" rows="2"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="total_lessons_required" class="form-label">Total Lessons Required</label>
+                        <input type="number" class="form-control" id="total_lessons_required" name="total_lessons_required" value="20" min="1">
                     </div>
                     <div class="row">
                         <div class="col-md-6">
@@ -576,9 +584,47 @@
 </div>
 
 <script>
-function assignVehicle(vehicleId, registrationNumber) {
-    document.getElementById('assignVehicleNumber').textContent = registrationNumber;
-    document.getElementById('assignVehicleForm').action = '{{ url_for("assign_vehicle", vehicle_id=0) }}'.replace('0', vehicleId);
+function openAssignModal(vehicleId, vehicleNumber, currentInstructorId) {
+    document.getElementById('assignVehicleNumber').textContent = vehicleNumber;
+    document.getElementById('vehicle_instructor_id').value = currentInstructorId;
+    document.getElementById('assignVehicleForm').action = `/vehicles/${vehicleId}/assign`;
+    new bootstrap.Modal(document.getElementById('assignVehicleModal')).show();
 }
+
+function updateInstructorAssignment() {
+    const licenseType = document.getElementById('license_type').value;
+    const instructorSelect = document.getElementById('instructor_id');
+    const helpText = instructorSelect.nextElementSibling;
+
+    // Update help text based on license class
+    helpText.textContent = `Auto-assign instructor with ${licenseType} vehicles, or select manually`;
+}
+
+// Format phone number with +263 prefix
+document.addEventListener('DOMContentLoaded', function() {
+    const phoneInput = document.getElementById('phone');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+
+            // If doesn't start with 263, add it
+            if (!value.startsWith('263') && value.length > 0) {
+                // Remove leading zero if present
+                if (value.startsWith('0')) {
+                    value = value.substring(1);
+                }
+                value = '263' + value;
+            }
+
+            // Format display with +
+            if (value.length > 0) {
+                e.target.value = '+' + value;
+            }
+        });
+
+        // Set placeholder
+        phoneInput.placeholder = '+263771234567';
+    }
+});
 </script>
 {% endblock %}
