@@ -219,137 +219,242 @@
     </div>
 </div>
 
-<!-- Simulate WhatsApp Modal -->
+<!-- Live Chat Simulator Modal -->
 <div class="modal fade" id="simulateModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form method="POST" action="{{ url_for('simulate_whatsapp') }}">
-                <div class="modal-header">
-                    <h5 class="modal-title">Simulate WhatsApp Interaction</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i data-feather="message-circle" class="me-2"></i>
+                    Live WhatsApp Chat Simulator
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i data-feather="zap" class="me-2"></i>
+                    Live chat simulation - send messages and get instant bot responses!
                 </div>
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i data-feather="info" class="me-2"></i>
-                        This simulates a WhatsApp message from a student. In production, messages would come automatically from the WhatsApp Business API.
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="student_id" class="form-label">Select Student *</label>
-                        <select class="form-select" id="student_id" name="student_id" required>
-                            <option value="">Choose a student to simulate...</option>
-                            {% for student in students %}
-                            <option value="{{ student.id }}">
-                                {{ student.name }} ({{ student.phone }})
-                                {% if student.instructor %} - {{ student.instructor.get_full_name() }}{% endif %}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="message" class="form-label">Message Content</label>
-                        <div class="btn-group d-flex mb-2" role="group">
-                            <button type="button" class="btn btn-outline-secondary" onclick="setMessage('Hi')">Hi</button>
-                            <button type="button" class="btn btn-outline-secondary" onclick="setMessage('1')">Book Lesson</button>
-                            <button type="button" class="btn btn-outline-secondary" onclick="setMessage('2')">View Schedule</button>
-                            <button type="button" class="btn btn-outline-secondary" onclick="setMessage('3')">Track Progress</button>
-                        </div>
-                        <textarea class="form-control" id="message" name="message" rows="3" 
-                                  placeholder="Enter the message the student would send..." required>Hi</textarea>
-                    </div>
-                    
-                    <div class="bg-light p-3 rounded border">
-                        <h6 class="text-dark mb-3">Simulated Bot Response:</h6>
-                        <div id="botResponse" class="bot-response-preview">
-                            <p>👋 Hello! Welcome to myInstructor 2.0</p>
-                            <p>How can I help you today?</p>
-                            <p>1️⃣ Book driving lesson<br>
-                            2️⃣ View lesson schedule<br>
-                            3️⃣ Track your progress<br>
-                            4️⃣ Get reminders</p>
-                            <p>Just reply with the number of your choice!</p>
+                
+                <div class="mb-3">
+                    <label for="chat_student_id" class="form-label">Select Student *</label>
+                    <select class="form-select" id="chat_student_id" required>
+                        <option value="">Choose a student to chat with...</option>
+                        {% for student in students %}
+                        <option value="{{ student.id }}">
+                            {{ student.name }} ({{ student.phone }})
+                            {% if student.instructor %} - {{ student.instructor.get_full_name() }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Chat Interface -->
+                <div class="chat-container" style="display: none;">
+                    <div class="chat-header bg-success text-white p-3 rounded-top">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3" 
+                                 style="width: 40px; height: 40px;">
+                                <i data-feather="user" class="text-success" style="width: 20px; height: 20px;"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0" id="chat-student-name">Student Name</h6>
+                                <small class="opacity-75" id="chat-student-phone">+263 XXX XXX XXX</small>
+                            </div>
+                            <div class="ms-auto">
+                                <span class="badge bg-light text-success">
+                                    <i data-feather="wifi" style="width: 12px; height: 12px;"></i>
+                                    Online
+                                </span>
+                            </div>
                         </div>
                     </div>
+                    
+                    <div class="chat-messages border-start border-end" style="height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                        <div id="chat-messages-container" class="p-3">
+                            <div class="text-center text-muted py-3">
+                                <i data-feather="message-circle" class="me-2"></i>
+                                Start a conversation by typing a message below
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input bg-white border rounded-bottom p-3">
+                        <div class="d-flex gap-2 mb-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="sendQuickMessage('Hi')">👋 Hi</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="sendQuickMessage('book')">📅 Book</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="sendQuickMessage('lessons')">📋 Lessons</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="sendQuickMessage('progress')">📊 Progress</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="sendQuickMessage('reset')">🔄 Reset</button>
+                        </div>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="chat-message-input" placeholder="Type a message..." maxlength="1000">
+                            <button class="btn btn-success" type="button" id="send-message-btn">
+                                <i data-feather="send" style="width: 16px; height: 16px;"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">Send Simulated Message</button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-function setMessage(message) {
-    document.getElementById('message').value = message;
-    updateBotResponse(message);
-}
+let currentStudentId = null;
 
-function updateBotResponse(message) {
-    const responseDiv = document.getElementById('botResponse');
-    let response = '';
+// Student selection handler
+document.getElementById('chat_student_id').addEventListener('change', function() {
+    const studentId = this.value;
+    if (studentId) {
+        currentStudentId = studentId;
+        const studentText = this.options[this.selectedIndex].text;
+        const studentName = studentText.split(' (')[0];
+        const studentPhone = studentText.match(/\(([+\d\s]+)\)/)[1];
+        
+        document.getElementById('chat-student-name').textContent = studentName;
+        document.getElementById('chat-student-phone').textContent = studentPhone;
+        
+        // Show chat interface
+        document.querySelector('.chat-container').style.display = 'block';
+        
+        // Clear previous messages
+        const messagesContainer = document.getElementById('chat-messages-container');
+        messagesContainer.innerHTML = `
+            <div class="text-center text-muted py-3">
+                <i data-feather="message-circle" class="me-2"></i>
+                Chatting with ${studentName} - Type a message to start!
+            </div>
+        `;
+        feather.replace();
+    }
+});
+
+// Send message functionality
+async function sendMessage(message) {
+    if (!currentStudentId || !message.trim()) return;
     
-    switch(message.toLowerCase()) {
-        case 'hi':
-        case 'hello':
-            response = `
-                <p>👋 Hello! Welcome to myInstructor 2.0</p>
-                <p>How can I help you today?</p>
-                <p>1️⃣ Book driving lesson<br>
-                2️⃣ View lesson schedule<br>
-                3️⃣ Track your progress<br>
-                4️⃣ Get reminders</p>
-                <p>Just reply with the number of your choice!</p>
-            `;
-            break;
-        case '1':
-            response = `
-                <p>📅 Let's book a driving lesson!</p>
-                <p>Please choose your preferred:</p>
-                <p>🗓️ When would you like your lesson?<br>
-                1. Tomorrow<br>
-                2. This week<br>
-                3. Next week<br>
-                4. Specific date</p>
-            `;
-            break;
-        case '2':
-            response = `
-                <p>📋 Your upcoming lessons:</p>
-                <p>🚗 Next lesson: [Date & Time]<br>
-                📍 Location: [Pickup location]<br>
-                👨‍🏫 Instructor: [Instructor name]</p>
-                <p>Reply CANCEL to cancel a lesson</p>
-            `;
-            break;
-        case '3':
-            response = `
-                <p>📊 Your progress:</p>
-                <p>✅ Lessons completed: [X/Y]<br>
-                📈 Progress: [X]%<br>
-                🎯 Next milestone: [Description]</p>
-                <p>Keep up the great work! 🚗💨</p>
-            `;
-            break;
-        default:
-            response = `
-                <p>❓ I didn't understand that.</p>
-                <p>Please choose from the menu:</p>
-                <p>1️⃣ Book driving lesson<br>
-                2️⃣ View lesson schedule<br>
-                3️⃣ Track your progress<br>
-                4️⃣ Get reminders</p>
-            `;
+    const messagesContainer = document.getElementById('chat-messages-container');
+    const messageInput = document.getElementById('chat-message-input');
+    const sendBtn = document.getElementById('send-message-btn');
+    
+    // Add user message to chat
+    addMessageToChat(message, 'user');
+    
+    // Clear input and disable send button
+    messageInput.value = '';
+    messageInput.disabled = true;
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div>';
+    
+    try {
+        // Send message to backend
+        const response = await fetch('/api/whatsapp-simulate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                student_id: currentStudentId,
+                message: message
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Add bot response to chat
+            setTimeout(() => {
+                addMessageToChat(data.response, 'bot');
+            }, 500); // Small delay for realism
+        } else {
+            addMessageToChat('Error: ' + (data.error || 'Failed to process message'), 'error');
+        }
+    } catch (error) {
+        addMessageToChat('Network error. Please try again.', 'error');
     }
     
-    responseDiv.innerHTML = response;
+    // Re-enable input and button
+    messageInput.disabled = false;
+    sendBtn.disabled = false;
+    sendBtn.innerHTML = '<i data-feather="send" style="width: 16px; height: 16px;"></i>';
+    feather.replace();
+    messageInput.focus();
 }
 
-// Update bot response when message changes
-document.getElementById('message').addEventListener('input', function() {
-    updateBotResponse(this.value);
+function addMessageToChat(message, type) {
+    const messagesContainer = document.getElementById('chat-messages-container');
+    const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    
+    let messageHtml = '';
+    
+    if (type === 'user') {
+        messageHtml = `
+            <div class="d-flex justify-content-end mb-3">
+                <div class="bg-success text-white rounded-3 px-3 py-2" style="max-width: 70%;">
+                    <div>${escapeHtml(message)}</div>
+                    <small class="opacity-75 d-block mt-1">${timestamp}</small>
+                </div>
+            </div>
+        `;
+    } else if (type === 'bot') {
+        messageHtml = `
+            <div class="d-flex justify-content-start mb-3">
+                <div class="bg-white border rounded-3 px-3 py-2" style="max-width: 70%;">
+                    <div style="white-space: pre-line;">${formatBotMessage(message)}</div>
+                    <small class="text-muted d-block mt-1">${timestamp}</small>
+                </div>
+            </div>
+        `;
+    } else if (type === 'error') {
+        messageHtml = `
+            <div class="d-flex justify-content-center mb-3">
+                <div class="bg-danger text-white rounded-3 px-3 py-2">
+                    <small>${escapeHtml(message)}</small>
+                </div>
+            </div>
+        `;
+    }
+    
+    messagesContainer.innerHTML += messageHtml;
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function formatBotMessage(message) {
+    // Convert markdown-style formatting to HTML
+    return escapeHtml(message)
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary">$1</a>');
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function sendQuickMessage(message) {
+    sendMessage(message);
+}
+
+// Event listeners
+document.getElementById('send-message-btn').addEventListener('click', function() {
+    const message = document.getElementById('chat-message-input').value;
+    sendMessage(message);
+});
+
+document.getElementById('chat-message-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const message = this.value;
+        sendMessage(message);
+    }
+});
+
+// Auto-focus message input when modal opens
+document.getElementById('simulateModal').addEventListener('shown.bs.modal', function() {
+    document.getElementById('chat_student_id').focus();
 });
 </script>
 
@@ -418,6 +523,79 @@ document.getElementById('message').addEventListener('input', function() {
 
 [data-bs-theme="dark"] .bot-response-preview p {
     color: #f8f9fa !important;
+}
+
+/* Chat interface styling */
+.chat-container {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background: white;
+}
+
+.chat-messages {
+    background-color: #f8f9fa;
+    background-image: 
+        radial-gradient(circle at 1px 1px, rgba(0,0,0,.1) 1px, transparent 0);
+    background-size: 20px 20px;
+}
+
+.chat-input {
+    border-top: 1px solid #dee2e6;
+}
+
+.chat-header {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+}
+
+/* Message bubbles */
+.chat-messages .bg-success {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    border-radius: 18px 18px 5px 18px !important;
+}
+
+.chat-messages .bg-white {
+    border-radius: 18px 18px 18px 5px !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Dark mode support for chat */
+[data-bs-theme="dark"] .chat-container {
+    border-color: #495057;
+    background: #343a40;
+}
+
+[data-bs-theme="dark"] .chat-messages {
+    background-color: #2c3034;
+}
+
+[data-bs-theme="dark"] .chat-input {
+    background-color: #343a40 !important;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .chat-messages .bg-white {
+    background-color: #495057 !important;
+    color: #f8f9fa !important;
+    border-color: #6c757d;
+}
+
+/* Scrollbar styling */
+.chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: #bbb;
+    border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background: #888;
 }
 </style>
 {% endblock %}

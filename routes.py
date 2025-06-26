@@ -872,10 +872,40 @@ def whatsapp_webhook():
     from whatsappbot import webhook_handler
     return webhook_handler()
 
+@app.route('/api/whatsapp-simulate', methods=['POST'])
+@require_role('admin')
+def api_simulate_whatsapp():
+    """API endpoint for live WhatsApp chat simulation"""
+    try:
+        data = request.get_json()
+        student_id = data.get('student_id')
+        message = data.get('message')
+        
+        if not student_id or not message:
+            return jsonify({'success': False, 'error': 'Missing student_id or message'}), 400
+        
+        student = Student.query.get(student_id)
+        if not student:
+            return jsonify({'success': False, 'error': 'Student not found'}), 404
+        
+        # Process the message through the WhatsApp bot
+        from whatsappbot import whatsapp_bot
+        bot_response = whatsapp_bot.process_message(student.phone, message)
+        
+        return jsonify({
+            'success': True, 
+            'response': bot_response,
+            'student_name': student.name
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in API WhatsApp simulation: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/whatsapp-bot/simulate', methods=['POST'])
 @require_role('admin')
 def simulate_whatsapp():
-    """Simulate a WhatsApp interaction"""
+    """Simulate a WhatsApp interaction (legacy form-based)"""
     try:
         student_id = request.form['student_id']
         message = request.form['message']
