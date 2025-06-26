@@ -124,6 +124,14 @@ class WhatsAppBot:
             if len(parts) >= 2:
                 return self.process_cancel_lesson_by_number(student, parts[1])
         
+        # Handle numerical menu options
+        if message in ['1', '2', '3', '4', '5']:
+            return self.handle_menu_option(student, message)
+        
+        # Handle booking duration selection (30 or 60)
+        if message in ['30', '60']:
+            return self.handle_duration_selection(student, int(message))
+        
         # Check for specific commands
         for command, handler in self.commands.items():
             if command in message:
@@ -138,13 +146,17 @@ class WhatsAppBot:
 
 Welcome to myInstructor 2.0 WhatsApp Bot!
 
-I can help you with:
-📅 View your lessons
-📊 Check your progress
-🕐 Get your schedule
-❓ Get help
+📋 *Main Menu:*
 
-Type 'menu' to see all options or 'help' for assistance."""
+1️⃣ View upcoming lessons
+2️⃣ Book a lesson  
+3️⃣ Check your progress
+4️⃣ Cancel a lesson
+5️⃣ Get help
+
+Just reply with a number (1-5) to get started!
+
+👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}"""
     
     def handle_lessons(self, student):
         """Handle lessons inquiry"""
@@ -431,46 +443,207 @@ Type 'menu' to see all options or 'help' for assistance."""
         """Handle help request"""
         return """❓ *Help & Commands:*
 
-🔹 *hi/hello* - Get a greeting
-🔹 *lessons* - View upcoming lessons
-🔹 *schedule* - See 7-day schedule
-🔹 *progress* - Check your progress
-🔹 *cancel* - Cancel upcoming lessons
+🔹 Reply with numbers 1-5 for menu options
+🔹 *1* - View upcoming lessons
+🔹 *2* - Book a lesson (30min or 1 hour)
+🔹 *3* - Check your progress
+🔹 *4* - Cancel upcoming lessons
 🔹 *menu* - Show main menu
-🔹 *help* - Show this help
 
 💡 *Tips:*
-• Lessons are available 6:00 AM - 4:00 PM
+• Lessons are available 6:00 AM - 4:00 PM (Mon-Sat)
 • Maximum 2 lessons per day
 • Cancel at least 2 hours before lesson time
-• Lessons are 30min or 1 hour (combined)
+• Choose 30-minute or 1-hour lessons when booking
+• Tomorrow's lessons can be booked after 6:00 PM today
 
 📞 *Need more help?*
 Contact your instructor or driving school directly."""
     
     def handle_menu(self, student):
         """Handle menu request"""
-        return """📋 *Main Menu:*
+        return f"""📋 *Main Menu:*
 
 Choose what you'd like to do:
 
-1️⃣ View upcoming lessons (type: lessons)
-2️⃣ Check your schedule (type: schedule)
-3️⃣ See your progress (type: progress)
-4️⃣ Cancel a lesson (type: cancel)
-5️⃣ Get help (type: help)
+1️⃣ View upcoming lessons
+2️⃣ Book a lesson
+3️⃣ Check your progress
+4️⃣ Cancel a lesson
+5️⃣ Get help
 
-Just type any of the keywords to get started!
+Just reply with a number (1-5) to get started!
 
-👨‍🏫 Your instructor: """ + (student.instructor.get_full_name() if student.instructor else "Not assigned")
+👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}"""
+    
+    def handle_menu_option(self, student, option):
+        """Handle numbered menu selections"""
+        if option == '1':
+            return self.handle_lessons(student)
+        elif option == '2':
+            return self.handle_book_lesson(student)
+        elif option == '3':
+            return self.handle_progress(student)
+        elif option == '4':
+            return self.handle_cancel_lesson(student)
+        elif option == '5':
+            return self.handle_help(student)
+        else:
+            return self.handle_default(student)
+    
+    def handle_book_lesson(self, student):
+        """Handle lesson booking - first ask for duration"""
+        return """📅 *Book a Lesson*
+
+Please choose your lesson duration:
+
+3️⃣0️⃣ 30 minutes
+6️⃣0️⃣ 60 minutes (1 hour)
+
+Reply with *30* or *60* to see available time slots."""
+    
+    def handle_duration_selection(self, student, duration_minutes):
+        """Handle duration selection and show available timeslots"""
+        if duration_minutes not in [30, 60]:
+            return "❌ Please select either 30 or 60 minutes."
+        
+        instructor = student.instructor
+        if not instructor:
+            return "❌ No instructor assigned. Please contact the driving school."
+        
+        # Get available slots for the selected duration
+        available_slots = self.get_duration_specific_timeslots(instructor, duration_minutes)
+        
+        if not available_slots:
+            return f"❌ No {duration_minutes}-minute slots available for the next 2 days.\n\nPlease try again later or contact your instructor."
+        
+        response = f"📅 *Available {duration_minutes}-minute slots:*\n\n"
+        
+        current_date = None
+        slot_count = 0
+        
+        for slot in available_slots:
+            if slot_count >= 15:  # Limit to 15 slots to avoid message being too long
+                break
+                
+            slot_date = slot['start'].date()
+            if slot_date != current_date:
+                response += f"\n*{slot['start'].strftime('%A, %B %d')}*\n"
+                current_date = slot_date
+            
+            start_time = slot['start'].strftime('%I:%M %p')
+            response += f"• {start_time}\n"
+            slot_count += 1
+        
+        response += f"\n💡 To book a slot, contact your instructor:\n📞 {instructor.get_full_name()}"
+        response += f"\n\nType 'menu' to return to the main menu."
+        
+        return response
+    
+    def get_duration_specific_timeslots(self, instructor, duration_minutes):
+        """Get available timeslots for specific duration (30 or 60 minutes)"""
+        if not instructor:
+            return []
+        
+        available_slots = []
+        current_time = datetime.now()
+        start_date = current_time.date()
+        
+        # Define working hours (6 AM to 4 PM, Monday to Saturday)
+        working_hours = {
+            0: (6, 16),   # Monday
+            1: (6, 16),   # Tuesday  
+            2: (6, 16),   # Wednesday
+            3: (6, 16),   # Thursday
+            4: (6, 16),   # Friday
+            5: (6, 16),   # Saturday
+            6: None       # Sunday (closed)
+        }
+        
+        # Check today and tomorrow only
+        for day_offset in range(2):
+            check_date = start_date + timedelta(days=day_offset)
+            weekday = check_date.weekday()
+            
+            # Skip if no working hours for this day
+            if weekday not in working_hours or working_hours[weekday] is None:
+                continue
+            
+            start_hour, end_hour = working_hours[weekday]
+            
+            # Get existing lessons for this instructor on this date
+            existing_lessons = Lesson.query.filter(
+                Lesson.instructor_id == instructor.id,
+                Lesson.status == LESSON_SCHEDULED,
+                Lesson.scheduled_date >= datetime.combine(check_date, datetime.min.time()),
+                Lesson.scheduled_date < datetime.combine(check_date + timedelta(days=1), datetime.min.time())
+            ).all()
+            
+            # Create set of busy 30-minute slots
+            busy_slots = set()
+            for lesson in existing_lessons:
+                start_time = lesson.scheduled_date
+                # Mark all 30-minute slots this lesson occupies as busy
+                slots_needed = (lesson.duration_minutes + 29) // 30  # Round up to nearest 30min
+                for i in range(slots_needed):
+                    slot_time = start_time + timedelta(minutes=i * 30)
+                    busy_slots.add(slot_time.replace(second=0, microsecond=0))
+            
+            # Generate available slots based on duration
+            for hour in range(start_hour, end_hour):
+                for minute in [0, 30]:
+                    slot_time = datetime.combine(check_date, datetime.min.time().replace(hour=hour, minute=minute))
+                    
+                    # Skip if slot is in the past
+                    if slot_time <= current_time:
+                        continue
+                    
+                    # Check if this slot and required consecutive slots are available
+                    slots_needed = 1 if duration_minutes == 30 else 2
+                    is_available = True
+                    
+                    for i in range(slots_needed):
+                        check_slot = slot_time + timedelta(minutes=i * 30)
+                        if check_slot in busy_slots:
+                            is_available = False
+                            break
+                        # Make sure we don't go past working hours
+                        if check_slot.hour >= end_hour:
+                            is_available = False
+                            break
+                    
+                    if is_available:
+                        # Apply WhatsApp booking time rules
+                        slot_date = slot_time.date()
+                        today = current_time.date()
+                        tomorrow = today + timedelta(days=1)
+                        
+                        # Check booking rules
+                        if slot_date == tomorrow:
+                            # Can book tomorrow only after 6 PM today
+                            if current_time.hour >= 18:
+                                available_slots.append({
+                                    'start': slot_time,
+                                    'end': slot_time + timedelta(minutes=duration_minutes)
+                                })
+                        elif slot_date == today:
+                            # Can book today only before 3:30 PM
+                            if current_time.hour < 15 or (current_time.hour == 15 and current_time.minute < 30):
+                                available_slots.append({
+                                    'start': slot_time,
+                                    'end': slot_time + timedelta(minutes=duration_minutes)
+                                })
+        
+        return available_slots
     
     def handle_default(self, student):
         """Handle unrecognized messages"""
         return f"""I didn't understand that, {student.name}. 🤔
 
-Type 'menu' to see available options or 'help' for assistance.
+Reply with 'menu' to see available options or '5' for help.
 
-Available commands: lessons, schedule, progress, help, menu"""
+📋 Quick menu:
+1️⃣ View lessons | 2️⃣ Book lesson | 3️⃣ Progress | 4️⃣ Cancel | 5️⃣ Help"""
     
     def handle_unknown_student(self, phone_number):
         """Handle messages from unknown phone numbers"""
