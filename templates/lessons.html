@@ -159,14 +159,14 @@
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label for="duration_minutes" class="form-label">Duration (minutes) *</label>
                             <select class="form-select" id="duration_minutes" name="duration_minutes" required onchange="checkStudentBalance()">
                                 <option value="30">30 minutes</option>
                                 <option value="60">60 minutes (combined)</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label for="lesson_type" class="form-label">Lesson Type</label>
                             <select class="form-select" id="lesson_type" name="lesson_type">
                                 <option value="practical">Practical Driving</option>
@@ -174,22 +174,8 @@
                                 <option value="test">Driving Test</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label for="vehicle_id" class="form-label">Vehicle</label>
-                            <select class="form-select" id="vehicle_id" name="vehicle_id">
-                                <option value="">Select vehicle</option>
-                                {% if current_user.is_instructor() %}
-                                    {% for vehicle in current_user.assigned_vehicles %}
-                                    <option value="{{ vehicle.id }}">{{ vehicle.registration_number }} ({{ vehicle.license_class }})</option>
-                                    {% endfor %}
-                                {% else %}
-                                    {% for vehicle in vehicles %}
-                                    <option value="{{ vehicle.id }}">{{ vehicle.registration_number }} ({{ vehicle.license_class }})</option>
-                                    {% endfor %}
-                                {% endif %}
-                            </select>
-                        </div>
                     </div>
+                    <div class="row mt-3">
                     <div class="col-12">
                         <label for="location" class="form-label">Location</label>
                         <input type="text" class="form-control" id="location" name="location" 

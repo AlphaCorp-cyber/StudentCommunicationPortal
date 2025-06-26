@@ -487,11 +487,6 @@ def add_lesson():
         lesson.location = request.form.get('location')
         lesson.cost = student.get_lesson_price(duration_minutes)
         
-        # Assign vehicle if specified
-        vehicle_id = request.form.get('vehicle_id')
-        if vehicle_id:
-            lesson.vehicle_id = int(vehicle_id)
-        
         db.session.add(lesson)
         db.session.commit()
         

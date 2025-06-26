@@ -530,13 +530,17 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="payment_student_id" class="form-label">Student *</label>
-                        <select class="form-select" id="payment_student_id" name="student_id" required>
+                        <label for="student_search" class="form-label">Student *</label>
+                        <input type="text" class="form-control" id="student_search" placeholder="Search student...">
+                        <select class="form-select" id="payment_student_id" name="student_id" required style="display:none;">
                             <option value="">Select student</option>
                             {% for student in students %}
-                            <option value="{{ student.id }}">{{ student.name }} (Balance: ${{ student.account_balance }})</option>
+                            <option value="{{ student.id }}" data-name="{{ student.name.lower() }}" data-phone="{{ student.phone.lower() }}">{{ student.name }} (Balance: ${{ student.account_balance }})</option>
                             {% endfor %}
                         </select>
+                        <div id="selected_student" style="display:none;">
+                            Selected: <span id="selected_student_name"></span>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="amount" class="form-label">Amount *</label>
@@ -618,6 +622,79 @@ document.addEventListener('DOMContentLoaded', function() {
         // Set placeholder
         phoneInput.placeholder = '+263771234567';
     }
+
+// Student search functionality for payment modal
+function filterStudents() {
+    const searchInput = document.getElementById('student_search');
+    const studentSelect = document.getElementById('payment_student_id');
+    const selectedDiv = document.getElementById('selected_student');
+    const selectedNameSpan = document.getElementById('selected_student_name');
+
+    const searchTerm = searchInput.value.toLowerCase();
+
+    if (searchTerm.length < 2) {
+        studentSelect.style.display = 'none';
+        selectedDiv.style.display = 'none';
+        return;
+    }
+
+    // Show dropdown and filter options
+    studentSelect.style.display = 'block';
+    const options = studentSelect.options;
+    let hasResults = false;
+
+    for (let i = 1; i < options.length; i++) { // Skip first "Select student" option
+        const option = options[i];
+        const name = option.dataset.name || '';
+        const phone = option.dataset.phone || '';
+
+        if (name.includes(searchTerm) || phone.includes(searchTerm)) {
+            option.style.display = 'block';
+            hasResults = true;
+        } else {
+            option.style.display = 'none';
+        }
+    }
+
+    if (!hasResults) {
+        studentSelect.style.display = 'none';
+    }
+}
+
+// Handle student selection from dropdown
+document.addEventListener('DOMContentLoaded', function() {
+    const studentSelect = document.getElementById('payment_student_id');
+    const searchInput = document.getElementById('student_search');
+    const selectedDiv = document.getElementById('selected_student');
+    const selectedNameSpan = document.getElementById('selected_student_name');
+
+    if (studentSelect) {
+        studentSelect.addEventListener('change', function() {
+            if (this.value) {
+                const selectedOption = this.options[this.selectedIndex];
+                const studentInfo = selectedOption.textContent;
+
+                selectedNameSpan.textContent = studentInfo;
+                selectedDiv.style.display = 'block';
+                studentSelect.style.display = 'none';
+                searchInput.value = selectedOption.dataset.name;
+            }
+        });
+
+        // Handle clicking outside to close dropdown
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#addPaymentModal')) {
+                studentSelect.style.display = 'none';
+            }
+        });
+    }
+}
+
+// Attach the filterStudents function to the search input's input event
+const searchInput = document.getElementById('student_search');
+if (searchInput) {
+    searchInput.addEventListener('input', filterStudents);
+}
 });
 </script>
 {% endblock %}
