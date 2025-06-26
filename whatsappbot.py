@@ -172,31 +172,43 @@ class WhatsAppBot:
         if message in ['30', '60'] and session_state != 'awaiting_booking_slot':
             return self.handle_duration_selection(student, int(message))
         
-        # Check for specific commands
+        # Check for word-based commands (more user-friendly)
+        message_words = message.lower().split()
+        
+        # Check for specific commands - both full words and partial matches
         for command, handler in self.commands.items():
-            if command in message:
+            if command in message or any(word.startswith(command[:3]) for word in message_words if len(word) >= 3):
                 return handler(student)
+        
+        # Additional easy commands
+        if any(word in ['book', 'booking', 'reserve'] for word in message_words):
+            return self.handle_book_lesson(student)
+        elif any(word in ['view', 'show', 'see'] for word in message_words) and any(word in ['lesson', 'schedule'] for word in message_words):
+            return self.handle_lessons(student)
+        elif any(word in ['progress', 'status', 'report'] for word in message_words):
+            return self.handle_progress(student)
         
         # Intelligent fallback - guide user based on context
         return self.handle_contextual_fallback(student, message, session_state)
     
     def handle_greeting(self, student):
-        """Handle greeting messages"""
+        """Handle greeting messages with interactive buttons"""
         return f"""Hello {student.name}! 👋
 
 Welcome to myInstructor 2.0 WhatsApp Bot!
 
 📋 *Main Menu:*
 
-1️⃣ View upcoming lessons
-2️⃣ Book a lesson  
-3️⃣ Check your progress
-4️⃣ Cancel a lesson
-5️⃣ Get help
+👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}
 
-Just reply with a number (1-5) to get started!
+Please select an option below or type:
+• *lessons* - View upcoming lessons
+• *book* - Book a lesson  
+• *progress* - Check your progress
+• *cancel* - Cancel a lesson
+• *help* - Get help
 
-👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}"""
+💡 You can also type the commands directly or use the quick reply buttons!"""
     
     def handle_lessons(self, student):
         """Handle lessons inquiry"""
@@ -420,7 +432,7 @@ Just reply with a number (1-5) to get started!
         self.set_session_state(student, 'awaiting_cancel_selection')
         
         response = "📋 *Your Upcoming Lessons:*\n\n"
-        response += "To cancel a lesson:\n• Type *cancel [number]* (e.g., cancel 1)\n• Or just type the number (e.g., 1)\n\n"
+        response += "To cancel a lesson, just tap and send the number:\n\n"
         
         for i, lesson in enumerate(upcoming_lessons, 1):
             date_str = lesson.scheduled_date.strftime('%B %d, %Y')
@@ -485,44 +497,44 @@ Just reply with a number (1-5) to get started!
     
     def handle_help(self, student):
         """Handle help request"""
-        return """❓ *Help & Commands:*
+        return """❓ *Help & Easy Commands:*
 
-🔹 Reply with numbers 1-5 for menu options
-🔹 *1* - View upcoming lessons
-🔹 *2* - Book a lesson (30min or 1 hour)
-🔹 *3* - Check your progress
-🔹 *4* - Cancel upcoming lessons
+🔹 *lessons* - View upcoming lessons
+🔹 *book* - Book a lesson (30min or 1 hour)
+🔹 *progress* - Check your progress  
+🔹 *cancel* - Cancel upcoming lessons
 🔹 *menu* - Show main menu
 🔹 *reset* - Clear everything and start over
 
-💡 *Tips:*
-• Lessons are available 6:00 AM - 4:00 PM (Mon-Sat)
+💡 *Pro Tips:*
+• Just type the command words - no numbers needed!
+• Tap any message option and it auto-sends
+• Lessons: 6:00 AM - 4:00 PM (Mon-Sat)
 • Maximum 2 lessons per day
 • Cancel at least 2 hours before lesson time
-• Choose 30-minute or 1-hour lessons when booking
-• Tomorrow's lessons can be booked after 6:00 PM today
+• Tomorrow's lessons: book after 6:00 PM today
 
 🔄 *Stuck or confused?*
-Type 'reset' to clear your session and start fresh!
+Type *reset* to clear your session and start fresh!
 
 📞 *Need more help?*
 Contact your instructor or driving school directly."""
     
     def handle_menu(self, student):
-        """Handle menu request"""
+        """Handle menu request with quick reply options"""
         return f"""📋 *Main Menu:*
 
 Choose what you'd like to do:
 
-1️⃣ View upcoming lessons
-2️⃣ Book a lesson
-3️⃣ Check your progress
-4️⃣ Cancel a lesson
-5️⃣ Get help
+🔹 Type *lessons* to view upcoming lessons
+🔹 Type *book* to book a lesson
+🔹 Type *progress* to check your progress
+🔹 Type *cancel* to cancel a lesson
+🔹 Type *help* to get help
 
-Just reply with a number (1-5) to get started!
+👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}
 
-👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}"""
+💡 Just type any command word - no numbers needed!"""
     
     def handle_menu_option(self, student, option):
         """Handle numbered menu selections"""
@@ -546,14 +558,16 @@ Just reply with a number (1-5) to get started!
         
         return """📅 *Book a Lesson*
 
-Please choose your lesson duration:
+Choose your lesson duration:
 
-3️⃣0️⃣ 30 minutes
-6️⃣0️⃣ 60 minutes (1 hour)
+🕐 Type *30* for 30 minutes
+🕑 Type *60* for 60 minutes (1 hour)
 
-Reply with *30* or *60* to see available time slots.
+Just tap and send one of these options:
+• 30
+• 60
 
-💡 Type 'menu' anytime to return to main menu"""
+💡 Type *menu* anytime to return to main menu"""
     
     def handle_duration_selection(self, student, duration_minutes):
         """Handle duration selection and show available timeslots with booking numbers"""
@@ -598,11 +612,15 @@ Reply with *30* or *60* to see available time slots.
             slot_count += 1
         
         response += f"\n💡 *Easy booking:*\n"
-        response += f"• Type *{i+1}* to book any slot (e.g., 1, 2, 3...)\n"
-        response += f"• Or type *book 1* for slot #1\n\n"
-        response += f"🔄 *Quick options:*\n"
-        response += f"• Type 'menu' for main menu\n"
-        response += f"• Type '2' to change duration"
+        response += f"Just tap and send the number of your preferred slot:\n\n"
+        
+        # Add quick tap numbers
+        for i in range(min(len(available_slots), 10)):
+            response += f"• {i+1}\n"
+        
+        response += f"\n🔄 *Quick options:*\n"
+        response += f"• Type *menu* for main menu\n"
+        response += f"• Type *book* to change duration"
         
         return response
     
@@ -912,16 +930,14 @@ Please start fresh:
 
 📅 *Book a Lesson*
 
-Choose your lesson duration:
+Just tap and send one of these:
 
-3️⃣0️⃣ 30 minutes
-6️⃣0️⃣ 60 minutes (1 hour)
-
-Reply with *30* or *60* to see available time slots.
+🕐 30
+🕑 60
 
 💡 Quick options:
-• Type 'menu' to return to main menu
-• Type 'reset' to start over"""
+• Type *menu* to return to main menu
+• Type *reset* to start over"""
     
     def handle_booking_slot_error(self, student, message):
         """Handle invalid booking slot selection"""
@@ -955,15 +971,14 @@ Available slots: 1 to {len(available_slots)}
         """Handle unrecognized messages"""
         return f"""I didn't understand that, {student.name}. 🤔
 
-📋 *Main Menu:*
-1️⃣ View lessons | 2️⃣ Book lesson | 3️⃣ Progress | 4️⃣ Cancel | 5️⃣ Help
+📋 *Try these easy commands:*
+🔹 *lessons* | 🔹 *book* | 🔹 *progress* | 🔹 *cancel* | 🔹 *help*
 
-💡 Quick commands:
-• Type any number (1-5)
-• Type 'menu' for options
-• Type 'reset' to restart
+💡 Just tap any command above and send it!
 
-🔄 Never get stuck - 'reset' always works!"""
+🔄 Or type:
+• *menu* for full options
+• *reset* to restart (never get stuck!)"""
     
     def reset_session_and_start(self, student):
         """Reset session state and show main menu"""
@@ -1035,8 +1050,8 @@ def webhook_handler():
         twiml_response = MessagingResponse()
         return str(twiml_response), 500, {'Content-Type': 'text/xml'}
 
-def send_whatsapp_message(phone_number, message):
-    """Send WhatsApp message via Twilio"""
+def send_whatsapp_message(phone_number, message, buttons=None):
+    """Send WhatsApp message via Twilio with optional interactive buttons"""
     try:
         if not whatsapp_bot.twilio_client:
             logger.warning(f"Twilio not configured. Mock sending to {phone_number}: {message}")
@@ -1049,12 +1064,24 @@ def send_whatsapp_message(phone_number, message):
         # Clean phone number format
         clean_phone = whatsapp_bot.clean_phone_number(phone_number)
         
+        # Prepare message parameters
+        message_params = {
+            'body': message,
+            'from_': f'whatsapp:{whatsapp_bot.twilio_phone}',
+            'to': f'whatsapp:{clean_phone}'
+        }
+        
+        # Add interactive buttons if provided and supported
+        if buttons and len(buttons) <= 3:  # WhatsApp allows max 3 buttons
+            # For now, we'll append button options to the message
+            # Full interactive buttons require WhatsApp Business API approval
+            button_text = "\n\n🔘 *Quick replies:*\n"
+            for i, button in enumerate(buttons, 1):
+                button_text += f"• {button}\n"
+            message_params['body'] += button_text
+        
         # Send message via Twilio
-        message_instance = whatsapp_bot.twilio_client.messages.create(
-            body=message,
-            from_=f'whatsapp:{whatsapp_bot.twilio_phone}',
-            to=f'whatsapp:{clean_phone}'
-        )
+        message_instance = whatsapp_bot.twilio_client.messages.create(**message_params)
         
         logger.info(f"WhatsApp message sent successfully to {clean_phone}, SID: {message_instance.sid}")
         return True
