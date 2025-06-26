@@ -1,11 +1,13 @@
 
 import logging
 import os
+import json
 from datetime import datetime, timedelta, time
 from flask import request, jsonify
 from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
-from models import Student, Lesson, WhatsAppSession, db, LESSON_SCHEDULED, LESSON_COMPLETED, SystemConfig
+from sqlalchemy import and_
+from models import Student, Lesson, WhatsAppSession, db, LESSON_SCHEDULED, LESSON_COMPLETED, LESSON_CANCELLED, SystemConfig
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -123,6 +125,12 @@ class WhatsAppBot:
             parts = message.split()
             if len(parts) >= 2:
                 return self.process_cancel_lesson_by_number(student, parts[1])
+        
+        # Check for timeslot booking (e.g., "book 1" or "book 5")
+        if message.startswith('book '):
+            parts = message.split()
+            if len(parts) >= 2:
+                return self.process_timeslot_booking(student, parts[1])
         
         # Handle numerical menu options
         if message in ['1', '2', '3', '4', '5']:
@@ -503,7 +511,7 @@ Please choose your lesson duration:
 Reply with *30* or *60* to see available time slots."""
     
     def handle_duration_selection(self, student, duration_minutes):
-        """Handle duration selection and show available timeslots"""
+        """Handle duration selection and show available timeslots with booking numbers"""
         if duration_minutes not in [30, 60]:
             return "❌ Please select either 30 or 60 minutes."
         
@@ -511,19 +519,28 @@ Reply with *30* or *60* to see available time slots."""
         if not instructor:
             return "❌ No instructor assigned. Please contact the driving school."
         
+        # Check if student has sufficient balance
+        if not student.has_sufficient_balance(duration_minutes):
+            lesson_price = student.get_lesson_price(duration_minutes)
+            return f"❌ Insufficient balance for {duration_minutes}-minute lesson.\n\nLesson cost: ${lesson_price:.2f}\nYour balance: ${student.account_balance:.2f}\n\nPlease top up your account and try again."
+        
         # Get available slots for the selected duration
         available_slots = self.get_duration_specific_timeslots(instructor, duration_minutes)
         
         if not available_slots:
             return f"❌ No {duration_minutes}-minute slots available for the next 2 days.\n\nPlease try again later or contact your instructor."
         
+        # Store the booking context in session (we'll use a simple approach with the session)
+        self.store_booking_context(student, duration_minutes, available_slots)
+        
         response = f"📅 *Available {duration_minutes}-minute slots:*\n\n"
+        response += "💰 *Lesson cost:* $" + f"{student.get_lesson_price(duration_minutes):.2f}\n\n"
         
         current_date = None
         slot_count = 0
         
-        for slot in available_slots:
-            if slot_count >= 15:  # Limit to 15 slots to avoid message being too long
+        for i, slot in enumerate(available_slots):
+            if slot_count >= 10:  # Limit to 10 slots to avoid message being too long
                 break
                 
             slot_date = slot['start'].date()
@@ -532,10 +549,10 @@ Reply with *30* or *60* to see available time slots."""
                 current_date = slot_date
             
             start_time = slot['start'].strftime('%I:%M %p')
-            response += f"• {start_time}\n"
+            response += f"{i+1}. {start_time}\n"
             slot_count += 1
         
-        response += f"\n💡 To book a slot, contact your instructor:\n📞 {instructor.get_full_name()}"
+        response += f"\n💡 To book a slot, reply:\n*book [number]*\n\nExample: *book 1* (to book slot #1)"
         response += f"\n\nType 'menu' to return to the main menu."
         
         return response
@@ -635,6 +652,147 @@ Reply with *30* or *60* to see available time slots."""
                                 })
         
         return available_slots
+    
+    def store_booking_context(self, student, duration_minutes, available_slots):
+        """Store booking context in WhatsApp session"""
+        session_id = f"whatsapp_{student.phone}_{datetime.now().strftime('%Y%m%d')}"
+        session = WhatsAppSession.query.filter_by(session_id=session_id).first()
+        
+        if session:
+            # Store booking context as JSON string in session data
+            import json
+            booking_context = {
+                'duration_minutes': duration_minutes,
+                'available_slots': [
+                    {
+                        'start': slot['start'].isoformat(),
+                        'end': slot['end'].isoformat()
+                    } for slot in available_slots[:10]  # Store only first 10 slots
+                ]
+            }
+            session.last_message = f"BOOKING_CONTEXT:{json.dumps(booking_context)}"
+            db.session.commit()
+    
+    def get_booking_context(self, student):
+        """Get stored booking context from WhatsApp session"""
+        session_id = f"whatsapp_{student.phone}_{datetime.now().strftime('%Y%m%d')}"
+        session = WhatsAppSession.query.filter_by(session_id=session_id).first()
+        
+        if session and session.last_message and session.last_message.startswith('BOOKING_CONTEXT:'):
+            try:
+                import json
+                context_json = session.last_message.replace('BOOKING_CONTEXT:', '')
+                return json.loads(context_json)
+            except:
+                return None
+        return None
+    
+    def process_timeslot_booking(self, student, slot_number):
+        """Process booking of a specific timeslot by number"""
+        try:
+            slot_num = int(slot_number)
+            
+            # Get booking context
+            booking_context = self.get_booking_context(student)
+            if not booking_context:
+                return "❌ No active booking session found. Please start by selecting '2' to book a lesson."
+            
+            available_slots = booking_context['available_slots']
+            duration_minutes = booking_context['duration_minutes']
+            
+            if slot_num < 1 or slot_num > len(available_slots):
+                return f"❌ Invalid slot number. Please choose between 1 and {len(available_slots)}."
+            
+            selected_slot = available_slots[slot_num - 1]
+            scheduled_date = datetime.fromisoformat(selected_slot['start'])
+            
+            # Validate the booking is still possible
+            current_time = datetime.now()
+            
+            # Check booking time rules
+            lesson_date = scheduled_date.date()
+            current_date = current_time.date()
+            tomorrow = current_date + timedelta(days=1)
+            
+            # WhatsApp bot booking rules
+            if lesson_date == tomorrow:
+                if current_time.hour < 18:  # Before 6 PM, can't book tomorrow
+                    return "⏰ Tomorrow's lessons can only be booked after 6:00 PM today."
+            elif lesson_date == current_date:
+                if current_time.hour >= 15 and current_time.minute >= 30:  # After 3:30 PM
+                    return "⏰ Booking for today closes at 3:30 PM."
+            
+            # Check if slot is still available
+            existing_lesson = Lesson.query.filter(
+                Lesson.instructor_id == student.instructor_id,
+                Lesson.status == LESSON_SCHEDULED,
+                Lesson.scheduled_date == scheduled_date
+            ).first()
+            
+            if existing_lesson:
+                return "❌ Sorry, this time slot has been booked by another student. Please choose a different slot or type '2' to see updated availability."
+            
+            # Check daily lesson limit
+            existing_lessons_count = Lesson.query.filter(
+                and_(
+                    Lesson.student_id == student.id,
+                    Lesson.scheduled_date >= datetime.combine(lesson_date, datetime.min.time()),
+                    Lesson.scheduled_date < datetime.combine(lesson_date + timedelta(days=1), datetime.min.time()),
+                    Lesson.status != LESSON_CANCELLED
+                )
+            ).count()
+            
+            if existing_lessons_count >= 2:
+                return "❌ You already have 2 lessons scheduled for this day. Maximum 2 lessons per day allowed."
+            
+            # Check balance again
+            if not student.has_sufficient_balance(duration_minutes):
+                lesson_price = student.get_lesson_price(duration_minutes)
+                return f"❌ Insufficient balance.\n\nLesson cost: ${lesson_price:.2f}\nYour balance: ${student.account_balance:.2f}"
+            
+            # Create the lesson
+            lesson = Lesson()
+            lesson.student_id = student.id
+            lesson.instructor_id = student.instructor_id
+            lesson.scheduled_date = scheduled_date
+            lesson.duration_minutes = duration_minutes
+            lesson.lesson_type = 'practical'
+            lesson.cost = student.get_lesson_price(duration_minutes)
+            
+            db.session.add(lesson)
+            db.session.commit()
+            
+            # Clear booking context
+            session_id = f"whatsapp_{student.phone}_{datetime.now().strftime('%Y%m%d')}"
+            session = WhatsAppSession.query.filter_by(session_id=session_id).first()
+            if session:
+                session.last_message = f"lesson_booked_{lesson.id}"
+                db.session.commit()
+            
+            # Format confirmation message
+            date_str = scheduled_date.strftime('%A, %B %d, %Y')
+            time_str = scheduled_date.strftime('%I:%M %p')
+            instructor_name = student.instructor.get_full_name()
+            
+            response = f"✅ *Lesson Booked Successfully!* 🎉\n\n"
+            response += f"📅 **Date:** {date_str}\n"
+            response += f"🕐 **Time:** {time_str}\n"
+            response += f"⏱️ **Duration:** {duration_minutes} minutes\n"
+            response += f"👨‍🏫 **Instructor:** {instructor_name}\n"
+            response += f"💰 **Cost:** ${lesson.cost:.2f}\n"
+            response += f"💳 **New Balance:** ${float(student.account_balance):.2f}\n\n"
+            response += "📲 You'll receive a reminder before your lesson.\n"
+            response += "🚗 Good luck with your driving lesson!\n\n"
+            response += "Type 'menu' to return to the main menu."
+            
+            logger.info(f"Lesson {lesson.id} booked via WhatsApp by student {student.name}")
+            return response
+            
+        except ValueError:
+            return "❌ Please provide a valid slot number. Example: *book 1*"
+        except Exception as e:
+            logger.error(f"Error booking lesson via WhatsApp: {str(e)}")
+            return "❌ Sorry, there was an error booking your lesson. Please try again or contact your instructor."
     
     def handle_default(self, student):
         """Handle unrecognized messages"""
