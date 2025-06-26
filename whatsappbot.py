@@ -658,20 +658,28 @@ Reply with *30* or *60* to see available time slots."""
         session_id = f"whatsapp_{student.phone}_{datetime.now().strftime('%Y%m%d')}"
         session = WhatsAppSession.query.filter_by(session_id=session_id).first()
         
-        if session:
-            # Store booking context as JSON string in session data
-            import json
-            booking_context = {
-                'duration_minutes': duration_minutes,
-                'available_slots': [
-                    {
-                        'start': slot['start'].isoformat(),
-                        'end': slot['end'].isoformat()
-                    } for slot in available_slots[:10]  # Store only first 10 slots
-                ]
-            }
-            session.last_message = f"BOOKING_CONTEXT:{json.dumps(booking_context)}"
-            db.session.commit()
+        if not session:
+            session = WhatsAppSession(
+                student_id=student.id,
+                session_id=session_id
+            )
+            db.session.add(session)
+        
+        # Store booking context as JSON string in session data
+        import json
+        booking_context = {
+            'duration_minutes': duration_minutes,
+            'available_slots': [
+                {
+                    'start': slot['start'].isoformat(),
+                    'end': slot['end'].isoformat()
+                } for slot in available_slots[:10]  # Store only first 10 slots
+            ]
+        }
+        session.last_message = f"BOOKING_CONTEXT:{json.dumps(booking_context)}"
+        session.last_activity = datetime.now()
+        session.is_active = True
+        db.session.commit()
     
     def get_booking_context(self, student):
         """Get stored booking context from WhatsApp session"""
