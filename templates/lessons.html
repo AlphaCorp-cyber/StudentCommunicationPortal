@@ -89,7 +89,7 @@
                             <div class="btn-group btn-group-sm">
                                 {% if lesson.status == 'scheduled' and (current_user.is_instructor() and lesson.instructor_id == current_user.id or current_user.is_admin() or current_user.is_super_admin()) %}
                                 <button class="btn btn-outline-success" 
-                                        onclick="openCompleteModal({{ lesson.id }}, '{{ lesson.student.name|replace("'", "\\'") }}')">
+                                        onclick="openCompleteModal({{ lesson.id }}, {{ lesson.student.name|tojson }})">
                                     <i data-feather="check" style="width: 16px; height: 16px;"></i>
                                 </button>
                                 {% endif %}
@@ -101,7 +101,7 @@
                                 {% endif %}
                                 {% if lesson.status == 'scheduled' and (current_user.is_instructor() and lesson.instructor_id == current_user.id or current_user.is_admin() or current_user.is_super_admin()) %}
                                 <button class="btn btn-outline-danger"
-                                        onclick="confirmDeleteLesson({{ lesson.id }}, '{{ lesson.student.name|replace("'", "\\'") }}', '{{ lesson.scheduled_date.strftime('%Y-%m-%d') }}')">
+                                        onclick="confirmDeleteLesson({{ lesson.id }}, {{ lesson.student.name|tojson }}, '{{ lesson.scheduled_date.strftime('%Y-%m-%d') }}')">
                                     <i data-feather="trash-2" style="width: 16px; height: 16px;"></i>
                                 </button>
                                 {% endif %}
@@ -399,16 +399,25 @@ function filterTimeslots() {
 }
 
 function openCompleteModal(lessonId, studentName) {
-    document.getElementById('completeStudentName').textContent = studentName;
-    document.getElementById('completeForm').action = `/lessons/${lessonId}/complete`;
+    console.log('Opening complete modal for lesson:', lessonId, 'student:', studentName);
+    
+    try {
+        document.getElementById('completeStudentName').textContent = studentName;
+        document.getElementById('completeForm').action = `/lessons/${lessonId}/complete`;
 
-    // Clear previous form data
-    document.getElementById('rating').value = '';
-    document.getElementById('notes').value = '';
-    document.getElementById('feedback').value = '';
+        // Clear previous form data
+        document.getElementById('rating').value = '';
+        document.getElementById('notes').value = '';
+        document.getElementById('feedback').value = '';
 
-    var modal = new bootstrap.Modal(document.getElementById('completeModal'));
-    modal.show();
+        var modal = new bootstrap.Modal(document.getElementById('completeModal'));
+        modal.show();
+        
+        console.log('Modal should be visible now');
+    } catch (error) {
+        console.error('Error opening complete modal:', error);
+        alert('Error opening lesson completion form. Check console for details.');
+    }
 }
 
 function confirmDeleteLesson(lessonId, studentName, lessonDate) {
