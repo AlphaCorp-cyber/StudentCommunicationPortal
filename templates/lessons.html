@@ -407,21 +407,45 @@ function openCompleteModal(lessonId, studentName) {
     console.log('Opening complete modal for lesson:', lessonId, 'student:', studentName);
     
     try {
-        document.getElementById('completeStudentName').textContent = studentName;
-        document.getElementById('completeForm').action = `/lessons/${lessonId}/complete`;
+        // Check if all required elements exist
+        const modalElement = document.getElementById('completeModal');
+        const studentNameElement = document.getElementById('completeStudentName');
+        const formElement = document.getElementById('completeForm');
+        
+        if (!modalElement) {
+            throw new Error('Complete modal element not found');
+        }
+        if (!studentNameElement) {
+            throw new Error('Student name element not found');
+        }
+        if (!formElement) {
+            throw new Error('Complete form element not found');
+        }
+        
+        studentNameElement.textContent = studentName;
+        formElement.action = `/lessons/${lessonId}/complete`;
 
         // Clear previous form data
-        document.getElementById('rating').value = '';
-        document.getElementById('notes').value = '';
-        document.getElementById('feedback').value = '';
+        const ratingEl = document.getElementById('rating');
+        const notesEl = document.getElementById('notes');
+        const feedbackEl = document.getElementById('feedback');
+        
+        if (ratingEl) ratingEl.value = '';
+        if (notesEl) notesEl.value = '';
+        if (feedbackEl) feedbackEl.value = '';
 
-        var modal = new bootstrap.Modal(document.getElementById('completeModal'));
+        // Check if Bootstrap is available
+        if (typeof bootstrap === 'undefined') {
+            throw new Error('Bootstrap is not loaded');
+        }
+
+        var modal = new bootstrap.Modal(modalElement);
         modal.show();
         
         console.log('Modal should be visible now');
     } catch (error) {
         console.error('Error opening complete modal:', error);
-        alert('Error opening lesson completion form. Check console for details.');
+        alert('Error opening lesson completion form: ' + error.message);
     }
 }
 
