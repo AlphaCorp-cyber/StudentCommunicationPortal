@@ -426,6 +426,95 @@ def check_lesson_limit():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/available_timeslots')
+@require_login
+def get_available_timeslots():
+    """Get available timeslots for an instructor"""
+    student_id = request.args.get('student_id')
+    days_ahead = int(request.args.get('days_ahead', 7))
+    
+    if not student_id:
+        return jsonify({'error': 'Student ID required'}), 400
+    
+    try:
+        student = Student.query.get(student_id)
+        if not student or not student.instructor:
+            return jsonify({'error': 'Student or instructor not found'}), 400
+        
+        instructor = student.instructor
+        available_slots = get_instructor_available_timeslots(instructor, days_ahead)
+        
+        return jsonify({'timeslots': available_slots})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+def get_instructor_available_timeslots(instructor, days_ahead=7):
+    """Get available timeslots for an instructor (excluding booked slots)"""
+    available_slots = []
+    current_date = datetime.now().date()
+    current_time = datetime.now()
+    
+    # Define working hours (6 AM to 4 PM, Monday to Saturday)
+    working_hours = {
+        0: (6, 16),   # Monday
+        1: (6, 16),   # Tuesday  
+        2: (6, 16),   # Wednesday
+        3: (6, 16),   # Thursday
+        4: (6, 16),   # Friday
+        5: (6, 16),   # Saturday
+        6: None       # Sunday (closed)
+    }
+    
+    for day_offset in range(days_ahead):
+        check_date = current_date + timedelta(days=day_offset)
+        weekday = check_date.weekday()
+        
+        # Skip if no working hours for this day
+        if weekday not in working_hours or working_hours[weekday] is None:
+            continue
+        
+        start_hour, end_hour = working_hours[weekday]
+        
+        # Get existing lessons for this instructor on this date
+        existing_lessons = Lesson.query.filter(
+            Lesson.instructor_id == instructor.id,
+            Lesson.status == LESSON_SCHEDULED,
+            Lesson.scheduled_date >= datetime.combine(check_date, datetime.min.time()),
+            Lesson.scheduled_date < datetime.combine(check_date + timedelta(days=1), datetime.min.time())
+        ).all()
+        
+        # Create list of busy time slots
+        busy_slots = set()
+        for lesson in existing_lessons:
+            start_time = lesson.scheduled_date
+            # Block both 30-minute slots for any lesson
+            busy_slots.add(start_time.replace(second=0, microsecond=0))
+            if lesson.duration_minutes > 30:
+                busy_slots.add((start_time + timedelta(minutes=30)).replace(second=0, microsecond=0))
+        
+        # Generate 30-minute time slots
+        for hour in range(start_hour, end_hour):
+            for minute in [0, 30]:
+                slot_time = datetime.combine(check_date, datetime.min.time().replace(hour=hour, minute=minute))
+                
+                # Skip if slot is in the past
+                if slot_time <= current_time:
+                    continue
+                
+                # Skip if slot is busy
+                if slot_time in busy_slots:
+                    continue
+                
+                available_slots.append({
+                    'datetime': slot_time.isoformat(),
+                    'display': slot_time.strftime('%A, %B %d - %I:%M %p'),
+                    'date': slot_time.strftime('%Y-%m-%d'),
+                    'time': slot_time.strftime('%H:%M'),
+                    'day_name': slot_time.strftime('%A')
+                })
+    
+    return available_slots
+
 @app.route('/lessons/add', methods=['POST'])
 @require_login
 def add_lesson():

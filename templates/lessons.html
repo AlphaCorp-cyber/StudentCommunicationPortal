@@ -160,9 +160,17 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="scheduled_date" class="form-label">Scheduled Date & Time *</label>
-                        <input type="datetime-local" class="form-control" id="scheduled_date" name="scheduled_date" required>
-                        <small class="text-muted">Lessons can only be scheduled between 6:00 AM and 4:00 PM, at :00 or :30 minutes</small>
+                        <label for="scheduled_date" class="form-label">Available Time Slots *</label>
+                        <div id="timeslotContainer" style="display: none;">
+                            <div class="mb-2">
+                                <input type="text" class="form-control" id="timeslotSearch" placeholder="Search by day or time..." onkeyup="filterTimeslots()">
+                            </div>
+                            <div id="timeslotList" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                                <p class="text-muted text-center">Select a student first to load available timeslots</p>
+                            </div>
+                        </div>
+                        <input type="hidden" id="scheduled_date" name="scheduled_date" required>
+                        <small class="text-muted" id="timeslotHelp">Available 30-minute slots between 6:00 AM and 4:00 PM (Monday-Saturday)</small>
                     </div>
                     <div class="row">
                         <div class="col-md-6">
@@ -244,61 +252,38 @@
 </div>
 
 <script>
-// Set minimum date to today for scheduling with time constraints
+// Global variables for timeslot management
+let availableTimeslots = [];
+let selectedTimeslot = null;
+
 document.addEventListener('DOMContentLoaded', function() {
-    const dateInput = document.getElementById('scheduled_date');
     const studentSelect = document.getElementById('student_id');
     const form = document.querySelector('#addLessonModal form');
 
-    if (dateInput) {
-        const now = new Date();
-        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        dateInput.min = now.toISOString().slice(0, 16);
-
-        // Validate time constraints
-        dateInput.addEventListener('change', function() {
-            const selectedDate = new Date(this.value);
-            const hours = selectedDate.getHours();
-            const minutes = selectedDate.getMinutes();
-
-            // Check if time is between 6 AM and 4 PM
-            if (hours < 6 || hours >= 16) {
-                alert('Lessons can only be scheduled between 6:00 AM and 4:00 PM');
-                this.value = '';
-                return;
-            }
-
-            // Check if minutes are in 30-minute intervals
-            if (minutes !== 0 && minutes !== 30) {
-                alert('Lessons must start at :00 or :30 minutes');
-                this.value = '';
-                return;
-            }
-
-            // Check if selected time is in the past
-            const now = new Date();
-            if (selectedDate <= now) {
-                alert('Cannot schedule lessons in the past');
-                this.value = '';
-                return;
-            }
+    // Load timeslots when student is selected
+    if (studentSelect) {
+        studentSelect.addEventListener('change', function() {
+            loadAvailableTimeslots(this.value);
+            checkStudentBalance(); // Keep existing balance check
         });
     }
 
-    // Validate lesson limits when form is submitted
+    // Form validation
     if (form) {
         form.addEventListener('submit', function(e) {
             const studentId = studentSelect.value;
-            const selectedDate = new Date(dateInput.value);
+            const scheduledDate = document.getElementById('scheduled_date').value;
 
-            if (!studentId || !dateInput.value) {
-                return; // Let browser validation handle this
+            if (!studentId || !scheduledDate) {
+                e.preventDefault();
+                alert('Please select a student and time slot');
+                return;
             }
 
-            // Check lesson limits for the day (this would need server-side validation too)
+            // Check lesson limits for the day
+            const selectedDate = new Date(scheduledDate);
             const dateStr = selectedDate.toISOString().split('T')[0];
 
-            // Count existing lessons for this student on this date
             fetch(`/api/check_lesson_limit?student_id=${studentId}&date=${dateStr}`)
                 .then(response => response.json())
                 .then(data => {
@@ -313,6 +298,113 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function loadAvailableTimeslots(studentId) {
+    const container = document.getElementById('timeslotContainer');
+    const listDiv = document.getElementById('timeslotList');
+    
+    if (!studentId) {
+        container.style.display = 'none';
+        availableTimeslots = [];
+        selectedTimeslot = null;
+        document.getElementById('scheduled_date').value = '';
+        return;
+    }
+
+    // Show loading
+    container.style.display = 'block';
+    listDiv.innerHTML = '<p class="text-center text-muted">Loading available timeslots...</p>';
+
+    fetch(`/api/available_timeslots?student_id=${studentId}&days_ahead=14`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                listDiv.innerHTML = `<p class="text-danger text-center">${data.error}</p>`;
+                return;
+            }
+
+            availableTimeslots = data.timeslots || [];
+            renderTimeslots();
+        })
+        .catch(error => {
+            console.error('Error loading timeslots:', error);
+            listDiv.innerHTML = '<p class="text-danger text-center">Error loading timeslots</p>';
+        });
+}
+
+function renderTimeslots() {
+    const listDiv = document.getElementById('timeslotList');
+    
+    if (availableTimeslots.length === 0) {
+        listDiv.innerHTML = '<p class="text-muted text-center">No available timeslots found</p>';
+        return;
+    }
+
+    let html = '';
+    let currentDay = '';
+    
+    availableTimeslots.forEach((slot, index) => {
+        // Group by day
+        if (slot.day_name !== currentDay) {
+            if (currentDay !== '') html += '</div>';
+            currentDay = slot.day_name;
+            html += `<div class="mb-3">
+                        <h6 class="text-primary mb-2">${slot.display.split(' - ')[0]}</h6>
+                        <div class="d-flex flex-wrap gap-2">`;
+        }
+        
+        const timeOnly = slot.display.split(' - ')[1];
+        const isSelected = selectedTimeslot && selectedTimeslot.datetime === slot.datetime;
+        
+        html += `<button type="button" 
+                    class="btn btn-sm ${isSelected ? 'btn-primary' : 'btn-outline-primary'} timeslot-btn" 
+                    onclick="selectTimeslot(${index})"
+                    data-datetime="${slot.datetime}"
+                    data-display="${slot.display}">
+                    ${timeOnly}
+                 </button>`;
+    });
+    
+    if (currentDay !== '') html += '</div>';
+    html += '</div>';
+    
+    listDiv.innerHTML = html;
+}
+
+function selectTimeslot(index) {
+    selectedTimeslot = availableTimeslots[index];
+    document.getElementById('scheduled_date').value = selectedTimeslot.datetime;
+    
+    // Update UI
+    renderTimeslots();
+    
+    // Update help text
+    document.getElementById('timeslotHelp').textContent = `Selected: ${selectedTimeslot.display}`;
+}
+
+function filterTimeslots() {
+    const searchValue = document.getElementById('timeslotSearch').value.toLowerCase();
+    const buttons = document.querySelectorAll('.timeslot-btn');
+    
+    buttons.forEach(button => {
+        const display = button.dataset.display.toLowerCase();
+        const parentGroup = button.closest('.mb-3');
+        
+        if (display.includes(searchValue)) {
+            button.style.display = 'inline-block';
+        } else {
+            button.style.display = 'none';
+        }
+        
+        // Hide day groups with no visible slots
+        const visibleButtons = parentGroup.querySelectorAll('.timeslot-btn:not([style*="none"])');
+        if (visibleButtons.length === 0) {
+            parentGroup.style.display = 'none';
+        } else {
+            parentGroup.style.display = 'block';
+        }
+    });
+}
 
 function openCompleteModal(lessonId, studentName) {
     document.getElementById('completeStudentName').textContent = studentName;
