@@ -111,6 +111,10 @@
                                         onclick="viewStudentDetails({{ student.id }})">
                                     <i data-feather="eye" style="width: 16px; height: 16px;"></i>
                                 </button>
+                                <button class="btn btn-outline-danger" 
+                                        onclick="confirmDeleteStudent({{ student.id }}, '{{ student.name }}')">
+                                    <i data-feather="trash-2" style="width: 16px; height: 16px;"></i>
+                                </button>
                             </div>
                         </td>
                         {% endif %}
@@ -166,32 +170,32 @@
                             <label for="email" class="form-label">Email Address</label>
                             <input type="email" class="form-control" id="email" name="email">
                         </div>
-                        <div class="col-md-6">
-                            <label for="license_type" class="form-label">License Type</label>
-                            <select class="form-select" id="license_type" name="license_type">
-                                <option value="B" selected>Class B (Car)</option>
-                                <option value="A">Class A (Motorcycle)</option>
-                                <option value="C">Class C (Truck)</option>
-                                <option value="D">Class D (Bus)</option>
-                            </select>
-                        </div>
                         <div class="col-12">
                             <label for="address" class="form-label">Address</label>
                             <textarea class="form-control" id="address" name="address" rows="2"></textarea>
                         </div>
-                        <div class="col-md-6">
-                            <label for="total_lessons_required" class="form-label">Total Lessons Required</label>
-                            <input type="number" class="form-control" id="total_lessons_required" 
-                                   name="total_lessons_required" value="20" min="1" max="100">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="license_type" class="form-label">License Type</label>
+                                <select class="form-select" id="license_type" name="license_type">
+                                    <option value="Class 4" selected>Class 4 (Light Motor Vehicle)</option>
+                                    <option value="Class 2">Class 2 (Heavy Motor Vehicle)</option>
+                                    <option value="Class 1">Class 1 (Extra Heavy Motor Vehicle)</option>
+                                    <option value="Class 3">Class 3 (Motor Cycle)</option>
+                                    <option value="Class 5">Class 5 (Tractor)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="total_lessons_required" class="form-label">Total Lessons Required</label>
+                                <input type="number" class="form-control" id="total_lessons_required" 
+                                       name="total_lessons_required" value="20" min="1">
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label for="instructor_id" class="form-label">Assign Instructor</label>
-                            <select class="form-select" id="instructor_id" name="instructor_id">
-                                <option value="">Select an instructor (optional)</option>
-                                {% for instructor in instructors %}
-                                <option value="{{ instructor.id }}">{{ instructor.get_full_name() }}</option>
-                                {% endfor %}
-                            </select>
+                        <div class="mb-3">
+                            <div class="alert alert-info">
+                                <i data-feather="info" class="me-2"></i>
+                                <strong>Auto-Assignment:</strong> An instructor will be automatically assigned based on the selected license class and vehicle availability.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -233,6 +237,32 @@
         </div>
     </div>
 </div>
+
+<!-- Delete Student Modal -->
+<div class="modal fade" id="deleteStudentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="deleteStudentForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Delete Student</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i data-feather="alert-triangle" class="me-2"></i>
+                        <strong>Warning:</strong> This action cannot be undone.
+                    </div>
+                    <p>Are you sure you want to delete student: <strong id="deleteStudentName"></strong>?</p>
+                    <p class="text-muted">This will also delete all associated lessons and payment records.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endif %}
 
 <script>
@@ -248,6 +278,12 @@ function viewStudentDetails(studentId) {
     // For now, we'll just log the student ID
     console.log('View student details for ID:', studentId);
     // You could implement a detailed view modal here
+}
+
+function confirmDeleteStudent(studentId, studentName) {
+    document.getElementById('deleteStudentName').textContent = studentName;
+    document.getElementById('deleteStudentForm').action = `/students/${studentId}/delete`;
+    new bootstrap.Modal(document.getElementById('deleteStudentModal')).show();
 }
 </script>
 {% endblock %}

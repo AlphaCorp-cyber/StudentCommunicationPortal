@@ -287,7 +287,7 @@ def add_student():
             User.active == True,
             Vehicle.license_class == license_type,
             Vehicle.is_active == True
-        ).group_by(User.id).order_by(func.count(Student.id.distinct())).first()
+        ).first()
         
         if not available_instructor:
             # Fallback: find instructor with least students regardless of vehicle
@@ -353,6 +353,25 @@ def assign_instructor(student_id):
         student.instructor_id = None
         db.session.commit()
         flash(f'Instructor unassigned from {student.name}.', 'info')
+    
+    return redirect(url_for('students'))
+
+@app.route('/students/<int:student_id>/delete', methods=['POST'])
+@require_role('admin')
+def delete_student(student_id):
+    """Delete a student and all associated records"""
+    try:
+        student = Student.query.get_or_404(student_id)
+        student_name = student.name
+        
+        # Mark student as inactive instead of hard delete to preserve data integrity
+        student.is_active = False
+        db.session.commit()
+        
+        flash(f'Student {student_name} has been deactivated successfully!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting student: {str(e)}', 'error')
     
     return redirect(url_for('students'))
 
