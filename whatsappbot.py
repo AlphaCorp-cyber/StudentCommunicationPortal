@@ -112,6 +112,12 @@ class WhatsAppBot:
             )
             db.session.add(session)
         
+        # Check if session is expired (older than 30 minutes)
+        if session.last_activity and (datetime.now() - session.last_activity).total_seconds() > 1800:
+            # Clear any booking context if session expired
+            if session.last_message and session.last_message.startswith('BOOKING_CONTEXT:'):
+                session.last_message = "session_expired"
+        
         session.last_message = message
         session.last_activity = datetime.now()
         session.is_active = True
@@ -120,6 +126,10 @@ class WhatsAppBot:
     
     def handle_message(self, student, message):
         """Handle incoming message and route to appropriate handler"""
+        # Reset/restart commands to clear any stuck state
+        if message in ['reset', 'restart', 'start', 'clear']:
+            return self.reset_session_and_start(student)
+        
         # Check for cancel with lesson number (e.g., "cancel 1")
         if message.startswith('cancel '):
             parts = message.split()
@@ -457,6 +467,7 @@ Just reply with a number (1-5) to get started!
 🔹 *3* - Check your progress
 🔹 *4* - Cancel upcoming lessons
 🔹 *menu* - Show main menu
+🔹 *reset* - Clear everything and start over
 
 💡 *Tips:*
 • Lessons are available 6:00 AM - 4:00 PM (Mon-Sat)
@@ -464,6 +475,9 @@ Just reply with a number (1-5) to get started!
 • Cancel at least 2 hours before lesson time
 • Choose 30-minute or 1-hour lessons when booking
 • Tomorrow's lessons can be booked after 6:00 PM today
+
+🔄 *Stuck or confused?*
+Type 'reset' to clear your session and start fresh!
 
 📞 *Need more help?*
 Contact your instructor or driving school directly."""
@@ -688,10 +702,28 @@ Reply with *30* or *60* to see available time slots."""
         
         if session and session.last_message and session.last_message.startswith('BOOKING_CONTEXT:'):
             try:
+                # Check if booking context is still valid (not older than 15 minutes)
+                if session.last_activity and (datetime.now() - session.last_activity).total_seconds() > 900:
+                    # Context expired, clear it
+                    session.last_message = "booking_context_expired"
+                    db.session.commit()
+                    return None
+                
                 import json
                 context_json = session.last_message.replace('BOOKING_CONTEXT:', '')
-                return json.loads(context_json)
-            except:
+                context = json.loads(context_json)
+                
+                # Validate context structure
+                if not isinstance(context, dict) or 'duration_minutes' not in context or 'available_slots' not in context:
+                    return None
+                    
+                return context
+            except Exception as e:
+                logger.error(f"Error parsing booking context: {str(e)}")
+                # Clear invalid context
+                if session:
+                    session.last_message = "booking_context_invalid"
+                    db.session.commit()
                 return None
         return None
     
@@ -703,7 +735,13 @@ Reply with *30* or *60* to see available time slots."""
             # Get booking context
             booking_context = self.get_booking_context(student)
             if not booking_context:
-                return "❌ No active booking session found. Please start by selecting '2' to book a lesson."
+                return """❌ No active booking session found. 
+
+Please start fresh:
+• Type '2' to book a lesson
+• Or type 'reset' to clear everything and start over
+
+📋 Need the main menu? Type 'menu'"""
             
             available_slots = booking_context['available_slots']
             duration_minutes = booking_context['duration_minutes']
@@ -806,11 +844,45 @@ Reply with *30* or *60* to see available time slots."""
         """Handle unrecognized messages"""
         return f"""I didn't understand that, {student.name}. 🤔
 
-Reply with 'menu' to see available options or '5' for help.
+Reply with:
+• 'menu' to see available options
+• 'reset' to start over
+• '5' for help
 
 📋 Quick menu:
-1️⃣ View lessons | 2️⃣ Book lesson | 3️⃣ Progress | 4️⃣ Cancel | 5️⃣ Help"""
+1️⃣ View lessons | 2️⃣ Book lesson | 3️⃣ Progress | 4️⃣ Cancel | 5️⃣ Help
+
+If you're stuck, just type 'reset' to clear everything and start fresh! 🔄"""
     
+    def reset_session_and_start(self, student):
+        """Reset session state and show main menu"""
+        # Clear any booking context
+        session_id = f"whatsapp_{student.phone}_{datetime.now().strftime('%Y%m%d')}"
+        session = WhatsAppSession.query.filter_by(session_id=session_id).first()
+        
+        if session:
+            session.last_message = "session_reset"
+            session.last_activity = datetime.now()
+            db.session.commit()
+        
+        return f"""🔄 *Session Reset* 
+
+Hello again {student.name}! 👋
+
+I've cleared any previous conversation state. Let's start fresh!
+
+📋 *Main Menu:*
+
+1️⃣ View upcoming lessons
+2️⃣ Book a lesson  
+3️⃣ Check your progress
+4️⃣ Cancel a lesson
+5️⃣ Get help
+
+Just reply with a number (1-5) to get started!
+
+👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}"""
+
     def handle_unknown_student(self, phone_number):
         """Handle messages from unknown phone numbers"""
         return """Sorry, I don't recognize this phone number. 📱
