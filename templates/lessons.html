@@ -91,7 +91,7 @@
                                 <button class="btn btn-outline-success" 
                                         data-lesson-id="{{ lesson.id }}" 
                                         data-student-name="{{ lesson.student.name }}"
-                                        onclick="openCompleteModal(this.getAttribute('data-lesson-id'), this.getAttribute('data-student-name'))">
+                                        onclick="alert('Button clicked! ID: ' + this.getAttribute('data-lesson-id')); openCompleteModal(this.getAttribute('data-lesson-id'), this.getAttribute('data-student-name'));">
                                     <i data-feather="check" style="width: 16px; height: 16px;"></i>
                                 </button>
                                 {% endif %}
