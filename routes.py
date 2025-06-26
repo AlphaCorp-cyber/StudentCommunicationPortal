@@ -451,8 +451,15 @@ def get_available_timeslots():
 def get_instructor_available_timeslots(instructor, days_ahead=7):
     """Get available timeslots for an instructor (excluding booked slots)"""
     available_slots = []
-    current_date = datetime.now().date()
     current_time = datetime.now()
+    
+    # Determine the starting date for availability
+    # If it's after 6 PM, allow booking for tomorrow
+    if current_time.hour >= 18:  # 6 PM or later
+        start_date = current_time.date()
+    else:
+        # Before 6 PM, only allow booking from today
+        start_date = current_time.date()
     
     # Define working hours (6 AM to 4 PM, Monday to Saturday)
     working_hours = {
@@ -466,7 +473,7 @@ def get_instructor_available_timeslots(instructor, days_ahead=7):
     }
     
     for day_offset in range(days_ahead):
-        check_date = current_date + timedelta(days=day_offset)
+        check_date = start_date + timedelta(days=day_offset)
         weekday = check_date.weekday()
         
         # Skip if no working hours for this day
@@ -497,17 +504,34 @@ def get_instructor_available_timeslots(instructor, days_ahead=7):
             for minute in [0, 30]:
                 slot_time = datetime.combine(check_date, datetime.min.time().replace(hour=hour, minute=minute))
                 
-                # Skip if slot is in the past
-                if slot_time <= current_time:
+                # Special logic for availability:
+                # 1. If it's the same day and before current time, skip
+                # 2. If it's after 6 PM, allow booking for next day
+                # 3. Always allow future days
+                is_same_day = slot_time.date() == current_time.date()
+                is_next_day = slot_time.date() == (current_time.date() + timedelta(days=1))
+                
+                if is_same_day and slot_time <= current_time:
+                    continue
+                elif is_next_day and current_time.hour < 18:
+                    # Don't show next day slots if it's before 6 PM
                     continue
                 
                 # Skip if slot is busy
                 if slot_time in busy_slots:
                     continue
                 
+                # Add status indicator for lesson scheduling
+                status_info = ""
+                if slot_time.date() > current_time.date():
+                    if slot_time.date() == (current_time.date() + timedelta(days=1)) and current_time.hour >= 18:
+                        status_info = " (Available for booking)"
+                    elif slot_time.date() > (current_time.date() + timedelta(days=1)):
+                        status_info = " (Future booking)"
+                
                 available_slots.append({
                     'datetime': slot_time.isoformat(),
-                    'display': slot_time.strftime('%A, %B %d - %I:%M %p'),
+                    'display': slot_time.strftime('%A, %B %d - %I:%M %p') + status_info,
                     'date': slot_time.strftime('%Y-%m-%d'),
                     'time': slot_time.strftime('%H:%M'),
                     'day_name': slot_time.strftime('%A')
@@ -547,9 +571,19 @@ def add_lesson():
             flash('Lessons must start at :00 or :30 minutes', 'error')
             return redirect(url_for('lessons'))
         
-        # Validate not in the past
-        if scheduled_date <= datetime.now():
+        # Validate booking time rules
+        current_time = datetime.now()
+        lesson_date = scheduled_date.date()
+        current_date = current_time.date()
+        
+        # Check if trying to book in the past
+        if scheduled_date <= current_time:
             flash('Cannot schedule lessons in the past', 'error')
+            return redirect(url_for('lessons'))
+        
+        # Check next-day booking rule (only after 6 PM)
+        if lesson_date == (current_date + timedelta(days=1)) and current_time.hour < 18:
+            flash('Next day lessons can only be booked after 6:00 PM', 'error')
             return redirect(url_for('lessons'))
         
         # Check daily lesson limit (max 2 per day)
