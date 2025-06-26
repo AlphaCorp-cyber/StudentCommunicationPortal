@@ -748,19 +748,29 @@ def complete_lesson(lesson_id):
     """Mark a lesson as completed"""
     lesson = Lesson.query.get_or_404(lesson_id)
     
-    # Verify instructor can complete this lesson
+    # Verify user has permission to complete this lesson
     if current_user.is_instructor() and lesson.instructor_id != current_user.id:
         flash('You can only complete your own lessons.', 'error')
         return redirect(url_for('lessons'))
+    elif not (current_user.is_instructor() or current_user.is_admin() or current_user.is_super_admin()):
+        flash('Access denied.', 'error')
+        return redirect(url_for('lessons'))
     
     try:
+        rating_value = None
+        if request.form.get('rating') and request.form.get('rating').strip():
+            rating_value = int(request.form['rating'])
+        
         lesson.mark_completed(
-            notes=request.form.get('notes'),
-            feedback=request.form.get('feedback'),
-            rating=int(request.form['rating']) if request.form.get('rating') else None
+            notes=request.form.get('notes', '').strip() or None,
+            feedback=request.form.get('feedback', '').strip() or None,
+            rating=rating_value
         )
         db.session.commit()
-        flash('Lesson marked as completed!', 'success')
+        flash(f'Lesson for {lesson.student.name} marked as completed!', 'success')
+    except ValueError as e:
+        db.session.rollback()
+        flash('Invalid rating value provided.', 'error')
     except Exception as e:
         db.session.rollback()
         flash(f'Error completing lesson: {str(e)}', 'error')
