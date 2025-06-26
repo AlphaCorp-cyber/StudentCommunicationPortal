@@ -88,12 +88,12 @@
                         <td>
                             <div class="btn-group btn-group-sm">
                                 {% if lesson.status == 'scheduled' and (current_user.is_instructor() and lesson.instructor_id == current_user.id or current_user.is_admin() or current_user.is_super_admin()) %}
-                                <button class="btn btn-outline-success" 
-                                        data-lesson-id="{{ lesson.id }}" 
-                                        data-student-name="{{ lesson.student.name }}"
-                                        onclick="openCompleteModal(this.getAttribute('data-lesson-id'), this.getAttribute('data-student-name'))">
-                                    <i data-feather="check" style="width: 16px; height: 16px;"></i>
-                                </button>
+                                <form method="POST" action="/lessons/{{ lesson.id }}/complete" style="display: inline;">
+                                    <button type="submit" class="btn btn-outline-success" 
+                                            onclick="return confirm('Mark lesson as completed for {{ lesson.student.name }}?')">
+                                        <i data-feather="check" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                </form>
                                 {% endif %}
                                 {% if lesson.status == 'completed' %}
                                 <button class="btn btn-outline-info" 
