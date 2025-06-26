@@ -11,14 +11,14 @@
                 <div class="mb-4">
                     <i data-feather="shield-off" style="width: 80px; height: 80px;" class="text-danger mb-4"></i>
                 </div>
-                
+
                 <!-- Error Message -->
                 <h1 class="display-4 fw-bold text-danger mb-3">403</h1>
                 <h2 class="h4 mb-3">Access Denied</h2>
                 <p class="lead text-muted mb-4">
                     You don't have permission to access this resource.
                 </p>
-                
+
                 <!-- Error Details -->
                 <div class="card bg-secondary mb-4">
                     <div class="card-body">
@@ -48,7 +48,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Possible Causes -->
                 <div class="card mb-4">
                     <div class="card-header">
@@ -78,7 +78,7 @@
                         </ul>
                     </div>
                 </div>
-                
+
                 <!-- Role-specific Access Information -->
                 {% if current_user.is_authenticated %}
                 <div class="card mb-4">
@@ -115,7 +115,7 @@
                     </div>
                 </div>
                 {% endif %}
-                
+
                 <!-- Action Buttons -->
                 <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
                     {% if current_user.is_authenticated %}
@@ -138,7 +138,7 @@
                     </a>
                     {% endif %}
                 </div>
-                
+
                 <!-- Contact Information -->
                 <div class="mt-5 pt-4 border-top">
                     <p class="text-muted">
