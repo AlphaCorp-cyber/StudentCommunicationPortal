@@ -558,10 +558,29 @@ def add_lesson():
             flash('Cannot schedule lessons in the past', 'error')
             return redirect(url_for('lessons'))
         
-        # Only allow booking for today or tomorrow
-        if lesson_date > (current_date + timedelta(days=1)):
-            flash('Lessons can only be booked for today or tomorrow', 'error')
-            return redirect(url_for('lessons'))
+        # Different rules for admin vs WhatsApp bot bookings
+        # Admins can book for tomorrow anytime
+        if current_user.is_admin() or current_user.is_super_admin():
+            # Admins: Allow booking for today or tomorrow anytime
+            if lesson_date > (current_date + timedelta(days=1)):
+                flash('Lessons can only be booked for today or tomorrow', 'error')
+                return redirect(url_for('lessons'))
+        else:
+            # Instructors and WhatsApp bot: More restrictive rules
+            # Only allow booking for today or tomorrow
+            if lesson_date > (current_date + timedelta(days=1)):
+                flash('Lessons can only be booked for today or tomorrow', 'error')
+                return redirect(url_for('lessons'))
+            
+            # For tomorrow bookings, check time restrictions (WhatsApp bot rule)
+            if lesson_date == (current_date + timedelta(days=1)):
+                # Can only book tomorrow if it's after 6 PM today or before 3:30 PM tomorrow
+                if current_time.hour < 18 and current_date < lesson_date:
+                    flash('Next day lessons can only be booked after 6:00 PM', 'error')
+                    return redirect(url_for('lessons'))
+                elif current_date == lesson_date and current_time.hour >= 15 and current_time.minute >= 30:
+                    flash('Booking for tomorrow closes at 3:30 PM', 'error')
+                    return redirect(url_for('lessons'))
         
         # Check daily lesson limit (max 2 per day)
         lesson_date = scheduled_date.date()

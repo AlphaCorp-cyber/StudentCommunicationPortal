@@ -231,14 +231,14 @@ Type 'menu' to see all options or 'help' for assistance."""
         available_slots = []
         current_date = datetime.now().date()
         
-        # Define working hours (9 AM to 6 PM, Monday to Saturday)
+        # Define working hours (6 AM to 4 PM, Monday to Saturday)
         working_hours = {
-            0: [(9, 0), (18, 0)],  # Monday
-            1: [(9, 0), (18, 0)],  # Tuesday
-            2: [(9, 0), (18, 0)],  # Wednesday
-            3: [(9, 0), (18, 0)],  # Thursday
-            4: [(9, 0), (18, 0)],  # Friday
-            5: [(9, 0), (17, 0)],  # Saturday (shorter day)
+            0: [(6, 0), (16, 0)],  # Monday
+            1: [(6, 0), (16, 0)],  # Tuesday
+            2: [(6, 0), (16, 0)],  # Wednesday
+            3: [(6, 0), (16, 0)],  # Thursday
+            4: [(6, 0), (16, 0)],  # Friday
+            5: [(6, 0), (16, 0)],  # Saturday
             6: []  # Sunday (closed)
         }
         
@@ -282,12 +282,30 @@ Type 'menu' to see all options or 'help' for assistance."""
                         is_available = False
                         break
                 
-                # Only show future slots (not past ones for today)
-                if is_available and current_slot > datetime.now():
-                    available_slots.append({
-                        'start': current_slot,
-                        'end': slot_end
-                    })
+                # WhatsApp bot booking rules:
+                # - Can book tomorrow only after 6 PM today
+                # - Booking closes at 3:30 PM on the day
+                now = datetime.now()
+                slot_date = current_slot.date()
+                today = now.date()
+                tomorrow = today + timedelta(days=1)
+                
+                # Check if slot is available based on WhatsApp bot rules
+                if is_available and current_slot > now:
+                    # If booking for tomorrow, check if it's after 6 PM today
+                    if slot_date == tomorrow:
+                        if now.hour >= 18:  # After 6 PM, can book tomorrow
+                            available_slots.append({
+                                'start': current_slot,
+                                'end': slot_end
+                            })
+                    # If booking for today, check if it's before 3:30 PM
+                    elif slot_date == today:
+                        if now.hour < 15 or (now.hour == 15 and now.minute < 30):  # Before 3:30 PM
+                            available_slots.append({
+                                'start': current_slot,
+                                'end': slot_end
+                            })
                 
                 current_slot += timedelta(minutes=60)  # Move to next hour
         
