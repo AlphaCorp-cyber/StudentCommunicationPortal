@@ -440,38 +440,47 @@ function openCompleteModal(lessonId, studentName) {
 
         console.log('About to show modal...');
         
-        // Try alternative Bootstrap modal syntax
-        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-            console.log('Using Bootstrap 5 modal');
-            const modal = new bootstrap.Modal(modalElement);
-            modal.show();
-        } else if (typeof $ !== 'undefined' && $.fn.modal) {
-            console.log('Using jQuery modal fallback');
-            $(modalElement).modal('show');
-        } else {
-            // Manual modal display as fallback
-            console.log('Using manual modal display');
-            modalElement.style.display = 'block';
-            modalElement.classList.add('show');
-            modalElement.setAttribute('aria-modal', 'true');
-            modalElement.setAttribute('role', 'dialog');
-            
-            // Add backdrop
-            const backdrop = document.createElement('div');
-            backdrop.className = 'modal-backdrop fade show';
-            backdrop.id = 'modal-backdrop-' + lessonId;
-            document.body.appendChild(backdrop);
-            
-            // Add close functionality
-            const closeButtons = modalElement.querySelectorAll('[data-bs-dismiss="modal"]');
-            closeButtons.forEach(btn => {
-                btn.onclick = function() {
-                    modalElement.style.display = 'none';
-                    modalElement.classList.remove('show');
-                    document.getElementById('modal-backdrop-' + lessonId)?.remove();
-                };
-            });
-        }
+        // Force modal to be visible with proper z-index
+        console.log('Using manual modal display with proper z-index');
+        
+        // Remove any existing backdrop
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        
+        // Set high z-index and make visible
+        modalElement.style.display = 'block';
+        modalElement.style.zIndex = '9999';
+        modalElement.classList.add('show');
+        modalElement.setAttribute('aria-modal', 'true');
+        modalElement.setAttribute('role', 'dialog');
+        
+        // Add backdrop with proper z-index
+        const backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop fade show';
+        backdrop.style.zIndex = '9998';
+        backdrop.id = 'modal-backdrop-' + lessonId;
+        document.body.appendChild(backdrop);
+        
+        // Ensure body has modal-open class
+        document.body.classList.add('modal-open');
+        
+        // Add close functionality
+        const closeButtons = modalElement.querySelectorAll('[data-bs-dismiss="modal"]');
+        closeButtons.forEach(btn => {
+            btn.onclick = function() {
+                modalElement.style.display = 'none';
+                modalElement.classList.remove('show');
+                document.body.classList.remove('modal-open');
+                document.getElementById('modal-backdrop-' + lessonId)?.remove();
+            };
+        });
+        
+        // Also close on backdrop click
+        backdrop.onclick = function() {
+            modalElement.style.display = 'none';
+            modalElement.classList.remove('show');
+            document.body.classList.remove('modal-open');
+            backdrop.remove();
+        };
         
         console.log('Modal should be visible now');
     } catch (error) {
