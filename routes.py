@@ -274,32 +274,31 @@ def students():
 @app.route('/students/add', methods=['POST'])
 @require_role('admin')
 def add_student():
-    """Add a new student"""
+    """Add a new student with auto-assignment of instructor"""
     try:
         license_type = request.form.get('license_type', 'Class 4')
         
-        # Auto-assign instructor based on license class
-        instructor_id = request.form.get('instructor_id')
-        if not instructor_id:
-            # Find an instructor with vehicles for this license class
-            from sqlalchemy import func
-            available_instructor = db.session.query(User).join(Vehicle).filter(
+        # Auto-assign instructor based on license class and vehicle availability
+        from sqlalchemy import func
+        
+        # First, try to find instructor with vehicles for this license class
+        available_instructor = db.session.query(User).join(Vehicle, User.id == Vehicle.instructor_id).filter(
+            User.role == 'instructor',
+            User.active == True,
+            Vehicle.license_class == license_type,
+            Vehicle.is_active == True
+        ).group_by(User.id).order_by(func.count(Student.id.distinct())).first()
+        
+        if not available_instructor:
+            # Fallback: find instructor with least students regardless of vehicle
+            available_instructor = db.session.query(User).outerjoin(Student, User.id == Student.instructor_id).filter(
                 User.role == 'instructor',
-                User.active == True,
-                Vehicle.license_class == license_type,
-                Vehicle.is_active == True
+                User.active == True
             ).group_by(User.id).order_by(func.count(Student.id)).first()
-            
-            if available_instructor:
-                instructor_id = available_instructor.id
-            else:
-                # Fallback to any available instructor
-                available_instructor = User.query.filter_by(role='instructor', active=True).first()
-                if available_instructor:
-                    instructor_id = available_instructor.id
-                else:
-                    flash('No instructors available. Please create an instructor first.', 'error')
-                    return redirect(url_for('students'))
+        
+        if not available_instructor:
+            flash('No active instructors available. Please create an instructor first.', 'error')
+            return redirect(url_for('admin_dashboard'))
         
         # Format phone number with +263 prefix
         phone = request.form['phone'].strip()
@@ -308,25 +307,32 @@ def add_student():
             phone = phone.lstrip('0').strip()
             phone = f'+263{phone}'
         
+        # Check if phone number already exists
+        existing_student = Student.query.filter_by(phone=phone).first()
+        if existing_student:
+            flash(f'A student with phone number {phone} already exists.', 'error')
+            return redirect(url_for('admin_dashboard'))
+        
         student = Student()
-        student.name = request.form['name']
+        student.name = request.form['name'].strip()
         student.phone = phone
-        student.email = request.form.get('email')
-        student.address = request.form.get('address')
+        student.email = request.form.get('email', '').strip() or None
+        student.address = request.form.get('address', '').strip() or None
         student.license_type = license_type
-        student.instructor_id = int(instructor_id)
+        student.instructor_id = available_instructor.id
         student.total_lessons_required = int(request.form.get('total_lessons_required', 20))
         
         db.session.add(student)
         db.session.commit()
         
-        instructor_name = User.query.get(instructor_id).get_full_name()
-        flash(f'Student {student.name} added successfully! Auto-assigned to instructor: {instructor_name}', 'success')
+        flash(f'Student {student.name} added successfully! Auto-assigned to instructor: {available_instructor.get_full_name()} ({license_type})', 'success')
+        
     except Exception as e:
         db.session.rollback()
-        flash(f'Error adding student: {str(e)}', 'error')
+        print(f"Error adding student: {str(e)}")  # For debugging
+        flash(f'Error adding student: Please check all required fields are filled correctly.', 'error')
     
-    return redirect(url_for('students'))
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/students/<int:student_id>/assign', methods=['POST'])
 @require_role('admin')

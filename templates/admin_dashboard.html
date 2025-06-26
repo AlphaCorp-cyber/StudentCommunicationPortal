@@ -428,13 +428,10 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label for="instructor_id" class="form-label">Assign Instructor *</label>
-                        <select class="form-select" id="instructor_id" name="instructor_id" required>
-                            <option value="">Select an instructor</option>
-                            {% for instructor in instructors %}
-                            <option value="{{ instructor.id }}">{{ instructor.get_full_name() }}</option>
-                            {% endfor %}
-                        </select>
+                        <div class="alert alert-info">
+                            <i data-feather="info" class="me-2"></i>
+                            <strong>Auto-Assignment:</strong> An instructor will be automatically assigned based on the selected license class and vehicle availability.
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
