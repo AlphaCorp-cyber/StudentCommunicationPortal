@@ -126,9 +126,12 @@ class WhatsAppBot:
     
     def handle_message(self, student, message):
         """Handle incoming message and route to appropriate handler"""
-        # Reset/restart commands to clear any stuck state
-        if message in ['reset', 'restart', 'start', 'clear']:
+        # Reset/restart commands to clear any stuck state - always available
+        if message in ['reset', 'restart', 'start', 'clear', 'menu', 'back', 'home']:
             return self.reset_session_and_start(student)
+        
+        # Get current session state
+        session_state = self.get_session_state(student)
         
         # Check for cancel with lesson number (e.g., "cancel 1")
         if message.startswith('cancel '):
@@ -142,12 +145,31 @@ class WhatsAppBot:
             if len(parts) >= 2:
                 return self.process_timeslot_booking(student, parts[1])
         
-        # Handle numerical menu options
+        # Context-aware message handling based on session state
+        if session_state == 'awaiting_duration':
+            if message in ['30', '60']:
+                return self.handle_duration_selection(student, int(message))
+            else:
+                return self.handle_duration_selection_error(student, message)
+        
+        elif session_state == 'awaiting_booking_slot':
+            if message.startswith('book '):
+                parts = message.split()
+                if len(parts) >= 2:
+                    return self.process_timeslot_booking(student, parts[1])
+            # Try to parse as just a number
+            try:
+                slot_num = int(message)
+                return self.process_timeslot_booking(student, str(slot_num))
+            except ValueError:
+                return self.handle_booking_slot_error(student, message)
+        
+        # Handle numerical menu options (main menu)
         if message in ['1', '2', '3', '4', '5']:
             return self.handle_menu_option(student, message)
         
-        # Handle booking duration selection (30 or 60)
-        if message in ['30', '60']:
+        # Handle booking duration selection (when in main menu)
+        if message in ['30', '60'] and session_state != 'awaiting_booking_slot':
             return self.handle_duration_selection(student, int(message))
         
         # Check for specific commands
@@ -155,8 +177,8 @@ class WhatsAppBot:
             if command in message:
                 return handler(student)
         
-        # Default response if no command matches
-        return self.handle_default(student)
+        # Intelligent fallback - guide user based on context
+        return self.handle_contextual_fallback(student, message, session_state)
     
     def handle_greeting(self, student):
         """Handle greeting messages"""
@@ -392,10 +414,13 @@ Just reply with a number (1-5) to get started!
         ).order_by(Lesson.scheduled_date).all()
         
         if not upcoming_lessons:
-            return "❌ You have no upcoming lessons to cancel."
+            return "❌ You have no upcoming lessons to cancel.\n\nType 'menu' to return to main menu."
+        
+        # Set session state to expect cancel selection
+        self.set_session_state(student, 'awaiting_cancel_selection')
         
         response = "📋 *Your Upcoming Lessons:*\n\n"
-        response += "To cancel a lesson, reply with:\n*cancel [lesson number]*\n\n"
+        response += "To cancel a lesson:\n• Type *cancel [number]* (e.g., cancel 1)\n• Or just type the number (e.g., 1)\n\n"
         
         for i, lesson in enumerate(upcoming_lessons, 1):
             date_str = lesson.scheduled_date.strftime('%B %d, %Y')
@@ -406,8 +431,9 @@ Just reply with a number (1-5) to get started!
             response += f"   📅 {date_str} at {time_str}\n"
             response += f"   👨‍🏫 {instructor_name}\n\n"
         
-        response += "💡 Example: *cancel 1* (to cancel lesson #1)\n"
-        response += "⚠️ Please cancel at least 2 hours before your lesson time."
+        response += "💡 Quick options:\n"
+        response += "• Type 'menu' to return to main menu\n"
+        response += "⚠️ Cancel at least 2 hours before lesson time."
         
         return response
     
@@ -515,6 +541,9 @@ Just reply with a number (1-5) to get started!
     
     def handle_book_lesson(self, student):
         """Handle lesson booking - first ask for duration"""
+        # Set session state to expect duration selection
+        self.set_session_state(student, 'awaiting_duration')
+        
         return """📅 *Book a Lesson*
 
 Please choose your lesson duration:
@@ -522,29 +551,31 @@ Please choose your lesson duration:
 3️⃣0️⃣ 30 minutes
 6️⃣0️⃣ 60 minutes (1 hour)
 
-Reply with *30* or *60* to see available time slots."""
+Reply with *30* or *60* to see available time slots.
+
+💡 Type 'menu' anytime to return to main menu"""
     
     def handle_duration_selection(self, student, duration_minutes):
         """Handle duration selection and show available timeslots with booking numbers"""
         if duration_minutes not in [30, 60]:
-            return "❌ Please select either 30 or 60 minutes."
+            return self.handle_duration_selection_error(student, str(duration_minutes))
         
         instructor = student.instructor
         if not instructor:
-            return "❌ No instructor assigned. Please contact the driving school."
+            return "❌ No instructor assigned. Please contact the driving school.\n\nType 'menu' to return to main menu."
         
         # Check if student has sufficient balance
         if not student.has_sufficient_balance(duration_minutes):
             lesson_price = student.get_lesson_price(duration_minutes)
-            return f"❌ Insufficient balance for {duration_minutes}-minute lesson.\n\nLesson cost: ${lesson_price:.2f}\nYour balance: ${student.account_balance:.2f}\n\nPlease top up your account and try again."
+            return f"❌ Insufficient balance for {duration_minutes}-minute lesson.\n\nLesson cost: ${lesson_price:.2f}\nYour balance: ${student.account_balance:.2f}\n\nPlease top up your account and try again.\n\nType 'menu' to return to main menu."
         
         # Get available slots for the selected duration
         available_slots = self.get_duration_specific_timeslots(instructor, duration_minutes)
         
         if not available_slots:
-            return f"❌ No {duration_minutes}-minute slots available for the next 2 days.\n\nPlease try again later or contact your instructor."
+            return f"❌ No {duration_minutes}-minute slots available for the next 2 days.\n\nTry:\n• Different duration (type '2' for booking menu)\n• Contact your instructor\n• Type 'menu' for main menu"
         
-        # Store the booking context in session (we'll use a simple approach with the session)
+        # Store the booking context in session
         self.store_booking_context(student, duration_minutes, available_slots)
         
         response = f"📅 *Available {duration_minutes}-minute slots:*\n\n"
@@ -566,8 +597,12 @@ Reply with *30* or *60* to see available time slots."""
             response += f"{i+1}. {start_time}\n"
             slot_count += 1
         
-        response += f"\n💡 To book a slot, reply:\n*book [number]*\n\nExample: *book 1* (to book slot #1)"
-        response += f"\n\nType 'menu' to return to the main menu."
+        response += f"\n💡 *Easy booking:*\n"
+        response += f"• Type *{i+1}* to book any slot (e.g., 1, 2, 3...)\n"
+        response += f"• Or type *book 1* for slot #1\n\n"
+        response += f"🔄 *Quick options:*\n"
+        response += f"• Type 'menu' for main menu\n"
+        response += f"• Type '2' to change duration"
         
         return response
     
@@ -669,6 +704,46 @@ Reply with *30* or *60* to see available time slots."""
     
     def store_booking_context(self, student, duration_minutes, available_slots):
         """Store booking context in WhatsApp session"""
+        # Store booking context as JSON string in session data
+        booking_context = {
+            'duration_minutes': duration_minutes,
+            'available_slots': [
+                {
+                    'start': slot['start'].isoformat(),
+                    'end': slot['end'].isoformat()
+                } for slot in available_slots[:10]  # Store only first 10 slots
+            ]
+        }
+        
+        # Use new session state management
+        self.set_session_state(student, 'awaiting_booking_slot', booking_context)
+    
+    def get_session_state(self, student):
+        """Get current session state to determine conversation flow"""
+        session_id = f"whatsapp_{student.phone}_{datetime.now().strftime('%Y%m%d')}"
+        session = WhatsAppSession.query.filter_by(session_id=session_id).first()
+        
+        if not session or not session.last_message:
+            return 'main_menu'
+        
+        message = session.last_message
+        
+        # Check if waiting for duration selection
+        if message == 'awaiting_duration':
+            return 'awaiting_duration'
+        
+        # Check if booking context exists (waiting for slot selection)
+        if message.startswith('BOOKING_CONTEXT:'):
+            return 'awaiting_booking_slot'
+        
+        # Check if showing cancel options
+        if message == 'showing_cancel_options':
+            return 'awaiting_cancel_selection'
+        
+        return 'main_menu'
+    
+    def set_session_state(self, student, state, data=None):
+        """Set session state for conversation flow tracking"""
         session_id = f"whatsapp_{student.phone}_{datetime.now().strftime('%Y%m%d')}"
         session = WhatsAppSession.query.filter_by(session_id=session_id).first()
         
@@ -679,18 +754,16 @@ Reply with *30* or *60* to see available time slots."""
             )
             db.session.add(session)
         
-        # Store booking context as JSON string in session data
-        import json
-        booking_context = {
-            'duration_minutes': duration_minutes,
-            'available_slots': [
-                {
-                    'start': slot['start'].isoformat(),
-                    'end': slot['end'].isoformat()
-                } for slot in available_slots[:10]  # Store only first 10 slots
-            ]
-        }
-        session.last_message = f"BOOKING_CONTEXT:{json.dumps(booking_context)}"
+        if state == 'awaiting_duration':
+            session.last_message = 'awaiting_duration'
+        elif state == 'awaiting_booking_slot' and data:
+            import json
+            session.last_message = f"BOOKING_CONTEXT:{json.dumps(data)}"
+        elif state == 'awaiting_cancel_selection':
+            session.last_message = 'showing_cancel_options'
+        else:
+            session.last_message = 'main_menu'
+        
         session.last_activity = datetime.now()
         session.is_active = True
         db.session.commit()
@@ -705,8 +778,7 @@ Reply with *30* or *60* to see available time slots."""
                 # Check if booking context is still valid (not older than 15 minutes)
                 if session.last_activity and (datetime.now() - session.last_activity).total_seconds() > 900:
                     # Context expired, clear it
-                    session.last_message = "booking_context_expired"
-                    db.session.commit()
+                    self.set_session_state(student, 'main_menu')
                     return None
                 
                 import json
@@ -721,9 +793,7 @@ Reply with *30* or *60* to see available time slots."""
             except Exception as e:
                 logger.error(f"Error parsing booking context: {str(e)}")
                 # Clear invalid context
-                if session:
-                    session.last_message = "booking_context_invalid"
-                    db.session.commit()
+                self.set_session_state(student, 'main_menu')
                 return None
         return None
     
@@ -808,12 +878,8 @@ Please start fresh:
             db.session.add(lesson)
             db.session.commit()
             
-            # Clear booking context
-            session_id = f"whatsapp_{student.phone}_{datetime.now().strftime('%Y%m%d')}"
-            session = WhatsAppSession.query.filter_by(session_id=session_id).first()
-            if session:
-                session.last_message = f"lesson_booked_{lesson.id}"
-                db.session.commit()
+            # Clear booking context and reset to main menu
+            self.set_session_state(student, 'main_menu')
             
             # Format confirmation message
             date_str = scheduled_date.strftime('%A, %B %d, %Y')
@@ -840,19 +906,64 @@ Please start fresh:
             logger.error(f"Error booking lesson via WhatsApp: {str(e)}")
             return "❌ Sorry, there was an error booking your lesson. Please try again or contact your instructor."
     
+    def handle_duration_selection_error(self, student, message):
+        """Handle invalid duration selection"""
+        return f"""❌ Please select a valid lesson duration.
+
+📅 *Book a Lesson*
+
+Choose your lesson duration:
+
+3️⃣0️⃣ 30 minutes
+6️⃣0️⃣ 60 minutes (1 hour)
+
+Reply with *30* or *60* to see available time slots.
+
+💡 Quick options:
+• Type 'menu' to return to main menu
+• Type 'reset' to start over"""
+    
+    def handle_booking_slot_error(self, student, message):
+        """Handle invalid booking slot selection"""
+        booking_context = self.get_booking_context(student)
+        if not booking_context:
+            return self.handle_book_lesson(student)
+        
+        available_slots = booking_context['available_slots']
+        duration_minutes = booking_context['duration_minutes']
+        
+        return f"""❌ Please select a valid slot number.
+
+Available slots: 1 to {len(available_slots)}
+
+💡 Examples:
+• Type *book 1* (to book slot #1)
+• Type *1* (shortcut)
+• Type 'menu' to return to main menu
+• Type '2' to select different duration"""
+    
+    def handle_contextual_fallback(self, student, message, session_state):
+        """Handle unrecognized messages with context awareness"""
+        if session_state == 'awaiting_duration':
+            return self.handle_duration_selection_error(student, message)
+        elif session_state == 'awaiting_booking_slot':
+            return self.handle_booking_slot_error(student, message)
+        else:
+            return self.handle_default(student)
+    
     def handle_default(self, student):
         """Handle unrecognized messages"""
         return f"""I didn't understand that, {student.name}. 🤔
 
-Reply with:
-• 'menu' to see available options
-• 'reset' to start over
-• '5' for help
-
-📋 Quick menu:
+📋 *Main Menu:*
 1️⃣ View lessons | 2️⃣ Book lesson | 3️⃣ Progress | 4️⃣ Cancel | 5️⃣ Help
 
-If you're stuck, just type 'reset' to clear everything and start fresh! 🔄"""
+💡 Quick commands:
+• Type any number (1-5)
+• Type 'menu' for options
+• Type 'reset' to restart
+
+🔄 Never get stuck - 'reset' always works!"""
     
     def reset_session_and_start(self, student):
         """Reset session state and show main menu"""
