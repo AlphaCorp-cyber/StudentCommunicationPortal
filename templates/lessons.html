@@ -89,7 +89,9 @@
                             <div class="btn-group btn-group-sm">
                                 {% if lesson.status == 'scheduled' and (current_user.is_instructor() and lesson.instructor_id == current_user.id or current_user.is_admin() or current_user.is_super_admin()) %}
                                 <button class="btn btn-outline-success" 
-                                        onclick="openCompleteModal({{ lesson.id }}, {{ lesson.student.name|tojson }})">
+                                        data-lesson-id="{{ lesson.id }}" 
+                                        data-student-name="{{ lesson.student.name }}"
+                                        onclick="openCompleteModal(this.getAttribute('data-lesson-id'), this.getAttribute('data-student-name'))">
                                     <i data-feather="check" style="width: 16px; height: 16px;"></i>
                                 </button>
                                 {% endif %}
@@ -101,7 +103,10 @@
                                 {% endif %}
                                 {% if lesson.status == 'scheduled' and (current_user.is_instructor() and lesson.instructor_id == current_user.id or current_user.is_admin() or current_user.is_super_admin()) %}
                                 <button class="btn btn-outline-danger"
-                                        onclick="confirmDeleteLesson({{ lesson.id }}, {{ lesson.student.name|tojson }}, '{{ lesson.scheduled_date.strftime('%Y-%m-%d') }}')">
+                                        data-lesson-id="{{ lesson.id }}"
+                                        data-student-name="{{ lesson.student.name }}"
+                                        data-lesson-date="{{ lesson.scheduled_date.strftime('%Y-%m-%d') }}"
+                                        onclick="confirmDeleteLesson(this.getAttribute('data-lesson-id'), this.getAttribute('data-student-name'), this.getAttribute('data-lesson-date'))">
                                     <i data-feather="trash-2" style="width: 16px; height: 16px;"></i>
                                 </button>
                                 {% endif %}
