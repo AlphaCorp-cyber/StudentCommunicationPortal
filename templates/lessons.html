@@ -89,7 +89,7 @@
                             <div class="btn-group btn-group-sm">
                                 {% if lesson.status == 'scheduled' and (current_user.is_instructor() and lesson.instructor_id == current_user.id or current_user.is_admin() or current_user.is_super_admin()) %}
                                 <button class="btn btn-outline-success" 
-                                        onclick="openCompleteModal({{ lesson.id }}, '{{ lesson.student.name }}')">
+                                        onclick="openCompleteModal({{ lesson.id }}, '{{ lesson.student.name|replace("'", "\\'") }}')">
                                     <i data-feather="check" style="width: 16px; height: 16px;"></i>
                                 </button>
                                 {% endif %}
@@ -173,19 +173,11 @@
                         <small class="text-muted" id="timeslotHelp">Available 30-minute slots between 6:00 AM and 4:00 PM (Monday-Saturday)</small>
                     </div>
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <label for="duration_minutes" class="form-label">Duration (minutes) *</label>
                             <select class="form-select" id="duration_minutes" name="duration_minutes" required onchange="checkStudentBalance()">
                                 <option value="30">30 minutes</option>
                                 <option value="60">60 minutes (combined)</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="lesson_type" class="form-label">Lesson Type</label>
-                            <select class="form-select" id="lesson_type" name="lesson_type">
-                                <option value="practical">Practical Driving</option>
-                                <option value="theory">Theory</option>
-                                <option value="test">Driving Test</option>
                             </select>
                         </div>
                     </div>
@@ -403,7 +395,8 @@ function filterTimeslots() {
 function openCompleteModal(lessonId, studentName) {
     document.getElementById('completeStudentName').textContent = studentName;
     document.getElementById('completeForm').action = `/lessons/${lessonId}/complete`;
-    new bootstrap.Modal(document.getElementById('completeModal')).show();
+    var modal = new bootstrap.Modal(document.getElementById('completeModal'));
+    modal.show();
 }
 
 function viewLessonDetails(lessonId) {
