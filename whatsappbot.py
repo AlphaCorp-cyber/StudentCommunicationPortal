@@ -19,6 +19,7 @@ class WhatsAppBot:
             'lessons': self.handle_lessons,
             'schedule': self.handle_schedule,
             'progress': self.handle_progress,
+            'cancel': self.handle_cancel_lesson,
             'help': self.handle_help,
             'menu': self.handle_menu
         }
@@ -117,6 +118,12 @@ class WhatsAppBot:
     
     def handle_message(self, student, message):
         """Handle incoming message and route to appropriate handler"""
+        # Check for cancel with lesson number (e.g., "cancel 1")
+        if message.startswith('cancel '):
+            parts = message.split()
+            if len(parts) >= 2:
+                return self.process_cancel_lesson_by_number(student, parts[1])
+        
         # Check for specific commands
         for command, handler in self.commands.items():
             if command in message:
@@ -345,6 +352,81 @@ Type 'menu' to see all options or 'help' for assistance."""
         
         return response
     
+    def handle_cancel_lesson(self, student):
+        """Handle lesson cancellation request"""
+        # Get upcoming lessons that can be cancelled
+        upcoming_lessons = Lesson.query.filter(
+            Lesson.student_id == student.id,
+            Lesson.status == LESSON_SCHEDULED,
+            Lesson.scheduled_date >= datetime.now()
+        ).order_by(Lesson.scheduled_date).all()
+        
+        if not upcoming_lessons:
+            return "❌ You have no upcoming lessons to cancel."
+        
+        response = "📋 *Your Upcoming Lessons:*\n\n"
+        response += "To cancel a lesson, reply with:\n*cancel [lesson number]*\n\n"
+        
+        for i, lesson in enumerate(upcoming_lessons, 1):
+            date_str = lesson.scheduled_date.strftime('%B %d, %Y')
+            time_str = lesson.scheduled_date.strftime('%I:%M %p')
+            instructor_name = lesson.instructor.get_full_name() if lesson.instructor else "No instructor assigned"
+            
+            response += f"{i}. 🚗 *{lesson.lesson_type.title()}* - {lesson.duration_minutes} min\n"
+            response += f"   📅 {date_str} at {time_str}\n"
+            response += f"   👨‍🏫 {instructor_name}\n\n"
+        
+        response += "💡 Example: *cancel 1* (to cancel lesson #1)\n"
+        response += "⚠️ Please cancel at least 2 hours before your lesson time."
+        
+        return response
+    
+    def process_cancel_lesson_by_number(self, student, lesson_number):
+        """Process cancellation of a specific lesson by number"""
+        try:
+            lesson_num = int(lesson_number)
+            
+            # Get upcoming lessons
+            upcoming_lessons = Lesson.query.filter(
+                Lesson.student_id == student.id,
+                Lesson.status == LESSON_SCHEDULED,
+                Lesson.scheduled_date >= datetime.now()
+            ).order_by(Lesson.scheduled_date).all()
+            
+            if lesson_num < 1 or lesson_num > len(upcoming_lessons):
+                return f"❌ Invalid lesson number. You have {len(upcoming_lessons)} upcoming lessons."
+            
+            lesson = upcoming_lessons[lesson_num - 1]
+            
+            # Check if cancellation is allowed (at least 2 hours before)
+            time_until_lesson = lesson.scheduled_date - datetime.now()
+            if time_until_lesson.total_seconds() < 7200:  # 2 hours = 7200 seconds
+                return "⚠️ Cannot cancel lessons less than 2 hours before the scheduled time. Please contact your instructor directly."
+            
+            # Cancel the lesson
+            lesson.status = LESSON_CANCELLED
+            lesson.updated_at = datetime.now()
+            db.session.commit()
+            
+            date_str = lesson.scheduled_date.strftime('%B %d, %Y')
+            time_str = lesson.scheduled_date.strftime('%I:%M %p')
+            
+            response = f"✅ *Lesson Cancelled Successfully*\n\n"
+            response += f"📅 Date: {date_str}\n"
+            response += f"🕐 Time: {time_str}\n"
+            response += f"⏱️ Duration: {lesson.duration_minutes} minutes\n"
+            response += f"👨‍🏫 Instructor: {lesson.instructor.get_full_name()}\n\n"
+            response += "Your instructor has been notified. You can reschedule by typing 'schedule'."
+            
+            logger.info(f"Lesson {lesson.id} cancelled by student {student.name} via WhatsApp")
+            return response
+            
+        except ValueError:
+            return "❌ Please provide a valid lesson number. Example: *cancel 1*"
+        except Exception as e:
+            logger.error(f"Error cancelling lesson: {str(e)}")
+            return "❌ Sorry, there was an error cancelling your lesson. Please try again or contact your instructor."
+    
     def handle_help(self, student):
         """Handle help request"""
         return """❓ *Help & Commands:*
@@ -353,12 +435,14 @@ Type 'menu' to see all options or 'help' for assistance."""
 🔹 *lessons* - View upcoming lessons
 🔹 *schedule* - See 7-day schedule
 🔹 *progress* - Check your progress
+🔹 *cancel* - Cancel upcoming lessons
 🔹 *menu* - Show main menu
 🔹 *help* - Show this help
 
 💡 *Tips:*
 • Lessons are available 6:00 AM - 4:00 PM
 • Maximum 2 lessons per day
+• Cancel at least 2 hours before lesson time
 • Lessons are 30min or 1 hour (combined)
 
 📞 *Need more help?*
@@ -373,7 +457,8 @@ Choose what you'd like to do:
 1️⃣ View upcoming lessons (type: lessons)
 2️⃣ Check your schedule (type: schedule)
 3️⃣ See your progress (type: progress)
-4️⃣ Get help (type: help)
+4️⃣ Cancel a lesson (type: cancel)
+5️⃣ Get help (type: help)
 
 Just type any of the keywords to get started!
 

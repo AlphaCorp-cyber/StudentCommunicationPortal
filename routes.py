@@ -529,7 +529,12 @@ def add_lesson():
             flash('You can only schedule lessons for your assigned students.', 'error')
             return redirect(url_for('lessons'))
         
-        scheduled_date = datetime.strptime(request.form['scheduled_date'], '%Y-%m-%dT%H:%M')
+        # Handle datetime with or without seconds
+        scheduled_date_str = request.form['scheduled_date']
+        try:
+            scheduled_date = datetime.strptime(scheduled_date_str, '%Y-%m-%dT%H:%M:%S')
+        except ValueError:
+            scheduled_date = datetime.strptime(scheduled_date_str, '%Y-%m-%dT%H:%M')
         duration_minutes = int(request.form.get('duration_minutes', 30))
         
         # Check if student has sufficient balance
