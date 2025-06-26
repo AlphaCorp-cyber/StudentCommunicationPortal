@@ -89,7 +89,7 @@
                             <div class="btn-group btn-group-sm">
                                 {% if lesson.status == 'scheduled' and (current_user.is_instructor() and lesson.instructor_id == current_user.id or current_user.is_admin() or current_user.is_super_admin()) %}
                                 <button class="btn btn-outline-success" 
-                                        onclick="openCompleteModal({{ lesson.id }}, '{{ lesson.student.name|replace("'", "\\'") }}')">
+                                        onclick="openCompleteModal({{ lesson.id }}, '{{ lesson.student.name|replace("'", "\\\'") }}')">
                                     <i data-feather="check" style="width: 16px; height: 16px;"></i>
                                 </button>
                                 {% endif %}
@@ -176,7 +176,7 @@
                             </div>
                         </div>
                         <input type="hidden" id="scheduled_date" name="scheduled_date" required>
-                        <small class="text-muted" id="timeslotHelp">Available 30-minute slots between 6:00 AM and 4:00 PM (Monday-Saturday)</small>
+                        <small class="text-muted" id="timeslotHelp">Available 30-minute slots between 6:00 AM and 4:00 PM (Monday-Saturday) - Today and Tomorrow only</small>
                     </div>
                     <div class="row">
                         <div class="col-md-12">
