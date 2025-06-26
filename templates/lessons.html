@@ -146,10 +146,11 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="student_id" class="form-label">Student *</label>
+                        <input type="text" class="form-control mb-2" id="studentSearch" placeholder="Search students by name or phone..." onkeyup="filterStudents()">
                         <select class="form-select" id="student_id" name="student_id" required onchange="checkStudentBalance()">
                             <option value="">Select student</option>
                             {% for student in students %}
-                            <option value="{{ student.id }}" data-balance="{{ student.account_balance }}" data-license="{{ student.license_type }}">
+                            <option value="{{ student.id }}" data-balance="{{ student.account_balance }}" data-license="{{ student.license_type }}" data-name="{{ student.name.lower() }}" data-phone="{{ student.phone }}">
                                 {{ student.name }} (Balance: ${{ student.account_balance }}, {{ student.license_type }})
                             </option>
                             {% endfor %}
@@ -157,6 +158,11 @@
                         <div id="balanceWarning" class="text-warning mt-1" style="display: none;">
                             <small><i data-feather="alert-triangle"></i> Insufficient balance for this lesson</small>
                         </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="scheduled_date" class="form-label">Scheduled Date & Time *</label>
+                        <input type="datetime-local" class="form-control" id="scheduled_date" name="scheduled_date" required>
+                        <small class="text-muted">Lessons can only be scheduled between 6:00 AM and 4:00 PM, at :00 or :30 minutes</small>
                     </div>
                     <div class="row">
                         <div class="col-md-6">
@@ -357,6 +363,28 @@ function checkStudentBalance() {
         warningDiv.style.display = 'none';
         if (submitBtn) submitBtn.disabled = false;
     }
+}
+
+function filterStudents() {
+    const searchValue = document.getElementById('studentSearch').value.toLowerCase();
+    const select = document.getElementById('student_id');
+    const options = select.querySelectorAll('option');
+    
+    options.forEach(option => {
+        if (option.value === '') {
+            option.style.display = 'block';
+            return;
+        }
+        
+        const name = option.dataset.name || '';
+        const phone = option.dataset.phone || '';
+        
+        if (name.includes(searchValue) || phone.includes(searchValue)) {
+            option.style.display = 'block';
+        } else {
+            option.style.display = 'none';
+        }
+    });
 }
 
 // Initialize balance check when page loads
