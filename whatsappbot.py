@@ -32,9 +32,27 @@ class WhatsAppBot:
     
     def get_bot_number(self):
         """Get bot's WhatsApp number for tap-to-send links"""
-        if self.twilio_phone:
-            return self.twilio_phone.replace('+', '').replace('whatsapp:', '')
-        return "263123456789"  # Fallback number for demo
+        try:
+            # Try to get from SystemConfig first
+            bot_number = SystemConfig.get_config('TWILIO_WHATSAPP_NUMBER')
+            if bot_number:
+                return bot_number.replace('+', '').replace('whatsapp:', '')
+            
+            # Try from environment
+            if self.twilio_phone:
+                return self.twilio_phone.replace('+', '').replace('whatsapp:', '')
+                
+            # Try from environment variable
+            import os
+            env_number = os.getenv('TWILIO_WHATSAPP_NUMBER')
+            if env_number:
+                return env_number.replace('+', '').replace('whatsapp:', '')
+                
+        except Exception as e:
+            logger.error(f"Error getting bot number: {str(e)}")
+        
+        # Return your actual number as fallback
+        return "263719092710"  # Your actual WhatsApp number
     
     def initialize_twilio(self):
         """Initialize Twilio client with credentials from SystemConfig or environment"""
@@ -226,13 +244,20 @@ Welcome to myInstructor 2.0 WhatsApp Bot!
 🔥 *Quick Tap Options:*
 Tap any option below to auto-send:
 
-📅 [lessons](https://wa.me/{self.get_bot_number()}?text=lessons) - View upcoming lessons
-🎯 [book](https://wa.me/{self.get_bot_number()}?text=book) - Book a lesson  
-📊 [progress](https://wa.me/{self.get_bot_number()}?text=progress) - Check your progress
-❌ [cancel](https://wa.me/{self.get_bot_number()}?text=cancel) - Cancel a lesson
-❓ [help](https://wa.me/{self.get_bot_number()}?text=help) - Get help
+📅 *lessons* - View upcoming lessons
+🎯 *book* - Book a lesson  
+📊 *progress* - Check your progress
+❌ *cancel* - Cancel a lesson
+❓ *help* - Get help
 
-⚡ Just tap any blue link above and it will auto-send for you!"""
+💡 Just type any of the *bold* commands above, or:
+• Type "1" for lessons
+• Type "2" for booking
+• Type "3" for progress
+• Type "4" to cancel
+• Type "5" for help
+
+⚡ Everything is designed to be quick and easy!"""
     
     def handle_lessons(self, student):
         """Handle lessons inquiry"""
@@ -523,24 +548,25 @@ Tap any option below to auto-send:
         """Handle help request"""
         return f"""❓ *Help & Easy Commands:*
 
-🔥 *Quick Tap Commands:*
+🔥 *Quick Commands:*
 
-📅 [View Lessons](https://wa.me/{self.get_bot_number()}?text=lessons) - See your schedule
-🎯 [Book Lesson](https://wa.me/{self.get_bot_number()}?text=book) - Book 30min or 1 hour
-📊 [Check Progress](https://wa.me/{self.get_bot_number()}?text=progress) - Your stats
-❌ [Cancel Lesson](https://wa.me/{self.get_bot_number()}?text=cancel) - Cancel upcoming
-📋 [Main Menu](https://wa.me/{self.get_bot_number()}?text=menu) - Back to start
-🔄 [Reset/Start Over](https://wa.me/{self.get_bot_number()}?text=reset) - Clear everything
+📅 *lessons* - See your schedule
+🎯 *book* - Book 30min or 1 hour
+📊 *progress* - Your stats
+❌ *cancel* - Cancel upcoming
+📋 *menu* - Back to start
+🔄 *reset* - Clear everything
 
 💡 *Pro Tips:*
-• Tap blue links - no typing needed!
+• Just type the *bold* commands above
+• Or use shortcuts: 1, 2, 3, 4, 5
 • Lessons: 6:00 AM - 4:00 PM (Mon-Sat)
 • Maximum 2 lessons per day
 • Cancel at least 2 hours before lesson time
 • Tomorrow's lessons: book after 6:00 PM today
 
 🔄 *Stuck or confused?*
-⚡ [Start Fresh](https://wa.me/{self.get_bot_number()}?text=reset) - Clear everything!
+⚡ Type *reset* to start fresh!
 
 📞 *Need more help?*
 Contact your instructor or driving school directly."""
@@ -549,17 +575,24 @@ Contact your instructor or driving school directly."""
         """Handle menu request with quick reply options"""
         return f"""📋 *Main Menu:*
 
-🔥 *Tap any option below:*
+🔥 *Quick Commands:*
 
-📅 [View Lessons](https://wa.me/{self.get_bot_number()}?text=lessons) - See your schedule
-🎯 [Book Lesson](https://wa.me/{self.get_bot_number()}?text=book) - Schedule new lesson
-📊 [Check Progress](https://wa.me/{self.get_bot_number()}?text=progress) - See your stats
-❌ [Cancel Lesson](https://wa.me/{self.get_bot_number()}?text=cancel) - Cancel upcoming
-❓ [Get Help](https://wa.me/{self.get_bot_number()}?text=help) - Support & commands
+📅 *lessons* - See your schedule
+🎯 *book* - Schedule new lesson
+📊 *progress* - See your stats
+❌ *cancel* - Cancel upcoming
+❓ *help* - Support & commands
 
 👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}
 
-⚡ Just tap any blue link above - no typing needed!"""
+💡 *Shortcuts:*
+• Type "1" for lessons
+• Type "2" for booking  
+• Type "3" for progress
+• Type "4" to cancel
+• Type "5" for help
+
+⚡ Just type any command above!"""
     
     def handle_menu_option(self, student, option):
         """Handle numbered menu selections"""
