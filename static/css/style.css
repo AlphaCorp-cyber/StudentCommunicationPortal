@@ -77,16 +77,37 @@ img.rounded-circle {
     padding: 0.5rem;
     border-radius: 0.375rem;
     transition: all 0.2s ease;
+    transform: scale(1);
 }
 
 #themeToggle:hover {
     color: rgba(255, 255, 255, 1);
     background-color: rgba(255, 255, 255, 0.1);
+    transform: scale(1.05);
 }
 
 #themeToggle:focus {
     outline: 2px solid rgba(255, 255, 255, 0.5);
     outline-offset: 2px;
+}
+
+#themeToggle:active {
+    transform: scale(0.95);
+}
+
+/* Theme transition for smooth switching */
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Ensure icons inherit proper colors in different themes */
+[data-bs-theme="light"] #themeToggle {
+    color: rgba(0, 0, 0, 0.75);
+}
+
+[data-bs-theme="light"] #themeToggle:hover {
+    color: rgba(0, 0, 0, 1);
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 /* Button group spacing */
