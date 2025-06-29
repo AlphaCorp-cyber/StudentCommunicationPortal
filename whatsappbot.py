@@ -132,6 +132,22 @@ class WhatsAppBot:
     
     def handle_message(self, student, message):
         """Handle incoming message and route to appropriate handler"""
+        # Extract command from WhatsApp URL if message contains wa.me link
+        original_message = message
+        if 'wa.me/' in message and 'text=' in message:
+            try:
+                # Extract the text parameter from the URL
+                import urllib.parse
+                if '?text=' in message:
+                    text_part = message.split('?text=')[1]
+                    # Handle URL encoding and get the actual command
+                    message = urllib.parse.unquote(text_part).split('&')[0]
+                    logger.info(f"Extracted command '{message}' from URL: {original_message}")
+            except Exception as e:
+                logger.error(f"Error extracting command from URL: {str(e)}")
+                # If extraction fails, continue with original message
+                pass
+        
         # Reset/restart commands to clear any stuck state - always available
         if message in ['reset', 'restart', 'start', 'clear', 'menu', 'back', 'home']:
             return self.reset_session_and_start(student)
