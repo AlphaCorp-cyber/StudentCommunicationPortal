@@ -282,10 +282,15 @@
                     <div class="chat-input bg-white border rounded-bottom p-3">
                         <div class="d-flex gap-2 mb-2">
                             <button type="button" class="btn btn-outline-primary btn-sm" onclick="sendQuickMessage('Hi')">👋 Hi</button>
-                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="sendQuickMessage('book')">📅 Book</button>
-                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="sendQuickMessage('lessons')">📋 Lessons</button>
-                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="sendQuickMessage('progress')">📊 Progress</button>
+                            <button type="button" class="btn btn-outline-success btn-sm" onclick="sendQuickMessage('book')">📅 Book</button>
+                            <button type="button" class="btn btn-outline-info btn-sm" onclick="sendQuickMessage('lessons')">📋 Lessons</button>
+                            <button type="button" class="btn btn-outline-warning btn-sm" onclick="sendQuickMessage('progress')">📊 Progress</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="sendQuickMessage('cancel')">❌ Cancel</button>
                             <button type="button" class="btn btn-outline-danger btn-sm" onclick="sendQuickMessage('reset')">🔄 Reset</button>
+                            <button type="button" class="btn btn-outline-dark btn-sm" onclick="sendQuickMessage('30')">⚡ 30min</button>
+                            <button type="button" class="btn btn-outline-dark btn-sm" onclick="sendQuickMessage('60')">⚡ 60min</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="sendQuickMessage('1')">🔢 Slot 1</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="sendQuickMessage('menu')">📋 Menu</button>
                         </div>
                         <div class="input-group">
                             <input type="text" class="form-control" id="chat-message-input" placeholder="Type a message..." maxlength="1000">

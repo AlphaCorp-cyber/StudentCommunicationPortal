@@ -488,13 +488,16 @@ Tap any option below to auto-send:
             time_str = lesson.scheduled_date.strftime('%I:%M %p')
             instructor_name = lesson.instructor.get_full_name() if lesson.instructor else "No instructor assigned"
             
-            response += f"❌ [Cancel #{i}](https://wa.me/{self.get_bot_number()}?text=cancel%20{i}) 🚗 *{lesson.lesson_type.title()}* - {lesson.duration_minutes} min\n"
+            response += f"❌ *Cancel #{i}* 🚗 *{lesson.lesson_type.title()}* - {lesson.duration_minutes} min\n"
             response += f"   📅 {date_str} at {time_str}\n"
             response += f"   👨‍🏫 {instructor_name}\n\n"
         
         response += "💡 *Quick options:*\n"
-        response += f"🔙 [Back to menu](https://wa.me/{self.get_bot_number()}?text=menu)\n"
-        response += "⚠️ Cancel at least 2 hours before lesson time."
+        response += "🔙 Type *menu* to go back\n"
+        response += "⚠️ Cancel at least 2 hours before lesson time.\n\n"
+        response += "💬 *To cancel a lesson, just type:*\n"
+        for i, lesson in enumerate(upcoming_lessons, 1):
+            response += f"• Type *cancel {i}* to cancel lesson #{i}\n"
         
         return response
     
@@ -618,16 +621,17 @@ Contact your instructor or driving school directly."""
 
 Choose your lesson duration:
 
-🔥 *Tap to Select Duration:*
+🔥 *Tap to Reply:*
 
-🕐 [30 minutes](https://wa.me/{self.get_bot_number()}?text=30) - Quick lesson
-🕑 [60 minutes](https://wa.me/{self.get_bot_number()}?text=60) - Full lesson
+🕐 *30* - Quick lesson (30 minutes)
+🕑 *60* - Full lesson (60 minutes)
 
-⚡ Just tap any blue link above to auto-select!
+💬 *Just reply with:*
+• *30* for 30-minute lesson
+• *60* for 60-minute lesson
+• *menu* to go back
 
-Or type: 30 or 60
-
-🔙 [Back to menu](https://wa.me/{self.get_bot_number()}?text=menu)"""
+⚡ Super simple - just tap and reply!"""
     
     def handle_duration_selection(self, student, duration_minutes):
         """Handle duration selection and show available timeslots with booking numbers"""
@@ -671,24 +675,19 @@ Or type: 30 or 60
             response += f"{i+1}. {start_time}\n"
             slot_count += 1
         
-        response += f"\n🔥 *Tap to Book Instantly:*\n"
+        response += f"\n🔥 *Quick Booking - Just Reply:*\n\n"
         
-        # Add quick tap booking links
-        for i in range(min(len(available_slots), 5)):  # Show first 5 as clickable
-            slot = available_slots[i]
+        # Show all available slots with simple reply instructions
+        for i, slot in enumerate(available_slots[:10]):  # Show up to 10 slots
             start_time = slot['start'].strftime('%I:%M %p')
-            response += f"⚡ [Book {start_time}](https://wa.me/{self.get_bot_number()}?text=book%20{i+1})\n"
+            response += f"⚡ Reply *{i+1}* → Book {start_time}\n"
         
-        if len(available_slots) > 5:
-            response += f"\n📝 *Or type the slot number:*\n"
-            for i in range(5, min(len(available_slots), 10)):
-                slot = available_slots[i]
-                start_time = slot['start'].strftime('%I:%M %p')
-                response += f"Type *{i+1}* for {start_time}\n"
-        
-        response += f"\n🔄 *Quick options:*\n"
-        response += f"🔙 [Main menu](https://wa.me/{self.get_bot_number()}?text=menu)\n"
-        response += f"🔄 [Change duration](https://wa.me/{self.get_bot_number()}?text=book)"
+        response += f"\n💬 *How to book:*\n"
+        response += f"• Reply with slot number (1, 2, 3, etc.)\n"
+        response += f"• Or type *book 1*, *book 2*, etc.\n\n"
+        response += f"🔄 *Other options:*\n"
+        response += f"• *menu* - Main menu\n"
+        response += f"• *book* - Change duration"
         
         return response
     
@@ -1039,19 +1038,20 @@ Available slots: 1 to {len(available_slots)}
         """Handle unrecognized messages"""
         return f"""I didn't understand that, {student.name}. 🤔
 
-🔥 *Quick Tap Options:*
+🔥 *Quick Commands - Just Reply:*
 
-📅 [View Lessons](https://wa.me/{self.get_bot_number()}?text=lessons)
-🎯 [Book Lesson](https://wa.me/{self.get_bot_number()}?text=book)
-📊 [Check Progress](https://wa.me/{self.get_bot_number()}?text=progress)
-❌ [Cancel Lesson](https://wa.me/{self.get_bot_number()}?text=cancel)
-❓ [Get Help](https://wa.me/{self.get_bot_number()}?text=help)
+📅 *lessons* - View your schedule
+🎯 *book* - Book a lesson
+📊 *progress* - Check progress
+❌ *cancel* - Cancel lesson
+❓ *help* - Get help
 
 🔄 *Quick fixes:*
-📋 [Main Menu](https://wa.me/{self.get_bot_number()}?text=menu) - See all options
-⚡ [Start Fresh](https://wa.me/{self.get_bot_number()}?text=reset) - Never get stuck!
+📋 *menu* - See all options
+⚡ *reset* - Start fresh
 
-💡 Just tap any blue link above - no typing needed!"""
+💬 *Just reply with any word above!*
+Example: Reply "*lessons*" or "*book*"""
     
     def reset_session_and_start(self, student):
         """Reset session state and show main menu"""
@@ -1070,17 +1070,18 @@ Hello again {student.name}! 👋
 
 I've cleared everything. Let's start fresh!
 
-🔥 *Quick Tap Menu:*
+🔥 *Quick Commands - Just Reply:*
 
-📅 [View Lessons](https://wa.me/{self.get_bot_number()}?text=lessons) - See your schedule
-🎯 [Book Lesson](https://wa.me/{self.get_bot_number()}?text=book) - Schedule new lesson
-📊 [Check Progress](https://wa.me/{self.get_bot_number()}?text=progress) - Your stats
-❌ [Cancel Lesson](https://wa.me/{self.get_bot_number()}?text=cancel) - Cancel upcoming
-❓ [Get Help](https://wa.me/{self.get_bot_number()}?text=help) - Support
+📅 *lessons* - See your schedule
+🎯 *book* - Schedule new lesson  
+📊 *progress* - Your stats
+❌ *cancel* - Cancel upcoming
+❓ *help* - Support
 
 👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}
 
-⚡ Just tap any blue link above to get started instantly!"""
+💬 *Just reply with any command above!*
+Example: Reply "*book*" to book a lesson"""
 
     def handle_unknown_student(self, phone_number):
         """Handle messages from unknown phone numbers"""
