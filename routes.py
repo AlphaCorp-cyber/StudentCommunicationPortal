@@ -888,17 +888,24 @@ def api_simulate_whatsapp():
         if not student:
             return jsonify({'success': False, 'error': 'Student not found'}), 404
         
-        # Process the message through the WhatsApp bot
+        # Initialize bot if needed
         from whatsappbot import whatsapp_bot
+        if not whatsapp_bot.twilio_client:
+            whatsapp_bot.initialize_twilio()
+        
+        # Process the message through the WhatsApp bot
         bot_response = whatsapp_bot.process_message(student.phone, message)
         
         return jsonify({
             'success': True, 
             'response': bot_response,
-            'student_name': student.name
+            'student_name': student.name,
+            'message_sent': message
         })
         
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
         logger.error(f"Error in API WhatsApp simulation: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
