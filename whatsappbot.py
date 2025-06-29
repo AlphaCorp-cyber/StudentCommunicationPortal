@@ -773,7 +773,7 @@ Choose your lesson duration:
                             # Can book tomorrow only after 6 PM today
                             if current_time.hour >= 18:
                                 available_slots.append({
-                                    ```python
+                                    
                                 'start': slot_time,
                                     'end': slot_time + timedelta(minutes=duration_minutes)
                                 })

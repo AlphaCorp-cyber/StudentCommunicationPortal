@@ -162,8 +162,8 @@ def admin_dashboard():
     for instructor in instructors:
         instructor.assigned_vehicles = Vehicle.query.filter_by(instructor_id=instructor.id, is_active=True).all()
     
-    # Get vehicles
-    vehicles = Vehicle.query.filter_by(is_active=True).all()
+    # Get vehicles with instructor relationships loaded
+    vehicles = Vehicle.query.options(db.joinedload(Vehicle.instructor)).filter_by(is_active=True).all()
     
     # Get recent payments
     recent_payments = Payment.query.order_by(Payment.created_at.desc()).limit(5).all()

@@ -55,6 +55,11 @@
                 </ul>
                 
                 <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <button class="nav-link btn btn-link" id="themeToggle" title="Toggle Theme">
+                            <i data-feather="sun" id="themeIcon"></i>
+                        </button>
+                    </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
                             {% if current_user.profile_image_url %}
@@ -146,6 +151,39 @@
     <!-- Initialize Feather Icons -->
     <script>
         feather.replace();
+        
+        // Theme Toggle Functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggle = document.getElementById('themeToggle');
+            const themeIcon = document.getElementById('themeIcon');
+            const htmlElement = document.documentElement;
+            
+            // Get saved theme or default to dark
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            htmlElement.setAttribute('data-bs-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+            
+            // Theme toggle click handler
+            themeToggle.addEventListener('click', function() {
+                const currentTheme = htmlElement.getAttribute('data-bs-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                htmlElement.setAttribute('data-bs-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+                updateThemeIcon(newTheme);
+            });
+            
+            function updateThemeIcon(theme) {
+                if (theme === 'dark') {
+                    themeIcon.setAttribute('data-feather', 'sun');
+                    themeToggle.setAttribute('title', 'Switch to Light Mode');
+                } else {
+                    themeIcon.setAttribute('data-feather', 'moon');
+                    themeToggle.setAttribute('title', 'Switch to Dark Mode');
+                }
+                feather.replace();
+            }
+        });
     </script>
 </body>
 </html>

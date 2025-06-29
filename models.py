@@ -179,6 +179,7 @@ class Vehicle(db.Model):
     
     # Relationships
     lessons = db.relationship('Lesson', backref='vehicle', lazy=True)
+    instructor = db.relationship('User', backref='assigned_vehicles', lazy=True)
 
 class LessonPricing(db.Model):
     __tablename__ = 'lesson_pricing'

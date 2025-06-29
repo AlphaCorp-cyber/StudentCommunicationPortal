@@ -258,7 +258,7 @@
                             {% endif %}
                         </div>
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary" onclick="assignVehicle({{ vehicle.id }}, '{{ vehicle.registration_number }}')" data-bs-toggle="modal" data-bs-target="#assignVehicleModal">
+                            <button class="btn btn-outline-primary" onclick="openAssignModal({{ vehicle.id }}, '{{ vehicle.registration_number }}', {% if vehicle.instructor %}{{ vehicle.instructor.id }}{% else %}''{% endif %})"
                                 <i data-feather="user-plus"></i>
                             </button>
                         </div>
