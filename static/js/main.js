@@ -279,6 +279,11 @@ const utils = {
     showToast: function(message, type = 'info') {
         const toastContainer = document.getElementById('toast-container') || createToastContainer();
         
+        if (!toastContainer) {
+            console.error('Could not create toast container');
+            return;
+        }
+        
         const toast = document.createElement('div');
         toast.className = `toast align-items-center text-white bg-${type} border-0`;
         toast.setAttribute('role', 'alert');
@@ -328,12 +333,23 @@ const utils = {
 
 // Create toast container if it doesn't exist
 function createToastContainer() {
-    const container = document.createElement('div');
-    container.id = 'toast-container';
-    container.className = 'toast-container position-fixed top-0 end-0 p-3';
-    container.style.zIndex = '1055';
-    document.body.appendChild(container);
-    return container;
+    try {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.style.zIndex = '1055';
+        
+        if (document.body) {
+            document.body.appendChild(container);
+            return container;
+        } else {
+            console.error('Document body not available');
+            return null;
+        }
+    } catch (error) {
+        console.error('Error creating toast container:', error);
+        return null;
+    }
 }
 
 // Table enhancements
