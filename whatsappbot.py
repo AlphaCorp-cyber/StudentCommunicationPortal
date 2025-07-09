@@ -69,7 +69,7 @@ class WhatsAppBot:
                     # No app context or database not available
                     pass
 
-            if account_sid and auth_token:
+            if account_sid and auth_token and account_sid != 'your_twilio_account_sid_here' and auth_token != 'your_twilio_auth_token_here':
                 self.twilio_client = Client(account_sid, auth_token)
                 
                 # Get phone number from environment or SystemConfig
@@ -80,11 +80,15 @@ class WhatsAppBot:
                     except Exception:
                         self.twilio_phone = None
                         
-                logger.info("Twilio client initialized successfully")
-                logger.info(f"Using Twilio phone: {self.twilio_phone}")
+                logger.info("✅ Twilio client initialized successfully - LIVE MODE")
+                logger.info(f"📞 Using Twilio phone: {self.twilio_phone}")
+                logger.info("🎯 Quick Reply buttons will be available")
             else:
-                logger.warning("Twilio credentials not found. WhatsApp messaging will be in mock mode.")
-                logger.warning("Please set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in .env file")
+                logger.warning("⚠️  Twilio credentials not found. WhatsApp messaging will be in MOCK mode.")
+                logger.warning("📝 Please update your .env file with real Twilio credentials:")
+                logger.warning("   TWILIO_ACCOUNT_SID=your_actual_account_sid")
+                logger.warning("   TWILIO_AUTH_TOKEN=your_actual_auth_token")
+                logger.warning("💡 Quick Reply buttons only work with real Twilio credentials")
         except Exception as e:
             logger.error(f"Failed to initialize Twilio client: {str(e)}")
             self.twilio_client = None
@@ -264,14 +268,16 @@ Choose an option below:"""
         return self.send_interactive_message(student.phone, message_body, quick_replies)
     
     def send_interactive_message(self, phone_number, message_body, quick_replies=None, list_options=None):
-        """Send interactive message with Quick Reply buttons using Twilio template"""
+        """Send interactive message with Quick Reply buttons using Twilio's interactive messaging"""
         try:
             if not self.twilio_client:
                 # In demo mode, return text with options
+                logger.info("📱 Running in MOCK mode - no real Twilio client available")
                 if quick_replies:
                     reply_text = "\n\n*Quick Options:*\n"
                     for idx, reply in enumerate(quick_replies, 1):
                         reply_text += f"{idx}. {reply['title']}\n"
+                    logger.info(f"📝 Mock Quick Reply buttons: {[r['title'] for r in quick_replies]}")
                     return message_body + reply_text
                 elif list_options:
                     list_text = "\n\n*Options:*\n"
@@ -281,63 +287,87 @@ Choose an option below:"""
                 return message_body
 
             from_number = self.twilio_phone or os.getenv('TWILIO_PHONE_NUMBER', 'whatsapp:+14155238886')
-            to_number = f'whatsapp:{phone_number.replace("+", "")}'
-            template_sid = os.getenv('TWILIO_TEMPLATE_SID', 'HXf324aa725113107f86055b1cc3d4092a')
+            # Ensure phone number has the + prefix
+            clean_phone = phone_number.replace("+", "")
+            to_number = f'whatsapp:+{clean_phone}'
             
-            if quick_replies:
-                # Use Twilio template with content variables for Quick Reply buttons
-                import json
-                
-                # Build button text for template variable
-                button_text = ""
+            if quick_replies and len(quick_replies) <= 3:
+                # Use Twilio's interactive Quick Reply buttons (max 3 buttons)
+                try:
+                    from twilio.rest import Client
+                    
+                    # Build quick reply actions
+                    actions = []
+                    for reply in quick_replies[:3]:  # Max 3 quick replies
+                        actions.append({
+                            "type": "reply",
+                            "reply": {
+                                "id": reply["id"],
+                                "title": reply["title"][:24]  # Max 24 characters for title
+                            }
+                        })
+                    
+                    # Try sending with interactive template
+                    message = self.twilio_client.messages.create(
+                        from_=from_number,
+                        to=to_number,
+                        body=message_body,
+                        persistent_action=actions
+                    )
+                    
+                    logger.info(f"Interactive Quick Reply message sent to {phone_number}")
+                    return "Interactive message sent successfully"
+                    
+                except Exception as interactive_error:
+                    logger.warning(f"Interactive message failed, using fallback: {str(interactive_error)}")
+                    # Fallback to regular message with numbered options
+                    reply_text = message_body + "\n\n*Quick Options:*\n"
+                    for idx, reply in enumerate(quick_replies, 1):
+                        reply_text += f"{idx}. {reply['title']}\n"
+                    
+                    message = self.twilio_client.messages.create(
+                        from_=from_number,
+                        to=to_number,
+                        body=reply_text
+                    )
+                    
+            elif quick_replies and len(quick_replies) > 3:
+                # Use list format for more than 3 options
+                list_text = message_body + "\n\n*Options:*\n"
                 for idx, reply in enumerate(quick_replies, 1):
-                    button_text += f"{idx}. {reply['title']}\n"
-                
-                content_variables = json.dumps({
-                    "1": message_body,
-                    "2": button_text.strip()
-                })
+                    list_text += f"{idx}. {reply['title']}\n"
                 
                 message = self.twilio_client.messages.create(
-                    to=to_number,
                     from_=from_number,
-                    content_sid=template_sid,
-                    content_variables=content_variables
+                    to=to_number,
+                    body=list_text
                 )
                 
             elif list_options:
-                # Send message with interactive list using template
-                import json
-                
-                list_text = ""
+                # Send message with list options
+                list_text = message_body + "\n\n*Options:*\n"
                 for idx, option in enumerate(list_options, 1):
                     list_text += f"{idx}. {option['title']}\n"
                 
-                content_variables = json.dumps({
-                    "1": message_body,
-                    "2": list_text.strip()
-                })
-                
                 message = self.twilio_client.messages.create(
-                    to=to_number,
                     from_=from_number,
-                    content_sid=template_sid,
-                    content_variables=content_variables
+                    to=to_number,
+                    body=list_text
                 )
             else:
-                # Send regular message without template
+                # Send regular message without interactive elements
                 message = self.twilio_client.messages.create(
                     from_=from_number,
                     to=to_number,
                     body=message_body
                 )
             
-            logger.info(f"Interactive message sent to {phone_number} using template {template_sid}")
+            logger.info(f"Message sent to {phone_number}")
             return "Message sent successfully"
             
         except Exception as e:
-            logger.error(f"Error sending interactive message: {str(e)}")
-            # Fallback to regular message format
+            logger.error(f"Error sending message: {str(e)}")
+            # Fallback to regular message format for demo mode
             if quick_replies:
                 reply_text = message_body + "\n\n*Quick Options:*\n"
                 for idx, reply in enumerate(quick_replies, 1):
@@ -1047,8 +1077,8 @@ Please start fresh:
             existing_lessons_count = Lesson.query.filter(
                 and_(
                     Lesson.student_id == student.id,
-                    Lesson.scheduled_date >= datetime.combine(lesson_date, datetime.min.time()),
-                    Lesson.scheduled_date < datetime.combine(lesson_date + timedelta(days=1), datetime.min.time()),
+                    Lesson.scheduled_date >= datetime.combine(slot_date, datetime.min.time()),
+                    Lesson.scheduled_date < datetime.combine(slot_date + timedelta(days=1), datetime.min.time()),
                     Lesson.status != LESSON_CANCELLED
                 )
             ).count()

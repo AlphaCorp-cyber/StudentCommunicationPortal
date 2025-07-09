@@ -1131,6 +1131,25 @@ def activate_user(user_id):
     
     return redirect(url_for('account_settings'))
 
+@app.route('/test-twilio-config')
+@require_role('admin')
+def test_twilio_config():
+    """Test Twilio configuration and Quick Reply setup"""
+    bot = WhatsAppBot()
+    
+    config_status = {
+        'twilio_client': bool(bot.twilio_client),
+        'account_sid': bool(os.getenv('TWILIO_ACCOUNT_SID')),
+        'auth_token': bool(os.getenv('TWILIO_AUTH_TOKEN')),
+        'phone_number': os.getenv('TWILIO_PHONE_NUMBER', 'Not set'),
+        'template_sid': os.getenv('TWILIO_TEMPLATE_SID', 'Not set'),
+        'mode': 'LIVE' if bot.twilio_client else 'MOCK'
+    }
+    
+    return render_template('whatsapp_bot.html', 
+                         config_status=config_status,
+                         show_config_test=True)
+
 @app.errorhandler(403)
 def forbidden(error):
     return render_template('403.html'), 403

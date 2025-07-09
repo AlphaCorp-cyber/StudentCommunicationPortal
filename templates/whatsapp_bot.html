@@ -22,12 +22,79 @@
     </div>
 </div>
 
-<!-- Alert about mock functionality -->
+<!-- Configuration Status -->
+{% if show_config_test %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i data-feather="settings" class="me-2"></i>
+                    Twilio Configuration Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-{% if config_status.twilio_client %}success{% else %}danger{% endif %} me-2">
+                                {% if config_status.twilio_client %}✓{% else %}✗{% endif %}
+                            </span>
+                            <strong>Twilio Client:</strong>
+                            <span class="ms-2">{{ config_status.mode }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-{% if config_status.account_sid %}success{% else %}warning{% endif %} me-2">
+                                {% if config_status.account_sid %}✓{% else %}!{% endif %}
+                            </span>
+                            <strong>Account SID:</strong>
+                            <span class="ms-2">{% if config_status.account_sid %}Configured{% else %}Not set{% endif %}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-{% if config_status.auth_token %}success{% else %}warning{% endif %} me-2">
+                                {% if config_status.auth_token %}✓{% else %}!{% endif %}
+                            </span>
+                            <strong>Auth Token:</strong>
+                            <span class="ms-2">{% if config_status.auth_token %}Configured{% else %}Not set{% endif %}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-info me-2">📞</span>
+                            <strong>Phone Number:</strong>
+                            <span class="ms-2">{{ config_status.phone_number }}</span>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="alert alert-{% if config_status.twilio_client %}success{% else %}warning{% endif %}" role="alert">
+                            {% if config_status.twilio_client %}
+                                <strong>✅ Quick Reply Buttons Available!</strong> Your Twilio credentials are configured correctly.
+                            {% else %}
+                                <strong>⚠️ Quick Reply Buttons Not Available</strong><br>
+                                To enable interactive Quick Reply buttons, please update your <code>.env</code> file with your actual Twilio credentials:
+                                <pre class="mt-2 mb-0"><code>TWILIO_ACCOUNT_SID=your_actual_account_sid
+TWILIO_AUTH_TOKEN=your_actual_auth_token
+TWILIO_PHONE_NUMBER=whatsapp:+your_twilio_number</code></pre>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Alert about functionality -->
 <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
     <i data-feather="info" class="me-3"></i>
     <div>
-        <strong>Mock WhatsApp Integration</strong>
-        <p class="mb-0">This is a simulation of the WhatsApp bot functionality for demonstration purposes. In production, this would integrate with Twilio or similar WhatsApp Business API.</p>
+        <strong>WhatsApp Bot Interface</strong>
+        <p class="mb-0">{% if config_status and config_status.twilio_client %}Live WhatsApp integration with Quick Reply buttons enabled.{% else %}Simulation mode - configure Twilio credentials for live messaging with Quick Reply buttons.{% endif %}</p>
     </div>
 </div>
 
