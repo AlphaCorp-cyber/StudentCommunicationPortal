@@ -141,7 +141,15 @@ class WhatsAppBot:
             if session.last_message and session.last_message.startswith('BOOKING_CONTEXT:'):
                 session.last_message = "session_expired"
 
-        session.last_message = message
+        # DON'T overwrite last_message if it contains state information
+        # Only update if it's a regular message, not state data
+        if not (session.last_message and (
+            session.last_message == 'awaiting_duration' or 
+            session.last_message.startswith('BOOKING_CONTEXT:') or
+            session.last_message == 'showing_cancel_options'
+        )):
+            session.last_message = message
+            
         session.last_activity = datetime.now()
         session.is_active = True
 
@@ -171,6 +179,7 @@ class WhatsAppBot:
 
         # Get current session state
         session_state = self.get_session_state(student)
+        logger.info(f"Current session state for {student.name}: {session_state}, message: '{message}'")
 
         # Check for cancel with lesson number (e.g., "cancel 1")
         if message.startswith('cancel '):
