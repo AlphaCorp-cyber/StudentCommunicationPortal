@@ -111,10 +111,27 @@ myInstructor 2.0 is a modern driving school management platform that combines Wh
 - **Connection Health**: Pre-ping and connection recycling
 - **Session Management**: Proper cleanup and error handling
 
+## Configuration
+
+### Environment Variables (.env file)
+The application now uses a .env file for easy configuration management:
+
+- **TWILIO_ACCOUNT_SID**: Your Twilio Account SID
+- **TWILIO_AUTH_TOKEN**: Your Twilio Auth Token  
+- **TWILIO_PHONE_NUMBER**: Your Twilio WhatsApp phone number (e.g., whatsapp:+14155238886)
+- **TWILIO_TEMPLATE_SID**: Twilio template ID for Quick Reply buttons (HXf324aa725113107f86055b1cc3d4092a)
+- **SESSION_SECRET**: Flask session secret key
+
+### WhatsApp Bot Features
+- Quick Reply buttons using Twilio templates
+- Session state management for booking flow
+- Interactive lesson booking with duration selection
+- Progress tracking and lesson management
+
 ## Changelog
 
-Changelog:
-- June 25, 2025. Initial setup
+- July 9, 2025: Added .env configuration support and Twilio template integration for Quick Reply buttons
+- June 25, 2025: Initial setup
 
 ## User Preferences
 

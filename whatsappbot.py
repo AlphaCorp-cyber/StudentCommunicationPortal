@@ -54,32 +54,37 @@ class WhatsAppBot:
         return "263719092710"  # Your actual WhatsApp number
 
     def initialize_twilio(self):
-        """Initialize Twilio client with credentials from SystemConfig or environment"""
+        """Initialize Twilio client with credentials from environment variables or SystemConfig"""
         try:
-            # Try to get credentials from SystemConfig first (only if we have app context)
-            account_sid = None
-            auth_token = None
-
-            try:
-                account_sid = SystemConfig.get_config('TWILIO_ACCOUNT_SID')
-                auth_token = SystemConfig.get_config('TWILIO_AUTH_TOKEN')
-            except Exception:
-                # No app context or database not available, try environment variables
-                pass
-
-            # Fallback to environment variables
-            account_sid = account_sid or os.getenv('TWILIO_ACCOUNT_SID')
-            auth_token = auth_token or os.getenv('TWILIO_AUTH_TOKEN')
+            # Load environment variables first (from .env file)
+            account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+            auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+            
+            # Try to get credentials from SystemConfig as fallback (only if we have app context)
+            if not account_sid or not auth_token:
+                try:
+                    account_sid = account_sid or SystemConfig.get_config('TWILIO_ACCOUNT_SID')
+                    auth_token = auth_token or SystemConfig.get_config('TWILIO_AUTH_TOKEN')
+                except Exception:
+                    # No app context or database not available
+                    pass
 
             if account_sid and auth_token:
                 self.twilio_client = Client(account_sid, auth_token)
-                try:
-                    self.twilio_phone = SystemConfig.get_config('TWILIO_WHATSAPP_NUMBER')
-                except Exception:
-                    self.twilio_phone = os.getenv('TWILIO_WHATSAPP_NUMBER')
+                
+                # Get phone number from environment or SystemConfig
+                self.twilio_phone = os.getenv('TWILIO_PHONE_NUMBER')
+                if not self.twilio_phone:
+                    try:
+                        self.twilio_phone = SystemConfig.get_config('TWILIO_WHATSAPP_NUMBER')
+                    except Exception:
+                        self.twilio_phone = None
+                        
                 logger.info("Twilio client initialized successfully")
+                logger.info(f"Using Twilio phone: {self.twilio_phone}")
             else:
                 logger.warning("Twilio credentials not found. WhatsApp messaging will be in mock mode.")
+                logger.warning("Please set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN in .env file")
         except Exception as e:
             logger.error(f"Failed to initialize Twilio client: {str(e)}")
             self.twilio_client = None
@@ -259,7 +264,7 @@ Choose an option below:"""
         return self.send_interactive_message(student.phone, message_body, quick_replies)
     
     def send_interactive_message(self, phone_number, message_body, quick_replies=None, list_options=None):
-        """Send interactive message with Quick Reply buttons or List options"""
+        """Send interactive message with Quick Reply buttons using Twilio template"""
         try:
             if not self.twilio_client:
                 # In demo mode, return text with options
@@ -275,54 +280,59 @@ Choose an option below:"""
                     return message_body + list_text
                 return message_body
 
-            from_number = self.twilio_phone or 'whatsapp:+263719092710'
-            to_number = f'whatsapp:{phone_number}'
+            from_number = self.twilio_phone or os.getenv('TWILIO_PHONE_NUMBER', 'whatsapp:+14155238886')
+            to_number = f'whatsapp:{phone_number.replace("+", "")}'
+            template_sid = os.getenv('TWILIO_TEMPLATE_SID', 'HXf324aa725113107f86055b1cc3d4092a')
             
             if quick_replies:
-                # Send message with Quick Reply buttons
-                content_variables = {
-                    "1": message_body
-                }
+                # Use Twilio template with content variables for Quick Reply buttons
+                import json
                 
-                # Create persistent menu with quick replies
-                persistent_action = []
-                for reply in quick_replies:
-                    persistent_action.append({
-                        "type": "reply",
-                        "reply": {
-                            "id": reply["id"],
-                            "title": reply["title"]
-                        }
-                    })
+                # Build button text for template variable
+                button_text = ""
+                for idx, reply in enumerate(quick_replies, 1):
+                    button_text += f"{idx}. {reply['title']}\n"
+                
+                content_variables = json.dumps({
+                    "1": message_body,
+                    "2": button_text.strip()
+                })
                 
                 message = self.twilio_client.messages.create(
-                    from_=from_number,
                     to=to_number,
-                    body=message_body,
-                    persistent_action=persistent_action
+                    from_=from_number,
+                    content_sid=template_sid,
+                    content_variables=content_variables
                 )
                 
             elif list_options:
-                # Send message with interactive list
-                # Format as simple numbered list for WhatsApp
-                list_text = message_body + "\n\n"
+                # Send message with interactive list using template
+                import json
+                
+                list_text = ""
                 for idx, option in enumerate(list_options, 1):
                     list_text += f"{idx}. {option['title']}\n"
                 
+                content_variables = json.dumps({
+                    "1": message_body,
+                    "2": list_text.strip()
+                })
+                
                 message = self.twilio_client.messages.create(
-                    from_=from_number,
                     to=to_number,
-                    body=list_text
+                    from_=from_number,
+                    content_sid=template_sid,
+                    content_variables=content_variables
                 )
             else:
-                # Send regular message
+                # Send regular message without template
                 message = self.twilio_client.messages.create(
                     from_=from_number,
                     to=to_number,
                     body=message_body
                 )
             
-            logger.info(f"Interactive message sent to {phone_number}")
+            logger.info(f"Interactive message sent to {phone_number} using template {template_sid}")
             return "Message sent successfully"
             
         except Exception as e:
