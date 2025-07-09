@@ -186,8 +186,11 @@ class WhatsAppBot:
 
         # Context-aware message handling based on session state
         if session_state == 'awaiting_duration':
+            # When waiting for duration, prioritize 30/60 over menu options
             if message in ['30', '60']:
                 return self.handle_duration_selection(student, int(message))
+            elif message == 'menu':
+                return self.reset_session_and_start(student)
             else:
                 return self.handle_duration_selection_error(student, message)
 
@@ -203,13 +206,9 @@ class WhatsAppBot:
             except ValueError:
                 return self.handle_booking_slot_error(student, message)
 
-        # Handle numerical menu options (main menu)
-        if message in ['1', '2', '3', '4', '5']:
+        # Handle numerical menu options (only when NOT in a specific state)
+        if session_state in [None, 'default', 'main_menu'] and message in ['1', '2', '3', '4', '5']:
             return self.handle_menu_option(student, message)
-
-        # Handle booking duration selection (when in main menu)
-        if message in ['30', '60'] and session_state != 'awaiting_booking_slot':
-            return self.handle_duration_selection(student, int(message))
 
         # Check for word-based commands (more user-friendly)
         message_words = message.lower().split()
@@ -1147,33 +1146,27 @@ Example: Reply "*lessons*" or "*book*"""
 
     def reset_session_and_start(self, student):
         """Reset session state and show main menu"""
-        # Clear any booking context
-        session_id = f"whatsapp_{student.phone}_{datetime.now().strftime('%Y%m%d')}"
-        session = WhatsAppSession.query.filter_by(session_id=session_id).first()
+        # Clear any booking context and reset to main menu
+        self.set_session_state(student, 'main_menu')
 
-        if session:
-            session.last_message = "session_reset"
-            session.last_activity = datetime.now()
-            db.session.commit()
-
-        return f"""🔄 *Session Reset* ✅
+        message_body = f"""🔄 *Session Reset* ✅
 
 Hello again {student.name}! 👋
 
 I've cleared everything. Let's start fresh!
 
-🔥 *Quick Commands - Just Reply:*
-
-📅 *lessons* - See your schedule
-🎯 *book* - Schedule new lesson  
-📊 *progress* - Your stats
-❌ *cancel* - Cancel upcoming
-❓ *help* - Support
-
 👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}
 
-💬 *Just reply with any command above!*
-Example: Reply "*book*" to book a lesson"""
+Choose what you'd like to do:"""
+        
+        quick_replies = [
+            {"id": "lessons", "title": "📅 View Lessons"},
+            {"id": "book", "title": "🎯 Book Lesson"},
+            {"id": "progress", "title": "📊 Check Progress"},
+            {"id": "help", "title": "❓ Get Help"}
+        ]
+        
+        return self.send_interactive_message(student.phone, message_body, quick_replies)
 
     def handle_unknown_student(self, phone_number):
         """Handle messages from unknown phone numbers"""
