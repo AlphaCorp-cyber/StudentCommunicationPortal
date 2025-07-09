@@ -232,34 +232,108 @@ class WhatsAppBot:
 
     def handle_greeting(self, student):
         """Handle greeting messages with interactive buttons"""
-        return f"""Hello {student.name}! 👋
+        message_body = f"""Hello {student.name}! 👋
 
 Welcome to myInstructor 2.0 WhatsApp Bot!
 
-📋 *Main Menu:*
-
 👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}
 
-🔥 *Quick Tap Options:*
-Tap any option below to auto-send:
+Choose an option below:"""
+        
+        # Create quick reply buttons
+        quick_replies = [
+            {"id": "lessons", "title": "📅 View Lessons"},
+            {"id": "book", "title": "🎯 Book Lesson"},
+            {"id": "progress", "title": "📊 Check Progress"},
+            {"id": "help", "title": "❓ Get Help"}
+        ]
+        
+        return self.send_interactive_message(student.phone, message_body, quick_replies)
+    
+    def send_interactive_message(self, phone_number, message_body, quick_replies=None, list_options=None):
+        """Send interactive message with Quick Reply buttons or List options"""
+        try:
+            if not self.twilio_client:
+                # In demo mode, return text with options
+                if quick_replies:
+                    reply_text = "\n\n*Quick Options:*\n"
+                    for idx, reply in enumerate(quick_replies, 1):
+                        reply_text += f"{idx}. {reply['title']}\n"
+                    return message_body + reply_text
+                elif list_options:
+                    list_text = "\n\n*Options:*\n"
+                    for idx, option in enumerate(list_options, 1):
+                        list_text += f"{idx}. {option['title']}\n"
+                    return message_body + list_text
+                return message_body
 
-📅 *lessons* - View upcoming lessons
-🎯 *book* - Book a lesson  
-📊 *progress* - Check your progress
-❌ *cancel* - Cancel a lesson
-❓ *help* - Get help
-
-💡 Just type any of the *bold* commands above, or:
-• Type "1" for lessons
-• Type "2" for booking
-• Type "3" for progress
-• Type "4" to cancel
-• Type "5" for help
-
-⚡ Everything is designed to be quick and easy!"""
+            from_number = self.twilio_phone or 'whatsapp:+263719092710'
+            to_number = f'whatsapp:{phone_number}'
+            
+            if quick_replies:
+                # Send message with Quick Reply buttons
+                content_variables = {
+                    "1": message_body
+                }
+                
+                # Create persistent menu with quick replies
+                persistent_action = []
+                for reply in quick_replies:
+                    persistent_action.append({
+                        "type": "reply",
+                        "reply": {
+                            "id": reply["id"],
+                            "title": reply["title"]
+                        }
+                    })
+                
+                message = self.twilio_client.messages.create(
+                    from_=from_number,
+                    to=to_number,
+                    body=message_body,
+                    persistent_action=persistent_action
+                )
+                
+            elif list_options:
+                # Send message with interactive list
+                # Format as simple numbered list for WhatsApp
+                list_text = message_body + "\n\n"
+                for idx, option in enumerate(list_options, 1):
+                    list_text += f"{idx}. {option['title']}\n"
+                
+                message = self.twilio_client.messages.create(
+                    from_=from_number,
+                    to=to_number,
+                    body=list_text
+                )
+            else:
+                # Send regular message
+                message = self.twilio_client.messages.create(
+                    from_=from_number,
+                    to=to_number,
+                    body=message_body
+                )
+            
+            logger.info(f"Interactive message sent to {phone_number}")
+            return "Message sent successfully"
+            
+        except Exception as e:
+            logger.error(f"Error sending interactive message: {str(e)}")
+            # Fallback to regular message format
+            if quick_replies:
+                reply_text = message_body + "\n\n*Quick Options:*\n"
+                for idx, reply in enumerate(quick_replies, 1):
+                    reply_text += f"{idx}. {reply['title']}\n"
+                return reply_text
+            elif list_options:
+                list_text = message_body + "\n\n*Options:*\n"
+                for idx, option in enumerate(list_options, 1):
+                    list_text += f"{idx}. {option['title']}\n"
+                return list_text
+            return message_body
 
     def handle_lessons(self, student):
-        """Handle lessons inquiry"""
+        """Handle lessons inquiry with quick reply options"""
         # Get upcoming lessons
         upcoming_lessons = Lesson.query.filter(
             Lesson.student_id == student.id,
@@ -268,11 +342,16 @@ Tap any option below to auto-send:
         ).order_by(Lesson.scheduled_date).limit(5).all()
 
         if not upcoming_lessons:
-            return "📅 You have no upcoming lessons scheduled.\n\nContact your instructor to schedule lessons!"
+            message_body = "📅 You have no upcoming lessons scheduled.\n\nWould you like to book a lesson?"
+            quick_replies = [
+                {"id": "book", "title": "📅 Book Lesson"},
+                {"id": "menu", "title": "🏠 Main Menu"}
+            ]
+            return self.send_interactive_message(student.phone, message_body, quick_replies)
 
         response = f"📅 *Your Upcoming Lessons:*\n\n"
 
-        for lesson in upcoming_lessons:
+        for idx, lesson in enumerate(upcoming_lessons, 1):
             date_str = lesson.scheduled_date.strftime('%Y-%m-%d')
             time_str = lesson.scheduled_date.strftime('%H:%M')
             instructor_name = lesson.instructor.get_full_name() if lesson.instructor else "No instructor assigned"
@@ -283,9 +362,16 @@ Tap any option below to auto-send:
             response += f"👨‍🏫 Instructor: {instructor_name}\n"
             if lesson.location:
                 response += f"📍 Location: {lesson.location}\n"
-            response += "\n"
+            response += f"💬 To cancel: type *cancel {idx}*\n\n"
 
-        return response
+        # Add quick reply options
+        quick_replies = [
+            {"id": "book", "title": "📅 Book Another"},
+            {"id": "progress", "title": "📊 Check Progress"},
+            {"id": "menu", "title": "🏠 Main Menu"}
+        ]
+        
+        return self.send_interactive_message(student.phone, response, quick_replies)
 
     def handle_schedule(self, student):
         """Handle schedule inquiry with instructor availability"""
@@ -431,7 +517,7 @@ Tap any option below to auto-send:
         return available_slots
 
     def handle_progress(self, student):
-        """Handle progress inquiry"""
+        """Handle progress inquiry with quick reply options"""
         completed_lessons = student.lessons_completed
         total_required = student.total_lessons_required
         progress_percentage = student.get_progress_percentage()
@@ -461,8 +547,21 @@ Tap any option below to auto-send:
             response += f"\n🎯 {remaining} lessons remaining to complete your course!"
         else:
             response += f"\n🎉 Congratulations! You've completed all required lessons!"
-
-        return response
+            
+        # Add quick reply options based on progress
+        if remaining > 0:
+            quick_replies = [
+                {"id": "book", "title": "📅 Book Next Lesson"},
+                {"id": "lessons", "title": "📋 View Lessons"},
+                {"id": "menu", "title": "🏠 Main Menu"}
+            ]
+        else:
+            quick_replies = [
+                {"id": "lessons", "title": "📋 View History"},
+                {"id": "menu", "title": "🏠 Main Menu"}
+            ]
+            
+        return self.send_interactive_message(student.phone, response, quick_replies)
 
     def handle_cancel_lesson(self, student):
         """Handle lesson cancellation request"""
@@ -547,54 +646,49 @@ Tap any option below to auto-send:
             return "❌ Sorry, there was an error cancelling your lesson. Please try again or contact your instructor."
 
     def handle_help(self, student):
-        """Handle help request"""
-        return f"""❓ *Help & Easy Commands:*
+        """Handle help request with quick reply options"""
+        message_body = """❓ *Help & Easy Commands:*
 
 🔥 *Quick Commands:*
-
-📅 *lessons* - See your schedule
-🎯 *book* - Book 30min or 1 hour
-📊 *progress* - Your stats
-❌ *cancel* - Cancel upcoming
-📋 *menu* - Back to start
-🔄 *reset* - Clear everything
+• lessons - See your schedule
+• book - Book 30min or 1 hour
+• progress - Your stats
+• cancel - Cancel upcoming
+• menu - Back to start
 
 💡 *Pro Tips:*
-• Just type the *bold* commands above
-• Or use shortcuts: 1, 2, 3, 4, 5
 • Lessons: 6:00 AM - 4:00 PM (Mon-Sat)
 • Maximum 2 lessons per day
 • Cancel at least 2 hours before lesson time
 • Tomorrow's lessons: book after 6:00 PM today
 
-🔄 *Stuck or confused?*
-⚡ Type *reset* to start fresh!
-
-📞 *Need more help?*
-Contact your instructor or driving school directly."""
+📞 Need more help? Contact your instructor directly."""
+        
+        quick_replies = [
+            {"id": "book", "title": "📅 Book Lesson"},
+            {"id": "lessons", "title": "📋 My Lessons"},
+            {"id": "progress", "title": "📊 My Progress"},
+            {"id": "menu", "title": "🏠 Main Menu"}
+        ]
+        
+        return self.send_interactive_message(student.phone, message_body, quick_replies)
 
     def handle_menu(self, student):
         """Handle menu request with quick reply options"""
-        return f"""📋 *Main Menu:*
-
-🔥 *Quick Commands:*
-
-📅 *lessons* - See your schedule
-🎯 *book* - Schedule new lesson
-📊 *progress* - See your stats
-❌ *cancel* - Cancel upcoming
-❓ *help* - Support & commands
+        message_body = f"""📋 *Main Menu:*
 
 👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}
 
-💡 *Shortcuts:*
-• Type "1" for lessons
-• Type "2" for booking  
-• Type "3" for progress
-• Type "4" to cancel
-• Type "5" for help
-
-⚡ Just type any command above!"""
+Choose what you'd like to do:"""
+        
+        quick_replies = [
+            {"id": "lessons", "title": "📅 View Lessons"},
+            {"id": "book", "title": "🎯 Book Lesson"},
+            {"id": "progress", "title": "📊 Check Progress"},
+            {"id": "help", "title": "❓ Get Help"}
+        ]
+        
+        return self.send_interactive_message(student.phone, message_body, quick_replies)
 
     def handle_menu_option(self, student, option):
         """Handle numbered menu selections"""
@@ -616,21 +710,17 @@ Contact your instructor or driving school directly."""
         # Set session state to expect duration selection
         self.set_session_state(student, 'awaiting_duration')
 
-        return f"""📅 *Book a Lesson*
+        message_body = """📅 *Book a Lesson*
 
-Choose your lesson duration:
-
-🔥 *Tap to Reply:*
-
-🕐 *30* - Quick lesson (30 minutes)
-🕑 *60* - Full lesson (60 minutes)
-
-💬 *Just reply with:*
-• *30* for 30-minute lesson
-• *60* for 60-minute lesson
-• *menu* to go back
-
-⚡ Super simple - just tap and reply!"""
+Choose your lesson duration:"""
+        
+        quick_replies = [
+            {"id": "30", "title": "🕐 30 minutes"},
+            {"id": "60", "title": "🕑 60 minutes"},
+            {"id": "menu", "title": "🔙 Back to Menu"}
+        ]
+        
+        return self.send_interactive_message(student.phone, message_body, quick_replies)
 
     def handle_duration_selection(self, student, duration_minutes):
         """Handle duration selection and show available timeslots with booking numbers"""
