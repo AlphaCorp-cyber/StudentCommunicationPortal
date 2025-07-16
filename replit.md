@@ -123,27 +123,28 @@ The application now uses a .env file for easy configuration management:
 - **SESSION_SECRET**: Flask session secret key
 
 ### WhatsApp Bot Features
-- **2025 Twilio Content API Integration**: Uses latest Quick Reply button structure
-- **Dynamic Template Creation**: Creates content templates on-the-fly for interactive messages
-- **Button Response Handling**: Processes ButtonText and ButtonPayload from webhook
-- **Fallback System**: Multiple fallback approaches (Content API → Direct Interactive → Text)
-- **Session state management** for booking flow
-- **Interactive lesson booking** with duration selection (30/60 min buttons)
-- **Progress tracking** and lesson management with Quick Reply navigation
+- **Simple numbered options**: Clean, reliable text-based interaction system
+- **Session state management** for booking flow tracking
+- **Interactive lesson booking** with duration selection (30/60 minutes)
+- **Progress tracking** and lesson management with numbered navigation
+- **Real-time Twilio integration** for live WhatsApp messaging
+- **Comprehensive booking system** with availability checking
 
-### Latest Button Implementation (July 16, 2025)
-- **Primary**: Twilio Content API with `twilio/quick-reply` templates
-- **Secondary**: Direct interactive messaging with JSON media
-- **Fallback**: Enhanced numbered text options with visual formatting
-- **Webhook**: Handles both ButtonPayload and regular text messages
-- **Button IDs**: Uses clean IDs (lessons, book, progress, help, 30, 60, menu)
+### Current Implementation (July 16, 2025)
+- **Numbered Options**: Simple 1, 2, 3 format for all interactions
+- **Clean Format**: No special characters or emojis, just clear numbered lists
+- **Reliable**: Works with all Twilio accounts without special approvals
+- **User-Friendly**: Easy to use by simply typing numbers
+- **Session Flow**: Maintains conversation context for multi-step bookings
 
 ## Changelog
 
-- July 16, 2025: Updated to latest 2025 Twilio WhatsApp API structure with Content API and proper button handling
-- July 9, 2025: Added .env configuration support and Twilio template integration for Quick Reply buttons
+- July 16, 2025: Simplified to reliable numbered text system (1, 2, 3) instead of Quick Reply buttons due to WhatsApp Business approval requirements
+- July 9, 2025: Added .env configuration support and Twilio template integration
 - June 25, 2025: Initial setup
 
 ## User Preferences
 
-Preferred communication style: Simple, everyday language.
+- **Communication style**: Simple, everyday language
+- **WhatsApp interaction**: Clean numbered options (1, 2, 3) instead of buttons or emojis
+- **Reliability over complexity**: Prefer solutions that work immediately without special approvals

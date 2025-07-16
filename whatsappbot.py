@@ -206,11 +206,16 @@ class WhatsAppBot:
 
         # Context-aware message handling based on session state
         if session_state == 'awaiting_duration':
-            # When waiting for duration, prioritize 30/60 over menu options
-            if message in ['30', '60']:
-                return self.handle_duration_selection(student, int(message))
-            elif message == 'menu':
+            # Handle numbered choices for duration (1=30min, 2=60min, 3=menu)
+            if message == '1':
+                return self.handle_duration_selection(student, 30)
+            elif message == '2':
+                return self.handle_duration_selection(student, 60)
+            elif message == '3' or message == 'menu':
                 return self.reset_session_and_start(student)
+            # Also accept direct duration values
+            elif message in ['30', '60']:
+                return self.handle_duration_selection(student, int(message))
             else:
                 return self.handle_duration_selection_error(student, message)
 
@@ -276,10 +281,11 @@ Choose an option below:"""
                 # In demo mode, return text with options
                 logger.info("📱 Running in MOCK mode - no real Twilio client available")
                 if quick_replies:
-                    reply_text = "\n\n*Quick Options:*\n"
+                    reply_text = "\n\n"
                     for idx, reply in enumerate(quick_replies, 1):
                         reply_text += f"{idx}. {reply['title']}\n"
-                    logger.info(f"📝 Mock Quick Reply buttons: {[r['title'] for r in quick_replies]}")
+                    reply_text += f"\nReply with {', '.join([str(i) for i in range(1, len(quick_replies)+1)])}"
+                    logger.info(f"📝 Mock numbered options: {[r['title'] for r in quick_replies]}")
                     return message_body + reply_text
                 elif list_options:
                     list_text = "\n\n*Options:*\n"
@@ -302,46 +308,43 @@ Choose an option below:"""
             logger.info(f"📞 Sending from: {from_number} to: {to_number}")
             
             if quick_replies and len(quick_replies) <= 3:
-                # For actual Quick Reply buttons, we need WhatsApp Business API approval
-                # Since most users don't have this, let's use the best text-based approach
+                # Use simple numbered options - clean and reliable
                 try:
-                    # Create a visually appealing text message with clear options
-                    button_message = f"{message_body}\n\n"
-                    button_message += "🔘 *Quick Options:*\n"
+                    # Create clean numbered message
+                    options_message = f"{message_body}\n\n"
                     
                     for idx, reply in enumerate(quick_replies, 1):
-                        # Use emojis to make it look more button-like
-                        button_message += f"▶️ *{idx}* → {reply['title']}\n"
+                        options_message += f"{idx}. {reply['title']}\n"
                     
-                    button_message += f"\n💬 *Just reply with the number (1-{len(quick_replies)})*"
+                    options_message += f"\nReply with {', '.join([str(i) for i in range(1, len(quick_replies)+1)])}"
                     
-                    # Send the enhanced text message
+                    # Send the numbered options message
                     message = self.twilio_client.messages.create(
                         from_=from_number,
                         to=to_number,
-                        body=button_message
+                        body=options_message
                     )
                     
-                    logger.info(f"✅ Enhanced button-style message sent to {phone_number}")
-                    return "Interactive message sent successfully"
+                    logger.info(f"✅ Numbered options message sent to {phone_number}")
+                    return "Message sent successfully"
                     
-                except Exception as enhanced_error:
-                    logger.warning(f"Enhanced message failed: {str(enhanced_error)}")
+                except Exception as options_error:
+                    logger.warning(f"Numbered options failed: {str(options_error)}")
                     
-                    # Try simple approach - combine message and options
+                    # Fallback to basic text
                     try:
-                        combined_message = message_body + "\n\n"
+                        fallback_message = message_body + "\n\n"
                         for idx, reply in enumerate(quick_replies, 1):
-                            combined_message += f"{idx}. {reply['title']}\n"
-                        combined_message += "\nReply with the number!"
+                            fallback_message += f"{idx}. {reply['title']}\n"
+                        fallback_message += "\nReply with number"
                         
                         message = self.twilio_client.messages.create(
                             from_=from_number,
                             to=to_number,
-                            body=combined_message
+                            body=fallback_message
                         )
                         
-                        logger.info(f"✅ Combined text message sent to {phone_number}")
+                        logger.info(f"✅ Fallback message sent to {phone_number}")
                         return "Message sent successfully"
                         
                     except Exception as text_error:
@@ -820,9 +823,9 @@ Choose what you'd like to do:"""
 Choose your lesson duration:"""
         
         quick_replies = [
-            {"id": "30", "title": "🕐 30 minutes"},
-            {"id": "60", "title": "🕑 60 minutes"},
-            {"id": "menu", "title": "🔙 Back to Menu"}
+            {"id": "30", "title": "30 minutes"},
+            {"id": "60", "title": "60 minutes"},
+            {"id": "menu", "title": "Back to Menu"}
         ]
         
         return self.send_interactive_message(student.phone, message_body, quick_replies)

@@ -68,18 +68,23 @@ True WhatsApp Quick Reply buttons (clickable buttons) require:
 Most Twilio accounts don't have these permissions, so we use an enhanced text-based approach that provides excellent user experience.
 
 ### Our Implementation
-We send visually appealing text messages with clear options:
+We send clean, numbered text messages that are easy to use:
 
 ```
-🔘 Quick Options:
-▶️ 1 → View Lessons
-▶️ 2 → Book Lesson  
-▶️ 3 → Check Progress
+Choose your lesson duration:
 
-💬 Just reply with the number (1-3)
+1. 30 minutes
+2. 60 minutes
+3. Back to Menu
+
+Reply with 1, 2, 3
 ```
 
-This approach works immediately without any special approvals and provides a smooth user experience.
+This approach:
+- Works immediately without any special approvals
+- Provides smooth user experience with simple numbered choices
+- Is reliable across all phone types and WhatsApp versions
+- Easy for users to understand and use
 
 ## Webhook Handling
 
