@@ -73,12 +73,20 @@
                         <div class="alert alert-{% if config_status.twilio_client %}success{% else %}warning{% endif %}" role="alert">
                             {% if config_status.twilio_client %}
                                 <strong>✅ Quick Reply Buttons Available!</strong> Your Twilio credentials are configured correctly.
+                                <div class="mt-2">
+                                    <a href="{{ url_for('create_whatsapp_template') }}" class="btn btn-sm btn-primary">
+                                        <i data-feather="plus" class="me-1"></i>
+                                        Create Test Template
+                                    </a>
+                                    <small class="text-muted ms-2">Creates a Quick Reply template for testing</small>
+                                </div>
                             {% else %}
                                 <strong>⚠️ Quick Reply Buttons Not Available</strong><br>
                                 To enable interactive Quick Reply buttons, please update your <code>.env</code> file with your actual Twilio credentials:
                                 <pre class="mt-2 mb-0"><code>TWILIO_ACCOUNT_SID=your_actual_account_sid
 TWILIO_AUTH_TOKEN=your_actual_auth_token
-TWILIO_PHONE_NUMBER=whatsapp:+your_twilio_number</code></pre>
+TWILIO_PHONE_NUMBER=whatsapp:+your_twilio_number
+TWILIO_TEMPLATE_SID=your_template_sid_from_content_builder</code></pre>
                             {% endif %}
                         </div>
                     </div>

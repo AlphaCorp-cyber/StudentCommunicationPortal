@@ -294,79 +294,70 @@ Choose an option below:"""
             to_number = f'whatsapp:+{clean_phone}'
             
             if quick_replies and len(quick_replies) <= 3:
-                # Use Twilio's Content API for Quick Reply buttons (2025 approach)
+                # Use approved content template with content_sid (2025 Twilio approach)
                 try:
-                    # Create dynamic content template for Quick Reply
-                    content_template = {
-                        "content_type": "twilio/quick-reply",
-                        "content": {
-                            "body": message_body,
-                            "buttons": []
-                        }
-                    }
+                    # Get the template SID from environment
+                    content_sid = os.getenv('TWILIO_TEMPLATE_SID', 'HXf324aa725113107f86055b1cc3d4092a')
                     
-                    # Add buttons (max 3 for quick reply)
-                    for reply in quick_replies[:3]:
-                        content_template["content"]["buttons"].append({
-                            "type": "quick_reply",
-                            "text": reply["title"][:24],  # Max 24 characters
-                            "id": reply["id"]
-                        })
+                    # Build content variables for the template
+                    # Template should have variables {1}, {2}, {3} for button texts
+                    content_variables = {}
+                    for idx, reply in enumerate(quick_replies[:3], 1):
+                        content_variables[str(idx)] = reply['title'][:24]  # Max 24 chars per button
                     
-                    # Try to create and send content template
-                    content = self.twilio_client.content.v1.contents.create(
-                        friendly_name=f"quick_reply_{int(time.time())}",
-                        content_type="twilio/quick-reply",
-                        content=content_template["content"]
-                    )
-                    
-                    # Send message using content SID
+                    # Send message using approved template
                     message = self.twilio_client.messages.create(
                         from_=from_number,
                         to=to_number,
-                        content_sid=content.sid
+                        content_sid=content_sid,
+                        content_variables=json.dumps(content_variables)
                     )
                     
-                    logger.info(f"✅ Interactive Quick Reply message sent to {phone_number} with Content SID: {content.sid}")
+                    logger.info(f"✅ Template message sent to {phone_number} with Content SID: {content_sid}")
+                    logger.info(f"📋 Button variables: {content_variables}")
                     return "Interactive message sent successfully"
                     
-                except Exception as content_error:
-                    logger.warning(f"Content API failed, trying direct approach: {str(content_error)}")
+                except Exception as template_error:
+                    logger.warning(f"Template approach failed: {str(template_error)}")
                     
-                    # Fallback: Try direct messaging with Media parameter for buttons
+                    # Fallback: Try creating dynamic content template
                     try:
-                        # Build buttons JSON for media parameter
-                        buttons_json = {
-                            "type": "button",
-                            "body": {
-                                "text": message_body
-                            },
-                            "action": {
+                        # Create dynamic content template for Quick Reply
+                        content_template = {
+                            "content_type": "twilio/quick-reply",
+                            "content": {
+                                "body": message_body,
                                 "buttons": []
                             }
                         }
                         
+                        # Add buttons (max 3 for quick reply)
                         for reply in quick_replies[:3]:
-                            buttons_json["action"]["buttons"].append({
-                                "type": "reply",
-                                "reply": {
-                                    "id": reply["id"],
-                                    "title": reply["title"][:20]  # WhatsApp limit
-                                }
+                            content_template["content"]["buttons"].append({
+                                "type": "quick_reply",
+                                "text": reply["title"][:24],  # Max 24 characters
+                                "id": reply["id"]
                             })
                         
+                        # Try to create and send content template
+                        content = self.twilio_client.content.v1.contents.create(
+                            friendly_name=f"quick_reply_{int(time.time())}",
+                            content_type="twilio/quick-reply",
+                            content=content_template["content"]
+                        )
+                        
+                        # Send message using content SID
                         message = self.twilio_client.messages.create(
                             from_=from_number,
                             to=to_number,
-                            body=message_body,
-                            media_url=[f"data:application/json;base64,{base64.b64encode(json.dumps(buttons_json).encode()).decode()}"]
+                            content_sid=content.sid
                         )
                         
-                        logger.info(f"✅ Direct interactive message sent to {phone_number}")
+                        logger.info(f"✅ Dynamic template message sent to {phone_number} with Content SID: {content.sid}")
                         return "Interactive message sent successfully"
                         
-                    except Exception as direct_error:
-                        logger.warning(f"Direct interactive failed, using text fallback: {str(direct_error)}")
+                    except Exception as dynamic_error:
+                        logger.warning(f"Dynamic template failed, using text fallback: {str(dynamic_error)}")
                         
                         # Final fallback to numbered text options
                         reply_text = message_body + "\n\n*Quick Options:*\n"
@@ -1318,6 +1309,41 @@ Contact your driving school for assistance with registration."""
         except Exception as e:
             logger.error(f"❌ Error processing button response: {str(e)}")
             return "Sorry, there was an error processing your selection. Please try again or type 'menu'."
+
+    def create_quick_reply_template(self, template_name, body_text, button_texts):
+        """Create a Quick Reply template using Twilio Content API"""
+        try:
+            if not self.twilio_client:
+                logger.warning("Cannot create template - Twilio client not available")
+                return None
+
+            # Build template content
+            template_content = {
+                "body": body_text,
+                "buttons": []
+            }
+            
+            # Add buttons (max 3 for Quick Reply)
+            for idx, button_text in enumerate(button_texts[:3]):
+                template_content["buttons"].append({
+                    "type": "quick_reply",
+                    "text": button_text[:24],  # Max 24 characters
+                    "id": f"btn_{idx+1}"
+                })
+
+            # Create the template
+            content = self.twilio_client.content.v1.contents.create(
+                friendly_name=template_name,
+                content_type="twilio/quick-reply",
+                content=template_content
+            )
+            
+            logger.info(f"✅ Created template '{template_name}' with SID: {content.sid}")
+            return content.sid
+            
+        except Exception as e:
+            logger.error(f"❌ Error creating template: {str(e)}")
+            return None
 
 # Global bot instance - will be initialized later with app context
 whatsapp_bot = WhatsAppBot()

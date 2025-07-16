@@ -1152,6 +1152,39 @@ def test_twilio_config():
                          config_status=config_status,
                          show_config_test=True)
 
+@app.route('/create-whatsapp-template')
+@require_role('admin')
+def create_whatsapp_template():
+    """Create a Quick Reply template for testing"""
+    import os
+    from whatsappbot import WhatsAppBot
+    
+    try:
+        bot = WhatsAppBot()
+        bot.initialize_twilio()
+        
+        if not bot.twilio_client:
+            flash('Twilio not configured. Please set up your credentials first.', 'error')
+            return redirect(url_for('test_twilio_config'))
+        
+        # Create a test template
+        template_sid = bot.create_quick_reply_template(
+            template_name="myinstructor_menu",
+            body_text="Welcome to myInstructor! How can I help you today?",
+            button_texts=["View Lessons", "Book Lesson", "Check Progress"]
+        )
+        
+        if template_sid:
+            flash(f'Template created successfully! SID: {template_sid}', 'success')
+            flash(f'Add this to your .env file: TWILIO_TEMPLATE_SID={template_sid}', 'info')
+        else:
+            flash('Failed to create template. Check logs for details.', 'error')
+            
+    except Exception as e:
+        flash(f'Error creating template: {str(e)}', 'error')
+    
+    return redirect(url_for('test_twilio_config'))
+
 @app.errorhandler(403)
 def forbidden(error):
     return render_template('403.html'), 403
