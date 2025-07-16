@@ -1135,6 +1135,7 @@ def activate_user(user_id):
 @require_role('admin')
 def test_twilio_config():
     """Test Twilio configuration and Quick Reply setup"""
+    import os
     from whatsappbot import WhatsAppBot
     bot = WhatsAppBot()
     

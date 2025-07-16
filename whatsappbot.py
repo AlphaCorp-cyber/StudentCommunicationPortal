@@ -1,7 +1,9 @@
 import logging
 import os
 import json
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta
+import time
+import base64
 from flask import request, jsonify
 from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
@@ -268,7 +270,7 @@ Choose an option below:"""
         return self.send_interactive_message(student.phone, message_body, quick_replies)
     
     def send_interactive_message(self, phone_number, message_body, quick_replies=None, list_options=None):
-        """Send interactive message with Quick Reply buttons using Twilio's interactive messaging"""
+        """Send interactive message with Quick Reply buttons using Twilio's Content API"""
         try:
             if not self.twilio_client:
                 # In demo mode, return text with options
@@ -292,50 +294,98 @@ Choose an option below:"""
             to_number = f'whatsapp:+{clean_phone}'
             
             if quick_replies and len(quick_replies) <= 3:
-                # Use Twilio's interactive Quick Reply buttons (max 3 buttons)
+                # Use Twilio's Content API for Quick Reply buttons (2025 approach)
                 try:
-                    from twilio.rest import Client
+                    # Create dynamic content template for Quick Reply
+                    content_template = {
+                        "content_type": "twilio/quick-reply",
+                        "content": {
+                            "body": message_body,
+                            "buttons": []
+                        }
+                    }
                     
-                    # Build quick reply actions
-                    actions = []
-                    for reply in quick_replies[:3]:  # Max 3 quick replies
-                        actions.append({
-                            "type": "reply",
-                            "reply": {
-                                "id": reply["id"],
-                                "title": reply["title"][:24]  # Max 24 characters for title
-                            }
+                    # Add buttons (max 3 for quick reply)
+                    for reply in quick_replies[:3]:
+                        content_template["content"]["buttons"].append({
+                            "type": "quick_reply",
+                            "text": reply["title"][:24],  # Max 24 characters
+                            "id": reply["id"]
                         })
                     
-                    # Try sending with interactive template
+                    # Try to create and send content template
+                    content = self.twilio_client.content.v1.contents.create(
+                        friendly_name=f"quick_reply_{int(time.time())}",
+                        content_type="twilio/quick-reply",
+                        content=content_template["content"]
+                    )
+                    
+                    # Send message using content SID
                     message = self.twilio_client.messages.create(
                         from_=from_number,
                         to=to_number,
-                        body=message_body,
-                        persistent_action=actions
+                        content_sid=content.sid
                     )
                     
-                    logger.info(f"Interactive Quick Reply message sent to {phone_number}")
+                    logger.info(f"✅ Interactive Quick Reply message sent to {phone_number} with Content SID: {content.sid}")
                     return "Interactive message sent successfully"
                     
-                except Exception as interactive_error:
-                    logger.warning(f"Interactive message failed, using fallback: {str(interactive_error)}")
-                    # Fallback to regular message with numbered options
-                    reply_text = message_body + "\n\n*Quick Options:*\n"
-                    for idx, reply in enumerate(quick_replies, 1):
-                        reply_text += f"{idx}. {reply['title']}\n"
+                except Exception as content_error:
+                    logger.warning(f"Content API failed, trying direct approach: {str(content_error)}")
                     
-                    message = self.twilio_client.messages.create(
-                        from_=from_number,
-                        to=to_number,
-                        body=reply_text
-                    )
+                    # Fallback: Try direct messaging with Media parameter for buttons
+                    try:
+                        # Build buttons JSON for media parameter
+                        buttons_json = {
+                            "type": "button",
+                            "body": {
+                                "text": message_body
+                            },
+                            "action": {
+                                "buttons": []
+                            }
+                        }
+                        
+                        for reply in quick_replies[:3]:
+                            buttons_json["action"]["buttons"].append({
+                                "type": "reply",
+                                "reply": {
+                                    "id": reply["id"],
+                                    "title": reply["title"][:20]  # WhatsApp limit
+                                }
+                            })
+                        
+                        message = self.twilio_client.messages.create(
+                            from_=from_number,
+                            to=to_number,
+                            body=message_body,
+                            media_url=[f"data:application/json;base64,{base64.b64encode(json.dumps(buttons_json).encode()).decode()}"]
+                        )
+                        
+                        logger.info(f"✅ Direct interactive message sent to {phone_number}")
+                        return "Interactive message sent successfully"
+                        
+                    except Exception as direct_error:
+                        logger.warning(f"Direct interactive failed, using text fallback: {str(direct_error)}")
+                        
+                        # Final fallback to numbered text options
+                        reply_text = message_body + "\n\n*Quick Options:*\n"
+                        for idx, reply in enumerate(quick_replies, 1):
+                            reply_text += f"📱 *{idx}* - {reply['title']}\n"
+                        reply_text += "\nJust type the number to select an option!"
+                        
+                        message = self.twilio_client.messages.create(
+                            from_=from_number,
+                            to=to_number,
+                            body=reply_text
+                        )
                     
             elif quick_replies and len(quick_replies) > 3:
-                # Use list format for more than 3 options
-                list_text = message_body + "\n\n*Options:*\n"
+                # Use numbered list format for more than 3 options
+                list_text = message_body + "\n\n*Quick Options:*\n"
                 for idx, reply in enumerate(quick_replies, 1):
-                    list_text += f"{idx}. {reply['title']}\n"
+                    list_text += f"📱 *{idx}* - {reply['title']}\n"
+                list_text += "\nJust type the number to select!"
                 
                 message = self.twilio_client.messages.create(
                     from_=from_number,
@@ -347,7 +397,8 @@ Choose an option below:"""
                 # Send message with list options
                 list_text = message_body + "\n\n*Options:*\n"
                 for idx, option in enumerate(list_options, 1):
-                    list_text += f"{idx}. {option['title']}\n"
+                    list_text += f"📱 *{idx}* - {option['title']}\n"
+                list_text += "\nJust type the number to select!"
                 
                 message = self.twilio_client.messages.create(
                     from_=from_number,
@@ -362,21 +413,23 @@ Choose an option below:"""
                     body=message_body
                 )
             
-            logger.info(f"Message sent to {phone_number}")
+            logger.info(f"📱 Message sent to {phone_number}")
             return "Message sent successfully"
             
         except Exception as e:
-            logger.error(f"Error sending message: {str(e)}")
+            logger.error(f"❌ Error sending message: {str(e)}")
             # Fallback to regular message format for demo mode
             if quick_replies:
                 reply_text = message_body + "\n\n*Quick Options:*\n"
                 for idx, reply in enumerate(quick_replies, 1):
-                    reply_text += f"{idx}. {reply['title']}\n"
+                    reply_text += f"📱 *{idx}* - {reply['title']}\n"
+                reply_text += "\nJust type the number to select!"
                 return reply_text
             elif list_options:
                 list_text = message_body + "\n\n*Options:*\n"
                 for idx, option in enumerate(list_options, 1):
-                    list_text += f"{idx}. {option['title']}\n"
+                    list_text += f"📱 *{idx}* - {option['title']}\n"
+                list_text += "\nJust type the number to select!"
                 return list_text
             return message_body
 
@@ -1225,37 +1278,90 @@ Please make sure you're registered as a student with myInstructor 2.0.
 
 Contact your driving school for assistance with registration."""
 
+    def process_button_response(self, phone_number, button_text, button_payload):
+        """Process button responses from Quick Reply buttons"""
+        try:
+            # Find the student by phone number
+            student = Student.query.filter_by(phone=f"+{phone_number}").first()
+            if not student:
+                return self.handle_unknown_student(phone_number)
+
+            logger.info(f"🔘 Processing button '{button_payload}' for student {student.name}")
+            
+            # Update session activity
+            self.update_session(student, f"button:{button_payload}")
+
+            # Handle different button payloads
+            if button_payload == "lessons":
+                return self.handle_lessons(student)
+            elif button_payload == "book":
+                return self.handle_book_lesson(student)
+            elif button_payload == "progress":
+                return self.handle_progress(student)
+            elif button_payload == "help":
+                return self.handle_help(student)
+            elif button_payload == "menu":
+                return self.handle_menu(student)
+            elif button_payload == "30":
+                return self.handle_duration_selection(student, 30)
+            elif button_payload == "60":
+                return self.handle_duration_selection(student, 60)
+            elif button_payload.startswith("slot_"):
+                # Handle timeslot booking
+                slot_number = button_payload.replace("slot_", "")
+                return self.process_timeslot_booking(student, slot_number)
+            else:
+                # Unknown button payload, show menu
+                logger.warning(f"⚠️ Unknown button payload: {button_payload}")
+                return self.handle_menu(student)
+
+        except Exception as e:
+            logger.error(f"❌ Error processing button response: {str(e)}")
+            return "Sorry, there was an error processing your selection. Please try again or type 'menu'."
+
 # Global bot instance - will be initialized later with app context
 whatsapp_bot = WhatsAppBot()
 
 def webhook_handler():
-    """Handle incoming WhatsApp webhooks from Twilio"""
+    """Handle incoming WhatsApp webhooks from Twilio with button support"""
     try:
         # Get Twilio webhook data
         from_number = request.form.get('From', '')
         message_body = request.form.get('Body', '')
+        
+        # Check for button response data (2025 Twilio format)
+        button_text = request.form.get('ButtonText', '')
+        button_payload = request.form.get('ButtonPayload', '')
+        original_message_sid = request.form.get('OriginalRepliedMessageSid', '')
 
-        if from_number and message_body:
+        if from_number:
             # Clean the phone number (remove whatsapp: prefix)
             clean_phone = from_number.replace('whatsapp:', '')
 
-            # Process the message
-            response_text = whatsapp_bot.process_message(clean_phone, message_body)
+            # Process button response or regular message
+            if button_text and button_payload:
+                logger.info(f"✅ Button response from {clean_phone}: {button_text} (ID: {button_payload})")
+                response_text = whatsapp_bot.process_button_response(clean_phone, button_text, button_payload)
+            elif message_body:
+                logger.info(f"📝 Text message from {clean_phone}: {message_body}")
+                response_text = whatsapp_bot.process_message(clean_phone, message_body)
+            else:
+                logger.warning(f"⚠️ Empty message from {clean_phone}")
+                response_text = "Sorry, I didn't receive any message content. Please try again."
 
             # Create TwiML response
             twiml_response = MessagingResponse()
             twiml_response.message(response_text)
-
-            logger.info(f"Processed WhatsApp message from {clean_phone}: {message_body}")
 
             return str(twiml_response), 200, {'Content-Type': 'text/xml'}
 
         return jsonify({'error': 'Missing required parameters'}), 400
 
     except Exception as e:
-        logger.error(f"Webhook error: {str(e)}")
-        # Return empty TwiML response on error
+        logger.error(f"❌ Webhook error: {str(e)}")
+        # Return friendly error message
         twiml_response = MessagingResponse()
+        twiml_response.message("Sorry, I'm having trouble right now. Please try again later.")
         return str(twiml_response), 500, {'Content-Type': 'text/xml'}
 
 def send_whatsapp_message(phone_number, message, buttons=None):

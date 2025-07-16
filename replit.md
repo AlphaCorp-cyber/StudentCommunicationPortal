@@ -123,13 +123,24 @@ The application now uses a .env file for easy configuration management:
 - **SESSION_SECRET**: Flask session secret key
 
 ### WhatsApp Bot Features
-- Quick Reply buttons using Twilio templates
-- Session state management for booking flow
-- Interactive lesson booking with duration selection
-- Progress tracking and lesson management
+- **2025 Twilio Content API Integration**: Uses latest Quick Reply button structure
+- **Dynamic Template Creation**: Creates content templates on-the-fly for interactive messages
+- **Button Response Handling**: Processes ButtonText and ButtonPayload from webhook
+- **Fallback System**: Multiple fallback approaches (Content API → Direct Interactive → Text)
+- **Session state management** for booking flow
+- **Interactive lesson booking** with duration selection (30/60 min buttons)
+- **Progress tracking** and lesson management with Quick Reply navigation
+
+### Latest Button Implementation (July 16, 2025)
+- **Primary**: Twilio Content API with `twilio/quick-reply` templates
+- **Secondary**: Direct interactive messaging with JSON media
+- **Fallback**: Enhanced numbered text options with visual formatting
+- **Webhook**: Handles both ButtonPayload and regular text messages
+- **Button IDs**: Uses clean IDs (lessons, book, progress, help, 30, 60, menu)
 
 ## Changelog
 
+- July 16, 2025: Updated to latest 2025 Twilio WhatsApp API structure with Content API and proper button handling
 - July 9, 2025: Added .env configuration support and Twilio template integration for Quick Reply buttons
 - June 25, 2025: Initial setup
 
