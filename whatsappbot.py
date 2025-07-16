@@ -302,33 +302,50 @@ Choose an option below:"""
             logger.info(f"📞 Sending from: {from_number} to: {to_number}")
             
             if quick_replies and len(quick_replies) <= 3:
-                # Send regular message first, then follow with buttons
+                # For actual Quick Reply buttons, we need WhatsApp Business API approval
+                # Since most users don't have this, let's use the best text-based approach
                 try:
-                    # Send the main message
-                    main_message = self.twilio_client.messages.create(
-                        from_=from_number,
-                        to=to_number,
-                        body=message_body
-                    )
+                    # Create a visually appealing text message with clear options
+                    button_message = f"{message_body}\n\n"
+                    button_message += "🔘 *Quick Options:*\n"
                     
-                    # Create button options text
-                    button_text = "\n\n📱 *Quick Options:*\n"
                     for idx, reply in enumerate(quick_replies, 1):
-                        button_text += f"*{idx}* - {reply['title']}\n"
-                    button_text += "\nType the number to select!"
+                        # Use emojis to make it look more button-like
+                        button_message += f"▶️ *{idx}* → {reply['title']}\n"
                     
-                    # Send button options
-                    button_message = self.twilio_client.messages.create(
+                    button_message += f"\n💬 *Just reply with the number (1-{len(quick_replies)})*"
+                    
+                    # Send the enhanced text message
+                    message = self.twilio_client.messages.create(
                         from_=from_number,
                         to=to_number,
-                        body=button_text
+                        body=button_message
                     )
                     
-                    logger.info(f"✅ Message with button options sent to {phone_number}")
+                    logger.info(f"✅ Enhanced button-style message sent to {phone_number}")
                     return "Interactive message sent successfully"
                     
-                except Exception as direct_error:
-                    logger.warning(f"Direct message failed: {str(direct_error)}")
+                except Exception as enhanced_error:
+                    logger.warning(f"Enhanced message failed: {str(enhanced_error)}")
+                    
+                    # Try simple approach - combine message and options
+                    try:
+                        combined_message = message_body + "\n\n"
+                        for idx, reply in enumerate(quick_replies, 1):
+                            combined_message += f"{idx}. {reply['title']}\n"
+                        combined_message += "\nReply with the number!"
+                        
+                        message = self.twilio_client.messages.create(
+                            from_=from_number,
+                            to=to_number,
+                            body=combined_message
+                        )
+                        
+                        logger.info(f"✅ Combined text message sent to {phone_number}")
+                        return "Message sent successfully"
+                        
+                    except Exception as text_error:
+                        logger.error(f"All message formats failed: {str(text_error)}")
                     
                     # Fallback: Try with approved content template if available
                     try:
