@@ -288,78 +288,74 @@ Choose an option below:"""
                     return message_body + list_text
                 return message_body
 
-            from_number = self.twilio_phone or os.getenv('TWILIO_PHONE_NUMBER', 'whatsapp:+14155238886')
-            # Ensure phone number has the + prefix
-            clean_phone = phone_number.replace("+", "")
+            # Fix phone number formats for WhatsApp
+            twilio_phone = self.twilio_phone or os.getenv('TWILIO_PHONE_NUMBER', 'whatsapp:+14155238886')
+            if not twilio_phone.startswith('whatsapp:'):
+                from_number = f'whatsapp:{twilio_phone}'
+            else:
+                from_number = twilio_phone
+            
+            # Ensure to_number has correct WhatsApp format
+            clean_phone = phone_number.replace("+", "").replace("whatsapp:", "")
             to_number = f'whatsapp:+{clean_phone}'
             
+            logger.info(f"📞 Sending from: {from_number} to: {to_number}")
+            
             if quick_replies and len(quick_replies) <= 3:
-                # Use approved content template with content_sid (2025 Twilio approach)
+                # Send regular message first, then follow with buttons
                 try:
-                    # Get the template SID from environment
-                    content_sid = os.getenv('TWILIO_TEMPLATE_SID', 'HXf324aa725113107f86055b1cc3d4092a')
-                    
-                    # Build content variables for the template
-                    # Template should have variables {1}, {2}, {3} for button texts
-                    content_variables = {}
-                    for idx, reply in enumerate(quick_replies[:3], 1):
-                        content_variables[str(idx)] = reply['title'][:24]  # Max 24 chars per button
-                    
-                    # Send message using approved template
-                    message = self.twilio_client.messages.create(
+                    # Send the main message
+                    main_message = self.twilio_client.messages.create(
                         from_=from_number,
                         to=to_number,
-                        content_sid=content_sid,
-                        content_variables=json.dumps(content_variables)
+                        body=message_body
                     )
                     
-                    logger.info(f"✅ Template message sent to {phone_number} with Content SID: {content_sid}")
-                    logger.info(f"📋 Button variables: {content_variables}")
+                    # Create button options text
+                    button_text = "\n\n📱 *Quick Options:*\n"
+                    for idx, reply in enumerate(quick_replies, 1):
+                        button_text += f"*{idx}* - {reply['title']}\n"
+                    button_text += "\nType the number to select!"
+                    
+                    # Send button options
+                    button_message = self.twilio_client.messages.create(
+                        from_=from_number,
+                        to=to_number,
+                        body=button_text
+                    )
+                    
+                    logger.info(f"✅ Message with button options sent to {phone_number}")
                     return "Interactive message sent successfully"
                     
-                except Exception as template_error:
-                    logger.warning(f"Template approach failed: {str(template_error)}")
+                except Exception as direct_error:
+                    logger.warning(f"Direct message failed: {str(direct_error)}")
                     
-                    # Fallback: Try creating dynamic content template
+                    # Fallback: Try with approved content template if available
                     try:
-                        # Create dynamic content template for Quick Reply
-                        content_template = {
-                            "content_type": "twilio/quick-reply",
-                            "content": {
-                                "body": message_body,
-                                "buttons": []
-                            }
-                        }
+                        content_sid = os.getenv('TWILIO_TEMPLATE_SID')
+                        if content_sid and content_sid != 'HXf324aa725113107f86055b1cc3d4092a':
+                            # Build content variables for the template
+                            content_variables = {}
+                            for idx, reply in enumerate(quick_replies[:3], 1):
+                                content_variables[str(idx)] = reply['title'][:24]
+                            
+                            # Send using approved template
+                            message = self.twilio_client.messages.create(
+                                from_=from_number,
+                                to=to_number,
+                                content_sid=content_sid,
+                                content_variables=json.dumps(content_variables)
+                            )
+                            
+                            logger.info(f"✅ Template message sent with SID: {content_sid}")
+                            return "Interactive message sent successfully"
+                        else:
+                            raise Exception("No valid template SID available")
+                            
+                    except Exception as template_error:
+                        logger.warning(f"Template approach failed: {str(template_error)}")
                         
-                        # Add buttons (max 3 for quick reply)
-                        for reply in quick_replies[:3]:
-                            content_template["content"]["buttons"].append({
-                                "type": "quick_reply",
-                                "text": reply["title"][:24],  # Max 24 characters
-                                "id": reply["id"]
-                            })
-                        
-                        # Try to create and send content template
-                        content = self.twilio_client.content.v1.contents.create(
-                            friendly_name=f"quick_reply_{int(time.time())}",
-                            content_type="twilio/quick-reply",
-                            content=content_template["content"]
-                        )
-                        
-                        # Send message using content SID
-                        message = self.twilio_client.messages.create(
-                            from_=from_number,
-                            to=to_number,
-                            content_sid=content.sid
-                        )
-                        
-                        logger.info(f"✅ Dynamic template message sent to {phone_number} with Content SID: {content.sid}")
-                        return "Interactive message sent successfully"
-                        
-                    except Exception as dynamic_error:
-                        logger.warning(f"Dynamic template failed, using text fallback: {str(dynamic_error)}")
-                        
-                        # Final fallback to numbered text options
+                        # Final fallback to enhanced text with numbered options
                         reply_text = message_body + "\n\n*Quick Options:*\n"
                         for idx, reply in enumerate(quick_replies, 1):
                             reply_text += f"📱 *{idx}* - {reply['title']}\n"
@@ -1351,6 +1347,10 @@ whatsapp_bot = WhatsAppBot()
 def webhook_handler():
     """Handle incoming WhatsApp webhooks from Twilio with button support"""
     try:
+        # Ensure Twilio client is initialized (in case environment changed)
+        if not whatsapp_bot.twilio_client:
+            whatsapp_bot.initialize_twilio()
+        
         # Get Twilio webhook data
         from_number = request.form.get('From', '')
         message_body = request.form.get('Body', '')
