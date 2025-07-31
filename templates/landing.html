@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>myInstructor 2.0 - Transform Your Driving School</title>
+    <title>myInstructor 2.0 - Personal Driving School Management</title>
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     <script src="https://unpkg.com/feather-icons"></script>
     <style>
@@ -31,21 +31,6 @@
             border-radius: 15px;
             padding: 2rem;
             text-align: center;
-        }
-        .pricing-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 2.5rem;
-            transition: transform 0.3s ease;
-        }
-        .pricing-card:hover {
-            transform: translateY(-10px);
-        }
-        .pricing-card.featured {
-            border: 2px solid #667eea;
-            transform: scale(1.05);
         }
         .benefit-item {
             display: flex;
@@ -89,12 +74,6 @@
         .section-padding {
             padding: 5rem 0;
         }
-        .testimonial-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-        }
         .demo-preview {
             border-radius: 15px;
             overflow: hidden;
@@ -109,38 +88,34 @@
             <div class="row align-items-center">
                 <div class="col-lg-6">
                     <h1 class="display-3 fw-bold mb-4">
-                        Transform Your <span class="gradient-text">Driving School</span> with AI-Powered Management
+                        My Personal <span class="gradient-text">Driving School</span> Management System
                     </h1>
                     <p class="lead mb-4">
-                        Streamline operations, boost student satisfaction, and increase revenue with our comprehensive driving school management platform featuring WhatsApp automation and multi-role dashboards.
+                        A comprehensive platform to manage my driving school operations, featuring WhatsApp automation for students and a complete web portal for instructors and administrators.
                     </p>
                     <div class="d-flex gap-3 mb-4">
-                        <button class="btn cta-button btn-lg">
-                            <i data-feather="play-circle" class="me-2"></i>
-                            Watch Demo
-                        </button>
-                        <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">
+                        <a href="{{ url_for('login') }}" class="btn cta-button btn-lg">
                             <i data-feather="log-in" class="me-2"></i>
-                            Try Free Demo
+                            Access System
                         </a>
                     </div>
                     <div class="row mt-5">
                         <div class="col-4">
                             <div class="text-center">
-                                <h3 class="gradient-text fw-bold">98%</h3>
-                                <small class="text-muted">Student Satisfaction</small>
+                                <h3 class="gradient-text fw-bold">100%</h3>
+                                <small class="text-muted">Custom Built</small>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="text-center">
-                                <h3 class="gradient-text fw-bold">45%</h3>
-                                <small class="text-muted">Time Saved</small>
+                                <h3 class="gradient-text fw-bold">24/7</h3>
+                                <small class="text-muted">Available</small>
                             </div>
                         </div>
                         <div class="col-4">
                             <div class="text-center">
-                                <h3 class="gradient-text fw-bold">67%</h3>
-                                <small class="text-muted">Revenue Increase</small>
+                                <h3 class="gradient-text fw-bold">Cloud</h3>
+                                <small class="text-muted">Hosted</small>
                             </div>
                         </div>
                     </div>
@@ -162,8 +137,8 @@
     <section class="section-padding bg-dark">
         <div class="container">
             <div class="text-center mb-5">
-                <h2 class="display-5 fw-bold mb-3">Everything You Need to Scale Your Driving School</h2>
-                <p class="lead text-muted">Powerful features designed specifically for driving school owners</p>
+                <h2 class="display-5 fw-bold mb-3">System Features</h2>
+                <p class="lead text-muted">Everything needed to efficiently run my driving school</p>
             </div>
             <div class="row g-4">
                 <div class="col-lg-4">
@@ -171,8 +146,8 @@
                         <div class="feature-icon">
                             <i data-feather="smartphone" style="width: 40px; height: 40px; color: white;"></i>
                         </div>
-                        <h4 class="fw-bold mb-3">WhatsApp Automation</h4>
-                        <p class="text-muted">Automate student communications, lesson reminders, and booking confirmations through WhatsApp integration.</p>
+                        <h4 class="fw-bold mb-3">WhatsApp Integration</h4>
+                        <p class="text-muted">Students can book lessons, check schedules, and communicate directly through WhatsApp with automated responses.</p>
                     </div>
                 </div>
                 <div class="col-lg-4">
@@ -180,8 +155,8 @@
                         <div class="feature-icon">
                             <i data-feather="users" style="width: 40px; height: 40px; color: white;"></i>
                         </div>
-                        <h4 class="fw-bold mb-3">Multi-Role Management</h4>
-                        <p class="text-muted">Separate dashboards for instructors, admins, and super admins with role-based access control.</p>
+                        <h4 class="fw-bold mb-3">Role-Based Access</h4>
+                        <p class="text-muted">Separate dashboards for instructors, admins, and super admins with appropriate permissions for each role.</p>
                     </div>
                 </div>
                 <div class="col-lg-4">
@@ -190,7 +165,7 @@
                             <i data-feather="calendar" style="width: 40px; height: 40px; color: white;"></i>
                         </div>
                         <h4 class="fw-bold mb-3">Smart Scheduling</h4>
-                        <p class="text-muted">Intelligent lesson scheduling with conflict detection and automatic instructor assignment.</p>
+                        <p class="text-muted">Intelligent lesson scheduling with availability checking and automatic instructor assignment based on location.</p>
                     </div>
                 </div>
                 <div class="col-lg-4">
@@ -198,8 +173,8 @@
                         <div class="feature-icon">
                             <i data-feather="bar-chart-2" style="width: 40px; height: 40px; color: white;"></i>
                         </div>
-                        <h4 class="fw-bold mb-3">Analytics & Reporting</h4>
-                        <p class="text-muted">Comprehensive analytics to track student progress, instructor performance, and business metrics.</p>
+                        <h4 class="fw-bold mb-3">Progress Tracking</h4>
+                        <p class="text-muted">Track student progress, lesson history, and performance metrics for better instruction planning.</p>
                     </div>
                 </div>
                 <div class="col-lg-4">
@@ -207,17 +182,17 @@
                         <div class="feature-icon">
                             <i data-feather="shield" style="width: 40px; height: 40px; color: white;"></i>
                         </div>
-                        <h4 class="fw-bold mb-3">Secure & Compliant</h4>
-                        <p class="text-muted">Bank-level security with GDPR compliance and encrypted data storage for peace of mind.</p>
+                        <h4 class="fw-bold mb-3">Secure & Reliable</h4>
+                        <p class="text-muted">Secure authentication, encrypted data storage, and reliable cloud hosting for peace of mind.</p>
                     </div>
                 </div>
                 <div class="col-lg-4">
                     <div class="text-center">
                         <div class="feature-icon">
-                            <i data-feather="zap" style="width: 40px; height: 40px; color: white;"></i>
+                            <i data-feather="map-pin" style="width: 40px; height: 40px; color: white;"></i>
                         </div>
-                        <h4 class="fw-bold mb-3">Quick Setup</h4>
-                        <p class="text-muted">Get started in minutes with our easy setup wizard and import your existing student data.</p>
+                        <h4 class="fw-bold mb-3">Location-Based</h4>
+                        <p class="text-muted">Find nearby instructors and manage service areas across Harare with location-aware features.</p>
                     </div>
                 </div>
             </div>
@@ -229,33 +204,33 @@
         <div class="container">
             <div class="row align-items-center">
                 <div class="col-lg-6">
-                    <h2 class="display-5 fw-bold mb-4">Why Driving Schools Choose myInstructor 2.0</h2>
+                    <h2 class="display-5 fw-bold mb-4">System Benefits</h2>
                     <div class="benefit-item">
                         <i data-feather="check-circle" class="benefit-icon"></i>
                         <div>
-                            <h5 class="mb-1">Reduce Administrative Time by 45%</h5>
-                            <p class="text-muted mb-0">Automate repetitive tasks and focus on what matters most - teaching students.</p>
+                            <h5 class="mb-1">Streamlined Operations</h5>
+                            <p class="text-muted mb-0">Automate repetitive tasks and focus on providing quality driving instruction.</p>
                         </div>
                     </div>
                     <div class="benefit-item">
-                        <i data-feather="trending-up" class="benefit-icon"></i>
+                        <i data-feather="smartphone" class="benefit-icon"></i>
                         <div>
-                            <h5 class="mb-1">Increase Revenue by 67%</h5>
-                            <p class="text-muted mb-0">Better scheduling and student management leads to more lessons and higher retention.</p>
+                            <h5 class="mb-1">Easy Student Communication</h5>
+                            <p class="text-muted mb-0">Students use familiar WhatsApp interface while instructors manage through web portal.</p>
                         </div>
                     </div>
                     <div class="benefit-item">
-                        <i data-feather="heart" class="benefit-icon"></i>
+                        <i data-feather="database" class="benefit-icon"></i>
                         <div>
-                            <h5 class="mb-1">Improve Student Satisfaction</h5>
-                            <p class="text-muted mb-0">Instant communication and transparent progress tracking keeps students happy.</p>
+                            <h5 class="mb-1">Centralized Data Management</h5>
+                            <p class="text-muted mb-0">All student information, schedules, and progress tracked in one secure system.</p>
                         </div>
                     </div>
                     <div class="benefit-item">
                         <i data-feather="clock" class="benefit-icon"></i>
                         <div>
-                            <h5 class="mb-1">24/7 Automated Support</h5>
-                            <p class="text-muted mb-0">WhatsApp bot handles common queries and bookings even when you're offline.</p>
+                            <h5 class="mb-1">24/7 Availability</h5>
+                            <p class="text-muted mb-0">Students can book lessons and get information anytime through WhatsApp automation.</p>
                         </div>
                     </div>
                 </div>
@@ -263,26 +238,26 @@
                     <div class="row g-4">
                         <div class="col-6">
                             <div class="stats-card">
-                                <h2 class="gradient-text fw-bold mb-2">500+</h2>
-                                <p class="mb-0">Driving Schools</p>
+                                <h2 class="gradient-text fw-bold mb-2">Web</h2>
+                                <p class="mb-0">Portal Access</p>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="stats-card">
-                                <h2 class="gradient-text fw-bold mb-2">50K+</h2>
-                                <p class="mb-0">Students Managed</p>
+                                <h2 class="gradient-text fw-bold mb-2">WhatsApp</h2>
+                                <p class="mb-0">Integration</p>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="stats-card">
-                                <h2 class="gradient-text fw-bold mb-2">2M+</h2>
-                                <p class="mb-0">Lessons Scheduled</p>
+                                <h2 class="gradient-text fw-bold mb-2">Multi</h2>
+                                <p class="mb-0">Role System</p>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="stats-card">
-                                <h2 class="gradient-text fw-bold mb-2">99.9%</h2>
-                                <p class="mb-0">Uptime</p>
+                                <h2 class="gradient-text fw-bold mb-2">Cloud</h2>
+                                <p class="mb-0">Hosted</p>
                             </div>
                         </div>
                     </div>
@@ -291,31 +266,23 @@
         </div>
     </section>
 
-
-
-
-
-    <!-- CTA Section -->
+    <!-- Access Section -->
     <section class="section-padding bg-dark text-center">
         <div class="container">
             <div class="row justify-content-center">
                 <div class="col-lg-8">
-                    <h2 class="display-4 fw-bold mb-4">Ready to Transform Your Driving School?</h2>
-                    <p class="lead mb-5">Join hundreds of driving schools already using myInstructor 2.0 to grow their business. Start your free trial today - no credit card required.</p>
+                    <h2 class="display-4 fw-bold mb-4">Access Your System</h2>
+                    <p class="lead mb-5">Login to manage your driving school operations, view student progress, and configure system settings.</p>
                     <div class="d-flex gap-3 justify-content-center">
-                        <button class="btn cta-button btn-lg">
-                            <i data-feather="arrow-right" class="me-2"></i>
-                            Start 14-Day Free Trial
-                        </button>
-                        <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg">
-                            <i data-feather="eye" class="me-2"></i>
-                            View Live Demo
+                        <a href="{{ url_for('login') }}" class="btn cta-button btn-lg">
+                            <i data-feather="log-in" class="me-2"></i>
+                            Login to System
                         </a>
                     </div>
                     <p class="mt-4 text-muted">
                         <small>
                             <i data-feather="shield" class="me-1"></i>
-                            No setup fees • Cancel anytime • 30-day money-back guarantee
+                            Secure • Role-based access • Always available
                         </small>
                     </p>
                 </div>
@@ -327,54 +294,12 @@
     <footer class="bg-dark py-5">
         <div class="container">
             <div class="row">
-                <div class="col-lg-4">
+                <div class="col-lg-6">
                     <h4 class="fw-bold mb-3">myInstructor 2.0</h4>
-                    <p class="text-muted">The complete driving school management solution that scales with your business.</p>
+                    <p class="text-muted">Personal driving school management system built for efficiency and ease of use.</p>
                 </div>
-                <div class="col-lg-2">
-                    <h6 class="fw-bold mb-3">Product</h6>
-                    <ul class="list-unstyled">
-                        <li><a href="#" class="text-muted text-decoration-none">Features</a></li>
-                        <li><a href="#" class="text-muted text-decoration-none">Pricing</a></li>
-                        <li><a href="#" class="text-muted text-decoration-none">Demo</a></li>
-                    </ul>
-                </div>
-                <div class="col-lg-2">
-                    <h6 class="fw-bold mb-3">Support</h6>
-                    <ul class="list-unstyled">
-                        <li><a href="#" class="text-muted text-decoration-none">Help Center</a></li>
-                        <li><a href="#" class="text-muted text-decoration-none">Contact</a></li>
-                        <li><a href="#" class="text-muted text-decoration-none">API Docs</a></li>
-                    </ul>
-                </div>
-                <div class="col-lg-2">
-                    <h6 class="fw-bold mb-3">Company</h6>
-                    <ul class="list-unstyled">
-                        <li><a href="#" class="text-muted text-decoration-none">About</a></li>
-                        <li><a href="#" class="text-muted text-decoration-none">Blog</a></li>
-                        <li><a href="#" class="text-muted text-decoration-none">Careers</a></li>
-                    </ul>
-                </div>
-                <div class="col-lg-2">
-                    <h6 class="fw-bold mb-3">Legal</h6>
-                    <ul class="list-unstyled">
-                        <li><a href="#" class="text-muted text-decoration-none">Privacy</a></li>
-                        <li><a href="#" class="text-muted text-decoration-none">Terms</a></li>
-                        <li><a href="#" class="text-muted text-decoration-none">Security</a></li>
-                    </ul>
-                </div>
-            </div>
-            <hr class="my-4">
-            <div class="row align-items-center">
-                <div class="col-md-6">
-                    <p class="text-muted mb-0">&copy; 2025 myInstructor 2.0. All rights reserved.</p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <div class="d-flex gap-3 justify-content-md-end">
-                        <a href="#" class="text-muted"><i data-feather="twitter"></i></a>
-                        <a href="#" class="text-muted"><i data-feather="linkedin"></i></a>
-                        <a href="#" class="text-muted"><i data-feather="facebook"></i></a>
-                    </div>
+                <div class="col-lg-6 text-lg-end">
+                    <p class="text-muted mb-0">&copy; 2025 myInstructor 2.0. Personal use system.</p>
                 </div>
             </div>
         </div>
@@ -384,14 +309,17 @@
     <script>
         // Initialize Feather icons
         feather.replace();
-        
+
         // Smooth scrolling for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
-                document.querySelector(this.getAttribute('href')).scrollIntoView({
-                    behavior: 'smooth'
-                });
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                }
             });
         });
     </script>
