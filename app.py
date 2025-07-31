@@ -42,7 +42,3 @@ with app.app_context():
 @app.route('/')
 def home():
     return render_template('index.html')
-
-@app.route('/demo')
-def demo():
-    return render_template('demo.html')
