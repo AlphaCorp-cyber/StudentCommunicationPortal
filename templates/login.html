@@ -1,8 +1,5 @@
-{% extends "base.html" %}
-
-{% block title %}Login - myInstructor 2.0{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}Login - myInstructor 2.0{% endblock
+%} {% block content %}
 <div class="min-vh-100 d-flex align-items-center">
     <div class="container">
         <div class="row justify-content-center">
@@ -10,46 +7,64 @@
                 <div class="card shadow">
                     <div class="card-body p-5">
                         <div class="text-center mb-4">
-                            <i data-feather="navigation" style="width: 60px; height: 60px;" class="text-primary mb-3"></i>
+                            <i
+                                data-feather="navigation"
+                                style="width: 60px; height: 60px"
+                                class="text-primary mb-3"
+                            ></i>
                             <h2>myInstructor 2.0</h2>
                             <p class="text-muted">Sign in to your account</p>
                         </div>
 
                         <form method="POST">
                             <div class="mb-3">
-                                <label for="username" class="form-label">Username</label>
-                                <input type="text" class="form-control" id="username" name="username" 
-                                       required autofocus placeholder="Enter your username">
+                                <label for="username" class="form-label"
+                                    >Username</label
+                                >
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="username"
+                                    name="username"
+                                    required
+                                    autofocus
+                                    placeholder="Enter your username"
+                                />
                             </div>
-                            
+
                             <div class="mb-3">
-                                <label for="password" class="form-label">Password</label>
-                                <input type="password" class="form-control" id="password" name="password" 
-                                       required placeholder="Enter your password">
+                                <label for="password" class="form-label"
+                                    >Password</label
+                                >
+                                <input
+                                    type="password"
+                                    class="form-control"
+                                    id="password"
+                                    name="password"
+                                    required
+                                    placeholder="Enter your password"
+                                />
                             </div>
-                            
+
                             <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                                <input
+                                    type="checkbox"
+                                    class="form-check-input"
+                                    id="remember"
+                                    name="remember"
+                                />
                                 <label class="form-check-label" for="remember">
                                     Remember me
                                 </label>
                             </div>
-                            
+
                             <button type="submit" class="btn btn-primary w-100">
                                 <i data-feather="log-in" class="me-2"></i>
                                 Sign In
                             </button>
                         </form>
 
-                        <hr class="my-4">
-                        
-                        <div class="text-center">
-                            <p class="text-muted">Don't have an account?</p>
-                            <a href="{{ url_for('register') }}" class="btn btn-outline-secondary">
-                                <i data-feather="user-plus" class="me-2"></i>
-                                Create Account
-                            </a>
-                        </div>
+                        <hr class="my-4" />
                     </div>
                 </div>
 
@@ -62,18 +77,18 @@
                         </h6>
                         <div class="row g-2 text-sm">
                             <div class="col-md-4">
-                                <strong>Instructor:</strong><br>
-                                <code>instructor</code><br>
+                                <strong>Instructor:</strong><br />
+                                <code>instructor</code><br />
                                 <code>password123</code>
                             </div>
                             <div class="col-md-4">
-                                <strong>Admin:</strong><br>
-                                <code>admin</code><br>
+                                <strong>Admin:</strong><br />
+                                <code>admin</code><br />
                                 <code>password123</code>
                             </div>
                             <div class="col-md-4">
-                                <strong>Super Admin:</strong><br>
-                                <code>superadmin</code><br>
+                                <strong>Super Admin:</strong><br />
+                                <code>superadmin</code><br />
                                 <code>password123</code>
                             </div>
                         </div>
