@@ -17,8 +17,53 @@ def update_database_schema():
     with app.app_context():
         print("🔄 Updating database schema...")
         
-        # Create tables with new schema
+        # First, let's add the missing columns to the users table
+        try:
+            with db.engine.connect() as conn:
+                # Check if columns exist and add them if they don't
+                columns_to_add = [
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS service_areas TEXT",
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS base_location VARCHAR(100)",
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS latitude FLOAT",
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS longitude FLOAT",
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS hourly_rate_30min NUMERIC(10,2)",
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS hourly_rate_60min NUMERIC(10,2)",
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT",
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS experience_years INTEGER"
+                ]
+                
+                for sql in columns_to_add:
+                    try:
+                        conn.execute(db.text(sql))
+                        conn.commit()
+                        print(f"✅ Added column from: {sql.split('ADD COLUMN IF NOT EXISTS')[1].split()[0]}")
+                    except Exception as e:
+                        print(f"⚠️ Column might already exist: {e}")
+                        
+                # Add missing columns to students table
+                student_columns = [
+                    "ALTER TABLE students ADD COLUMN IF NOT EXISTS current_location VARCHAR(100)",
+                    "ALTER TABLE students ADD COLUMN IF NOT EXISTS latitude FLOAT",
+                    "ALTER TABLE students ADD COLUMN IF NOT EXISTS longitude FLOAT", 
+                    "ALTER TABLE students ADD COLUMN IF NOT EXISTS preferred_radius_km INTEGER DEFAULT 10",
+                    "ALTER TABLE students ADD COLUMN IF NOT EXISTS account_balance NUMERIC(10,2) DEFAULT 0.00"
+                ]
+                
+                for sql in student_columns:
+                    try:
+                        conn.execute(db.text(sql))
+                        conn.commit()
+                        print(f"✅ Added student column: {sql.split('ADD COLUMN IF NOT EXISTS')[1].split()[0]}")
+                    except Exception as e:
+                        print(f"⚠️ Student column might already exist: {e}")
+                        
+        except Exception as e:
+            print(f"❌ Error updating table structure: {str(e)}")
+            return
+        
+        # Now create any missing tables
         db.create_all()
+        print("✅ Created missing tables")
         
         # Sample instructor data with locations
         sample_instructors = [
