@@ -1,12 +1,19 @@
 
 #!/usr/bin/env python3
 
-from app import app, db
-from models import User, Student
+import os
+import sys
 import json
+
+# Add the current directory to Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def update_database_schema():
     """Update database schema to support location-based features"""
+    # Import after setting up the path
+    from app import app, db
+    from models import User, Student
+    
     with app.app_context():
         print("🔄 Updating database schema...")
         
@@ -73,11 +80,17 @@ def update_database_schema():
                 
                 db.session.add(instructor)
                 print(f"✅ Created instructor: {instructor.get_full_name()} in {instructor.base_location}")
+            else:
+                print(f"⚠️ Instructor {instructor_data['username']} already exists, skipping...")
         
-        db.session.commit()
-        print("🎉 Database schema updated successfully!")
-        print("\n📍 Sample instructors created in different areas of Harare")
-        print("🔑 Default password for all instructors: instructor123")
+        try:
+            db.session.commit()
+            print("🎉 Database schema updated successfully!")
+            print("\n📍 Sample instructors created in different areas of Harare")
+            print("🔑 Default password for all instructors: instructor123")
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Error updating database: {str(e)}")
 
 if __name__ == "__main__":
     update_database_schema()
