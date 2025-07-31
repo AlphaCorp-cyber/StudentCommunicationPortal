@@ -1,327 +1,461 @@
-<!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DriveLink - Modern Driving School Management</title>
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
-    <script src="https://unpkg.com/feather-icons"></script>
-    <style>
-        .hero-section {
-            background: linear-gradient(135deg, #1a1d29 0%, #2d3748 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            color: white;
-        }
-        .feature-icon {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1.5rem;
-        }
-        .stats-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 15px;
-            padding: 2rem;
-            text-align: center;
-        }
-        .benefit-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-        .benefit-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 1rem;
-            color: #667eea;
-        }
-        .floating-animation {
-            animation: float 6s ease-in-out infinite;
-        }
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
-        }
-        .gradient-text {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .cta-button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            padding: 1rem 2.5rem;
-            border-radius: 50px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: all 0.3s ease;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-        }
-        .cta-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
-        }
-        .section-padding {
-            padding: 5rem 0;
-        }
-        .demo-preview {
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        }
-    </style>
-</head>
-<body>
-    <!-- Hero Section -->
-    <section class="hero-section">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-6">
-                    <h1 class="display-3 fw-bold mb-4">
-                        <span class="gradient-text">DriveLink</span>
-                    </h1>
-                    <p class="lead mb-4">
-                        Modern driving school management platform that combines WhatsApp for student interactions with a comprehensive web portal for instructors, admins, and super admins.
-                    </p>
-                    <div class="d-flex gap-3 mb-4">
-                        <a href="{{ url_for('login') }}" class="btn cta-button btn-lg">
-                            <i data-feather="log-in" class="me-2"></i>
-                            Access System
-                        </a>
+{% extends "base.html" %}
+
+{% block title %}DriveLink - Modern Driving School Management{% endblock %}
+
+{% block content %}
+<style>
+    /* Landing page specific styles */
+    .hero-section {
+        background: linear-gradient(135deg, #1a1d29 0%, #2d3748 50%, #4a5568 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .hero-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="1.5" fill="rgba(255,255,255,0.08)"/><circle cx="40" cy="70" r="1" fill="rgba(255,255,255,0.12)"/><circle cx="90" cy="80" r="1.2" fill="rgba(255,255,255,0.06)"/><circle cx="10" cy="60" r="0.8" fill="rgba(255,255,255,0.1)"/></svg>');
+        animation: sparkle 20s linear infinite;
+    }
+    
+    @keyframes sparkle {
+        0% { transform: translateY(0) rotate(0deg); }
+        100% { transform: translateY(-100vh) rotate(360deg); }
+    }
+    
+    .gradient-text {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .cta-button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        padding: 1rem 2.5rem;
+        border-radius: 50px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .cta-button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s;
+    }
+    
+    .cta-button:hover::before {
+        left: 100%;
+    }
+    
+    .cta-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+    }
+    
+    .feature-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        border-color: rgba(102, 126, 234, 0.3);
+    }
+    
+    .feature-icon {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .feature-card:hover .feature-icon {
+        transform: scale(1.1) rotate(5deg);
+    }
+    
+    .stats-section {
+        background: linear-gradient(135deg, #2d3748 0%, #1a1d29 100%);
+        padding: 5rem 0;
+    }
+    
+    .stats-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 15px;
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+    }
+    
+    .demo-section {
+        padding: 6rem 0;
+        background: linear-gradient(135deg, #1a1d29 0%, #2d3748 100%);
+    }
+    
+    .demo-preview {
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+        transition: all 0.3s ease;
+    }
+    
+    .demo-preview:hover {
+        transform: scale(1.02);
+        box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+    }
+    
+    .floating-animation {
+        animation: float 6s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+    }
+    
+    .section-padding {
+        padding: 5rem 0;
+    }
+    
+    .testimonial-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 2rem;
+        transition: all 0.3s ease;
+    }
+    
+    .testimonial-card:hover {
+        transform: translateY(-5px);
+        border-color: rgba(102, 126, 234, 0.3);
+    }
+    
+    .whatsapp-demo {
+        background: #25d366;
+        color: white;
+        border-radius: 20px;
+        padding: 1.5rem;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
+        max-width: 300px;
+        margin: 0 auto;
+        box-shadow: 0 10px 30px rgba(37, 211, 102, 0.3);
+    }
+</style>
+
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container position-relative">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <div class="mb-4">
+                    <span class="badge bg-primary px-3 py-2 rounded-pill mb-3">
+                        <i data-feather="zap" class="me-1" style="width: 16px; height: 16px;"></i>
+                        Revolutionary Platform
+                    </span>
+                </div>
+                <h1 class="display-2 fw-bold mb-4">
+                    <span class="gradient-text">DriveLink</span><br>
+                    Modern Driving School
+                </h1>
+                <p class="lead mb-4 text-light opacity-75">
+                    The complete driving school management platform that combines WhatsApp automation 
+                    for student interactions with a powerful web portal for instructors and administrators.
+                </p>
+                <div class="d-flex flex-wrap gap-3 mb-5">
+                    <a href="{{ url_for('login') }}" class="btn cta-button btn-lg">
+                        <i data-feather="log-in" class="me-2"></i>
+                        Access System
+                    </a>
+                    <a href="#demo" class="btn btn-outline-light btn-lg">
+                        <i data-feather="play-circle" class="me-2"></i>
+                        Watch Demo
+                    </a>
+                </div>
+                <div class="row">
+                    <div class="col-4">
+                        <div class="text-center">
+                            <h3 class="gradient-text fw-bold mb-1">100%</h3>
+                            <small class="text-muted">Cloud-Based</small>
+                        </div>
                     </div>
-                    <div class="row mt-5">
-                        <div class="col-4">
-                            <div class="text-center">
-                                <h3 class="gradient-text fw-bold">100%</h3>
-                                <small class="text-muted">Custom Built</small>
-                            </div>
+                    <div class="col-4">
+                        <div class="text-center">
+                            <h3 class="gradient-text fw-bold mb-1">24/7</h3>
+                            <small class="text-muted">Available</small>
                         </div>
-                        <div class="col-4">
-                            <div class="text-center">
-                                <h3 class="gradient-text fw-bold">24/7</h3>
-                                <small class="text-muted">Available</small>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="text-center">
-                                <h3 class="gradient-text fw-bold">Cloud</h3>
-                                <small class="text-muted">Hosted</small>
-                            </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-center">
+                            <h3 class="gradient-text fw-bold mb-1">AI</h3>
+                            <small class="text-muted">Powered</small>
                         </div>
                     </div>
                 </div>
-                <div class="col-lg-6">
-                    <div class="text-center floating-animation">
-                        <div class="demo-preview">
-                            <img src="{{ url_for('static', filename='images/dashboard-screenshot.svg') }}" 
-                                 alt="myInstructor 2.0 Dashboard Preview" 
-                                 class="img-fluid rounded-3 shadow-lg" />
-                        </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="text-center floating-animation">
+                    <div class="demo-preview">
+                        <img src="{{ url_for('static', filename='images/dashboard-screenshot.svg') }}" 
+                             alt="DriveLink Dashboard" class="img-fluid" style="max-height: 500px;">
                     </div>
                 </div>
             </div>
         </div>
-    </section>
+    </div>
+</section>
 
-    <!-- Features Section -->
-    <section class="section-padding bg-dark">
-        <div class="container">
-            <div class="text-center mb-5">
-                <h2 class="display-5 fw-bold mb-3">System Features</h2>
-                <p class="lead text-muted">Everything needed to efficiently run my driving school</p>
-            </div>
-            <div class="row g-4">
-                <div class="col-lg-4">
-                    <div class="text-center">
-                        <div class="feature-icon">
-                            <i data-feather="smartphone" style="width: 40px; height: 40px; color: white;"></i>
-                        </div>
-                        <h4 class="fw-bold mb-3">WhatsApp Integration</h4>
-                        <p class="text-muted">Students can book lessons, check schedules, and communicate directly through WhatsApp with automated responses.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="text-center">
-                        <div class="feature-icon">
-                            <i data-feather="users" style="width: 40px; height: 40px; color: white;"></i>
-                        </div>
-                        <h4 class="fw-bold mb-3">Role-Based Access</h4>
-                        <p class="text-muted">Separate dashboards for instructors, admins, and super admins with appropriate permissions for each role.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="text-center">
-                        <div class="feature-icon">
-                            <i data-feather="calendar" style="width: 40px; height: 40px; color: white;"></i>
-                        </div>
-                        <h4 class="fw-bold mb-3">Smart Scheduling</h4>
-                        <p class="text-muted">Intelligent lesson scheduling with availability checking and automatic instructor assignment based on location.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="text-center">
-                        <div class="feature-icon">
-                            <i data-feather="bar-chart-2" style="width: 40px; height: 40px; color: white;"></i>
-                        </div>
-                        <h4 class="fw-bold mb-3">Progress Tracking</h4>
-                        <p class="text-muted">Track student progress, lesson history, and performance metrics for better instruction planning.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="text-center">
-                        <div class="feature-icon">
-                            <i data-feather="shield" style="width: 40px; height: 40px; color: white;"></i>
-                        </div>
-                        <h4 class="fw-bold mb-3">Secure & Reliable</h4>
-                        <p class="text-muted">Secure authentication, encrypted data storage, and reliable cloud hosting for peace of mind.</p>
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="text-center">
-                        <div class="feature-icon">
-                            <i data-feather="map-pin" style="width: 40px; height: 40px; color: white;"></i>
-                        </div>
-                        <h4 class="fw-bold mb-3">Location-Based</h4>
-                        <p class="text-muted">Find nearby instructors and manage service areas across Harare with location-aware features.</p>
-                    </div>
-                </div>
-            </div>
+<!-- Features Section -->
+<section class="section-padding" style="background: linear-gradient(135deg, #2d3748 0%, #1a1d29 100%);">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="display-4 fw-bold text-white mb-3">
+                Why Choose <span class="gradient-text">DriveLink</span>?
+            </h2>
+            <p class="lead text-light opacity-75">
+                Everything you need to run a modern driving school
+            </p>
         </div>
-    </section>
-
-    <!-- Benefits Section -->
-    <section class="section-padding">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-6">
-                    <h2 class="display-5 fw-bold mb-4">System Benefits</h2>
-                    <div class="benefit-item">
-                        <i data-feather="check-circle" class="benefit-icon"></i>
-                        <div>
-                            <h5 class="mb-1">Streamlined Operations</h5>
-                            <p class="text-muted mb-0">Automate repetitive tasks and focus on providing quality driving instruction.</p>
-                        </div>
+        
+        <div class="row g-4">
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i data-feather="message-circle" style="color: white; width: 32px; height: 32px;"></i>
                     </div>
-                    <div class="benefit-item">
-                        <i data-feather="smartphone" class="benefit-icon"></i>
-                        <div>
-                            <h5 class="mb-1">Easy Student Communication</h5>
-                            <p class="text-muted mb-0">Students use familiar WhatsApp interface while instructors manage through web portal.</p>
-                        </div>
-                    </div>
-                    <div class="benefit-item">
-                        <i data-feather="database" class="benefit-icon"></i>
-                        <div>
-                            <h5 class="mb-1">Centralized Data Management</h5>
-                            <p class="text-muted mb-0">All student information, schedules, and progress tracked in one secure system.</p>
-                        </div>
-                    </div>
-                    <div class="benefit-item">
-                        <i data-feather="clock" class="benefit-icon"></i>
-                        <div>
-                            <h5 class="mb-1">24/7 Availability</h5>
-                            <p class="text-muted mb-0">Students can book lessons and get information anytime through WhatsApp automation.</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-6">
-                    <div class="row g-4">
-                        <div class="col-6">
-                            <div class="stats-card">
-                                <h2 class="gradient-text fw-bold mb-2">Web</h2>
-                                <p class="mb-0">Portal Access</p>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="stats-card">
-                                <h2 class="gradient-text fw-bold mb-2">WhatsApp</h2>
-                                <p class="mb-0">Integration</p>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="stats-card">
-                                <h2 class="gradient-text fw-bold mb-2">Multi</h2>
-                                <p class="mb-0">Role System</p>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="stats-card">
-                                <h2 class="gradient-text fw-bold mb-2">Cloud</h2>
-                                <p class="mb-0">Hosted</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Access Section -->
-    <section class="section-padding bg-dark text-center">
-        <div class="container">
-            <div class="row justify-content-center">
-                <div class="col-lg-8">
-                    <h2 class="display-4 fw-bold mb-4">Access Your System</h2>
-                    <p class="lead mb-5">Login to manage your driving school operations, view student progress, and configure system settings.</p>
-                    <div class="d-flex gap-3 justify-content-center">
-                        <a href="{{ url_for('login') }}" class="btn cta-button btn-lg">
-                            <i data-feather="log-in" class="me-2"></i>
-                            Login to System
-                        </a>
-                    </div>
-                    <p class="mt-4 text-muted">
-                        <small>
-                            <i data-feather="shield" class="me-1"></i>
-                            Secure • Role-based access • Always available
-                        </small>
+                    <h4 class="text-white mb-3">WhatsApp Integration</h4>
+                    <p class="text-light opacity-75">
+                        Students book lessons, check progress, and communicate through WhatsApp. 
+                        Instructors manage their schedule and students via the same platform.
                     </p>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="bg-dark py-5">
-        <div class="container">
-            <div class="row">
-                <div class="col-lg-6">
-                    <h4 class="fw-bold mb-3">DriveLink</h4>
-                    <p class="text-muted">Modern driving school management platform built for efficiency and ease of use.</p>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i data-feather="users" style="color: white; width: 32px; height: 32px;"></i>
+                    </div>
+                    <h4 class="text-white mb-3">Multi-Role Support</h4>
+                    <p class="text-light opacity-75">
+                        Comprehensive role-based access for instructors, admins, and super admins. 
+                        Each role has tailored dashboards and functionality.
+                    </p>
                 </div>
-                <div class="col-lg-6 text-lg-end">
-                    <p class="text-muted mb-0">&copy; 2025 DriveLink</p>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i data-feather="calendar" style="color: white; width: 32px; height: 32px;"></i>
+                    </div>
+                    <h4 class="text-white mb-3">Smart Scheduling</h4>
+                    <p class="text-light opacity-75">
+                        Automated lesson scheduling with availability checking, 
+                        conflict resolution, and real-time updates for all parties.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i data-feather="bar-chart-2" style="color: white; width: 32px; height: 32px;"></i>
+                    </div>
+                    <h4 class="text-white mb-3">Progress Tracking</h4>
+                    <p class="text-light opacity-75">
+                        Track student progress, lesson completion rates, and performance analytics 
+                        with detailed reporting and insights.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i data-feather="dollar-sign" style="color: white; width: 32px; height: 32px;"></i>
+                    </div>
+                    <h4 class="text-white mb-3">Payment Management</h4>
+                    <p class="text-light opacity-75">
+                        Built-in balance tracking, payment processing, and financial reporting 
+                        to streamline your business operations.
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i data-feather="shield" style="color: white; width: 32px; height: 32px;"></i>
+                    </div>
+                    <h4 class="text-white mb-3">Secure & Reliable</h4>
+                    <p class="text-light opacity-75">
+                        Enterprise-grade security with OAuth authentication, encrypted data, 
+                        and reliable cloud hosting on Replit.
+                    </p>
                 </div>
             </div>
         </div>
-    </footer>
+    </div>
+</section>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Initialize Feather icons
-        feather.replace();
+<!-- WhatsApp Demo Section -->
+<section id="demo" class="demo-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h2 class="display-4 fw-bold text-white mb-4">
+                    WhatsApp <span class="gradient-text">Integration</span>
+                </h2>
+                <p class="lead text-light opacity-75 mb-4">
+                    Students and instructors can interact naturally through WhatsApp, 
+                    making lesson management as simple as sending a message.
+                </p>
+                
+                <div class="mb-4">
+                    <h5 class="text-white mb-3">For Students:</h5>
+                    <ul class="list-unstyled text-light opacity-75">
+                        <li class="mb-2"><i data-feather="check" class="me-2 text-success"></i>Book lessons instantly</li>
+                        <li class="mb-2"><i data-feather="check" class="me-2 text-success"></i>Check progress and schedules</li>
+                        <li class="mb-2"><i data-feather="check" class="me-2 text-success"></i>Find nearby instructors</li>
+                        <li class="mb-2"><i data-feather="check" class="me-2 text-success"></i>Manage account balance</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-4">
+                    <h5 class="text-white mb-3">For Instructors:</h5>
+                    <ul class="list-unstyled text-light opacity-75">
+                        <li class="mb-2"><i data-feather="check" class="me-2 text-success"></i>View assigned students</li>
+                        <li class="mb-2"><i data-feather="check" class="me-2 text-success"></i>Manage daily schedule</li>
+                        <li class="mb-2"><i data-feather="check" class="me-2 text-success"></i>Cancel/confirm lessons</li>
+                        <li class="mb-2"><i data-feather="check" class="me-2 text-success"></i>Update lesson status</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="text-center">
+                    <div class="whatsapp-demo">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="bg-white rounded-circle p-2 me-3">
+                                <i data-feather="navigation" style="color: #25d366; width: 20px; height: 20px;"></i>
+                            </div>
+                            <div>
+                                <strong>DriveLink Bot</strong>
+                                <br><small class="opacity-75">Online</small>
+                            </div>
+                        </div>
+                        <div class="bg-white text-dark p-3 rounded-3 mb-2">
+                            Hi! I'd like to book a lesson.
+                        </div>
+                        <div class="bg-success p-3 rounded-3 mb-2">
+                            👋 Hello! I can help you book a lesson.<br><br>
+                            Choose duration:<br>
+                            1. 30 minutes - $25<br>
+                            2. 60 minutes - $45<br><br>
+                            Just reply with the number!
+                        </div>
+                        <div class="bg-white text-dark p-3 rounded-3 mb-2">
+                            2
+                        </div>
+                        <div class="bg-success p-3 rounded-3">
+                            ✅ Perfect! Here are available slots:<br><br>
+                            📅 Tomorrow, Feb 1<br>
+                            1. 9:00 AM - 10:00 AM<br>
+                            2. 2:00 PM - 3:00 PM<br><br>
+                            Reply with slot number to book!
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
-        // Smooth scrolling for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth'
-                    });
-                }
-            });
-        });
-    </script>
-</body>
-</html>
+<!-- Stats Section -->
+<section class="stats-section">
+    <div class="container">
+        <div class="row g-4">
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <h2 class="gradient-text fw-bold mb-2">500+</h2>
+                    <p class="text-light mb-0">Lessons Scheduled</p>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <h2 class="gradient-text fw-bold mb-2">95%</h2>
+                    <p class="text-light mb-0">Student Satisfaction</p>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <h2 class="gradient-text fw-bold mb-2">24/7</h2>
+                    <p class="text-light mb-0">System Availability</p>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="stats-card">
+                    <h2 class="gradient-text fw-bold mb-2">100%</h2>
+                    <p class="text-light mb-0">Cloud Hosted</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="section-padding" style="background: linear-gradient(135deg, #1a1d29 0%, #2d3748 100%);">
+    <div class="container">
+        <div class="text-center">
+            <h2 class="display-4 fw-bold text-white mb-3">
+                Ready to Get Started?
+            </h2>
+            <p class="lead text-light opacity-75 mb-5">
+                Join the future of driving school management with DriveLink
+            </p>
+            <a href="{{ url_for('login') }}" class="btn cta-button btn-lg">
+                <i data-feather="arrow-right" class="me-2"></i>
+                Access DriveLink Now
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

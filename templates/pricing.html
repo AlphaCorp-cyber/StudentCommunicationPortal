@@ -1,234 +1,390 @@
-
 {% extends "base.html" %}
 
-{% block title %}Lesson Pricing - myInstructor 2.0{% endblock %}
+{% block title %}Pricing - DriveLink{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2><i data-feather="dollar-sign" class="me-2"></i>Lesson Pricing</h2>
-            <p class="text-muted mb-0">Manage pricing for different license classes and lesson durations</p>
-        </div>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPricingModal">
-            <i data-feather="plus" class="me-2"></i>
-            Add Pricing
-        </button>
-    </div>
-
-    <!-- Pricing Table -->
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">Current Pricing Structure</h5>
-        </div>
-        <div class="card-body">
-            {% if pricing %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>License Class</th>
-                            <th>30 Minutes</th>
-                            <th>60 Minutes</th>
-                            <th>Created</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for price in pricing %}
-                        <tr>
-                            <td>
-                                <span class="badge bg-primary">{{ price.license_class }}</span>
-                            </td>
-                            <td>
-                                <strong>${{ "%.2f"|format(price.price_per_30min) }}</strong>
-                            </td>
-                            <td>
-                                <strong>${{ "%.2f"|format(price.price_per_60min) }}</strong>
-                            </td>
-                            <td>
-                                <small class="text-muted">{{ price.created_at.strftime('%Y-%m-%d') }}</small>
-                            </td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" 
-                                        onclick="editPricing({{ price.id }}, '{{ price.license_class }}', {{ price.price_per_30min }}, {{ price.price_per_60min }})">
-                                    <i data-feather="edit-2" style="width: 16px; height: 16px;"></i>
-                                </button>
-                                {% if current_user.is_super_admin() %}
-                                <button class="btn btn-sm btn-outline-danger ms-1" 
-                                        onclick="deletePricing({{ price.id }}, '{{ price.license_class }}')">
-                                    <i data-feather="trash-2" style="width: 16px; height: 16px;"></i>
-                                </button>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="text-center py-5">
-                <i data-feather="dollar-sign" class="text-muted mb-3" style="width: 64px; height: 64px;"></i>
-                <h4 class="text-muted">No Pricing Set</h4>
-                <p class="text-muted">Add pricing for different license classes to get started.</p>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPricingModal">
-                    <i data-feather="plus" class="me-2"></i>
-                    Add First Pricing
-                </button>
-            </div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Pricing Info -->
-    <div class="row mt-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0"><i data-feather="info" class="me-2"></i>Pricing Information</h6>
-                </div>
-                <div class="card-body">
-                    <ul class="list-unstyled mb-0">
-                        <li><i data-feather="check" class="me-2 text-success"></i>Prices are automatically applied when scheduling lessons</li>
-                        <li><i data-feather="check" class="me-2 text-success"></i>Student balance is checked before booking</li>
-                        <li><i data-feather="check" class="me-2 text-success"></i>Payment is deducted upon lesson completion</li>
-                        <li><i data-feather="check" class="me-2 text-success"></i>Different rates for 30min and 60min lessons</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h6 class="mb-0"><i data-feather="users" class="me-2"></i>License Classes</h6>
-                </div>
-                <div class="card-body">
-                    <ul class="list-unstyled mb-0">
-                        <li><strong>Class 4:</strong> Light motor vehicles (cars)</li>
-                        <li><strong>Class 2:</strong> Heavy motor vehicles (trucks)</li>
-                        <li><strong>Class 1:</strong> Motorcycles</li>
-                        <li><strong>Class 3:</strong> Tractors and agricultural vehicles</li>
-                        <li><strong>Class 5:</strong> Minibuses and light buses</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add Pricing Modal -->
-<div class="modal fade" id="addPricingModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="POST" action="{{ url_for('add_pricing') }}">
-                <div class="modal-header">
-                    <h5 class="modal-title">Add Lesson Pricing</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">License Class</label>
-                        <select class="form-select" name="license_class" required>
-                            <option value="">Select License Class</option>
-                            <option value="Class 4">Class 4 (Light Motor Vehicles)</option>
-                            <option value="Class 2">Class 2 (Heavy Motor Vehicles)</option>
-                            <option value="Class 1">Class 1 (Motorcycles)</option>
-                            <option value="Class 3">Class 3 (Tractors)</option>
-                            <option value="Class 5">Class 5 (Minibuses)</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Price for 30 Minutes</label>
-                        <div class="input-group">
-                            <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" name="price_per_30min" 
-                                   step="0.01" min="0" required>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Price for 60 Minutes</label>
-                        <div class="input-group">
-                            <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" name="price_per_60min" 
-                                   step="0.01" min="0" required>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Pricing</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Pricing Modal -->
-<div class="modal fade" id="editPricingModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="POST" id="editPricingForm">
-                <div class="modal-header">
-                    <h5 class="modal-title">Edit Lesson Pricing</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">License Class</label>
-                        <input type="text" class="form-control" id="editLicenseClass" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Price for 30 Minutes</label>
-                        <div class="input-group">
-                            <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" name="price_per_30min" 
-                                   id="editPrice30" step="0.01" min="0" required>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Price for 60 Minutes</label>
-                        <div class="input-group">
-                            <span class="input-group-text">$</span>
-                            <input type="number" class="form-control" name="price_per_60min" 
-                                   id="editPrice60" step="0.01" min="0" required>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Update Pricing</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<script>
-function editPricing(id, licenseClass, price30, price60) {
-    document.getElementById('editLicenseClass').value = licenseClass;
-    document.getElementById('editPrice30').value = price30;
-    document.getElementById('editPrice60').value = price60;
-    document.getElementById('editPricingForm').action = `/pricing/${id}/update`;
-    
-    new bootstrap.Modal(document.getElementById('editPricingModal')).show();
-}
-
-function deletePricing(id, licenseClass) {
-    if (confirm(`Are you sure you want to delete pricing for ${licenseClass}?`)) {
-        fetch(`/pricing/${id}/delete`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        }).then(response => {
-            if (response.ok) {
-                location.reload();
-            } else {
-                alert('Error deleting pricing');
-            }
-        });
+<style>
+    .pricing-hero {
+        background: linear-gradient(135deg, #1a1d29 0%, #2d3748 100%);
+        padding: 6rem 0 4rem;
+        color: white;
     }
-}
-</script>
+    
+    .pricing-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    
+    .pricing-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        border-color: rgba(102, 126, 234, 0.3);
+    }
+    
+    .pricing-card.featured {
+        border-color: rgba(102, 126, 234, 0.5);
+        transform: scale(1.02);
+    }
+    
+    .pricing-card.featured:hover {
+        transform: scale(1.02) translateY(-10px);
+    }
+    
+    .price-badge {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 50px;
+        padding: 0.5rem 1.5rem;
+        font-weight: 600;
+        font-size: 0.8rem;
+        margin-bottom: 1rem;
+    }
+    
+    .price-amount {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    
+    .feature-check {
+        color: #10b981;
+        width: 20px;
+        height: 20px;
+    }
+    
+    .feature-cross {
+        color: #6b7280;
+        width: 20px;
+        height: 20px;
+    }
+    
+    .cta-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 50px;
+        padding: 1rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+    
+    .cta-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+    }
+    
+    .cta-btn-outline {
+        background: transparent;
+        border: 2px solid rgba(102, 126, 234, 0.5);
+        color: #667eea;
+        border-radius: 50px;
+        padding: 1rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    
+    .cta-btn-outline:hover {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        transform: translateY(-3px);
+    }
+    
+    .faq-section {
+        background: linear-gradient(135deg, #2d3748 0%, #1a1d29 100%);
+        padding: 5rem 0;
+    }
+    
+    .accordion-item {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        margin-bottom: 1rem;
+    }
+    
+    .accordion-button {
+        background: transparent;
+        color: white;
+        border: none;
+        font-weight: 600;
+    }
+    
+    .accordion-button:not(.collapsed) {
+        background: rgba(102, 126, 234, 0.1);
+        color: white;
+    }
+    
+    .accordion-body {
+        color: rgba(255, 255, 255, 0.8);
+    }
+</style>
+
+<!-- Pricing Hero Section -->
+<section class="pricing-hero">
+    <div class="container text-center">
+        <h1 class="display-3 fw-bold mb-4">
+            Simple, <span style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Transparent</span> Pricing
+        </h1>
+        <p class="lead mb-5 opacity-75">
+            Choose the perfect plan for your driving school and start growing today
+        </p>
+        <div class="badge bg-success px-4 py-2 rounded-pill">
+            <i data-feather="gift" class="me-2" style="width: 16px; height: 16px;"></i>
+            14-Day Free Trial • No Credit Card Required
+        </div>
+    </div>
+</section>
+
+<!-- Pricing Cards -->
+<section style="background: linear-gradient(135deg, #1a1d29 0%, #2d3748 100%); padding: 4rem 0 6rem;">
+    <div class="container">
+        <div class="row justify-content-center g-4">
+            <!-- Basic Plan -->
+            <div class="col-lg-4 col-md-6">
+                <div class="pricing-card p-4 text-white text-center">
+                    <h3 class="mb-3">Basic</h3>
+                    <div class="mb-4">
+                        <div class="display-4 fw-bold price-amount mb-2">
+                            $29<small class="fs-6 text-muted">/month</small>
+                        </div>
+                        <p class="text-muted">Perfect for small driving schools</p>
+                    </div>
+                    
+                    <ul class="list-unstyled mb-4 text-start">
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            Up to 50 students
+                        </li>
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            WhatsApp integration
+                        </li>
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            Basic reporting
+                        </li>
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            Email support
+                        </li>
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="x" class="feature-cross me-3"></i>
+                            Advanced analytics
+                        </li>
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="x" class="feature-cross me-3"></i>
+                            Custom branding
+                        </li>
+                    </ul>
+                    
+                    <button class="btn cta-btn-outline w-100">Get Started</button>
+                </div>
+            </div>
+
+            <!-- Professional Plan - Featured -->
+            <div class="col-lg-4 col-md-6">
+                <div class="pricing-card featured p-4 text-white text-center">
+                    <div class="price-badge mx-auto">
+                        <i data-feather="star" class="me-1" style="width: 16px; height: 16px;"></i>
+                        MOST POPULAR
+                    </div>
+                    <h3 class="mb-3">Professional</h3>
+                    <div class="mb-4">
+                        <div class="display-4 fw-bold price-amount mb-2">
+                            $79<small class="fs-6 text-muted">/month</small>
+                        </div>
+                        <p class="text-muted">Ideal for growing schools</p>
+                    </div>
+                    
+                    <ul class="list-unstyled mb-4 text-start">
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            Up to 200 students
+                        </li>
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            WhatsApp integration
+                        </li>
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            Advanced reporting
+                        </li>
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            Priority support
+                        </li>
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            Advanced analytics
+                        </li>
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            Custom branding
+                        </li>
+                    </ul>
+                    
+                    <button class="btn cta-btn w-100">Get Started</button>
+                </div>
+            </div>
+
+            <!-- Enterprise Plan -->
+            <div class="col-lg-4 col-md-6">
+                <div class="pricing-card p-4 text-white text-center">
+                    <h3 class="mb-3">Enterprise</h3>
+                    <div class="mb-4">
+                        <div class="display-4 fw-bold price-amount mb-2">
+                            $199<small class="fs-6 text-muted">/month</small>
+                        </div>
+                        <p class="text-muted">For large operations</p>
+                    </div>
+                    
+                    <ul class="list-unstyled mb-4 text-start">
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            Unlimited students
+                        </li>
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            WhatsApp integration
+                        </li>
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            Custom reporting
+                        </li>
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            24/7 support
+                        </li>
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            Advanced analytics
+                        </li>
+                        <li class="mb-3 d-flex align-items-center">
+                            <i data-feather="check" class="feature-check me-3"></i>
+                            Full customization
+                        </li>
+                    </ul>
+                    
+                    <button class="btn cta-btn-outline w-100">Contact Sales</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Money Back Guarantee -->
+        <div class="text-center mt-5">
+            <div class="d-inline-flex align-items-center bg-success bg-opacity-10 text-success px-4 py-3 rounded-pill">
+                <i data-feather="shield-check" class="me-2"></i>
+                30-day money-back guarantee on all plans
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="faq-section">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="text-center mb-5">
+                    <h2 class="display-5 fw-bold text-white mb-3">Frequently Asked Questions</h2>
+                    <p class="lead text-light opacity-75">Everything you need to know about DriveLink</p>
+                </div>
+                
+                <div class="accordion" id="pricingFAQ">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                <i data-feather="message-circle" class="me-3"></i>
+                                What's included in the WhatsApp integration?
+                            </button>
+                        </h2>
+                        <div id="faq1" class="accordion-collapse collapse show" data-bs-parent="#pricingFAQ">
+                            <div class="accordion-body">
+                                Our WhatsApp integration includes automated lesson booking, schedule management, progress tracking, and real-time notifications for both students and instructors. Students can book lessons, check progress, and communicate through WhatsApp, while instructors can manage their schedules and students.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                <i data-feather="refresh-cw" class="me-3"></i>
+                                Can I upgrade or downgrade my plan?
+                            </button>
+                        </h2>
+                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                            <div class="accordion-body">
+                                Yes, you can change your plan at any time from your dashboard. Upgrades take effect immediately with prorated billing, while downgrades take effect at the next billing cycle to ensure you get the full value of your current plan.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                <i data-feather="gift" class="me-3"></i>
+                                Is there a free trial available?
+                            </button>
+                        </h2>
+                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                            <div class="accordion-body">
+                                Yes, we offer a 14-day free trial with full access to all Professional plan features. No credit card required to start, and you can cancel anytime during the trial period.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                <i data-feather="users" class="me-3"></i>
+                                How do you count students?
+                            </button>
+                        </h2>
+                        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                            <div class="accordion-body">
+                                We count active students - those who have had a lesson or interaction in the last 30 days. Inactive or graduated students don't count toward your limit, so you only pay for engaged learners.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
+                                <i data-feather="headphones" class="me-3"></i>
+                                What kind of support do you provide?
+                            </button>
+                        </h2>
+                        <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#pricingFAQ">
+                            <div class="accordion-body">
+                                Basic plans include email support with 24-48 hour response times. Professional plans get priority support with 12-hour response times. Enterprise customers receive 24/7 phone and chat support with dedicated account management.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section style="background: linear-gradient(135deg, #1a1d29 0%, #2d3748 100%); padding: 5rem 0;">
+    <div class="container text-center">
+        <h2 class="display-5 fw-bold text-white mb-3">Ready to Transform Your Driving School?</h2>
+        <p class="lead text-light opacity-75 mb-4">Join hundreds of driving schools already using DriveLink</p>
+        <div class="d-flex flex-wrap gap-3 justify-content-center">
+            <a href="{{ url_for('login') }}" class="btn cta-btn btn-lg">
+                <i data-feather="arrow-right" class="me-2"></i>
+                Start Free Trial
+            </a>
+            <a href="#demo" class="btn cta-btn-outline btn-lg">
+                <i data-feather="play-circle" class="me-2"></i>
+                Watch Demo
+            </a>
+        </div>
+    </div>
+</section>
 {% endblock %}

@@ -709,12 +709,17 @@ def payments():
     return render_template('payments.html', payments=payments_list, students=students_list)
 
 @app.route('/pricing')
-@require_role('admin')
 def pricing():
+    """Public pricing page"""
+    return render_template('pricing.html')
+
+@app.route('/pricing/admin')
+@require_role('admin')
+def pricing_admin():
     """Lesson pricing management page"""
     pricing_list = LessonPricing.query.all()
     
-    return render_template('pricing.html', pricing=pricing_list)
+    return render_template('pricing_old.html', pricing=pricing_list)
 
 @app.route('/pricing/add', methods=['POST'])
 @require_role('admin')
@@ -727,7 +732,7 @@ def add_pricing():
         existing = LessonPricing.query.filter_by(license_class=license_class).first()
         if existing:
             flash(f'Pricing for {license_class} already exists. Use edit to update.', 'error')
-            return redirect(url_for('pricing'))
+            return redirect(url_for('pricing_admin'))
         
         pricing = LessonPricing()
         pricing.license_class = license_class
@@ -741,7 +746,7 @@ def add_pricing():
         db.session.rollback()
         flash(f'Error adding pricing: {str(e)}', 'error')
     
-    return redirect(url_for('pricing'))
+    return redirect(url_for('pricing_admin'))
 
 @app.route('/pricing/<int:pricing_id>/update', methods=['POST'])
 @require_role('admin')
@@ -760,7 +765,7 @@ def update_pricing(pricing_id):
         db.session.rollback()
         flash(f'Error updating pricing: {str(e)}', 'error')
     
-    return redirect(url_for('pricing'))
+    return redirect(url_for('pricing_admin'))
 
 @app.route('/pricing/<int:pricing_id>/delete', methods=['POST'])
 @require_role('super_admin')
