@@ -1,0 +1,817 @@
+
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Demo - myInstructor 2.0</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .demo-screen {
+            background: #1a1d29;
+            border-radius: 15px;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            min-height: 500px;
+            position: relative;
+            overflow: hidden;
+        }
+        .demo-nav {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .demo-step {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 0.7;
+        }
+        .demo-step.active {
+            opacity: 1;
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+        .demo-step:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+        }
+        .demo-content {
+            display: none;
+            animation: fadeIn 0.5s ease-in;
+        }
+        .demo-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .demo-form {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 1rem 0;
+        }
+        .demo-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .demo-table {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .typing-animation::after {
+            content: '|';
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        .demo-sidebar {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .demo-metric {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 10px;
+            margin: 0.5rem;
+        }
+        .demo-chat {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 1rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .chat-message {
+            padding: 0.5rem 1rem;
+            margin: 0.5rem 0;
+            border-radius: 15px;
+            max-width: 80%;
+        }
+        .chat-student {
+            background: #25D366;
+            color: white;
+            margin-left: auto;
+        }
+        .chat-bot {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .progress-indicator {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 2rem 0;
+        }
+        .progress-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+        .progress-dot.active {
+            background: #667eea;
+            transform: scale(1.5);
+        }
+        .progress-line {
+            flex: 1;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.3);
+            margin: 0 1rem;
+        }
+        .hero-section {
+            text-align: center;
+            padding: 3rem 0;
+            background: linear-gradient(135deg, #1a1d29 0%, #2d3748 100%);
+            color: white;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <!-- Hero Section -->
+        <div class="hero-section">
+            <h1 class="display-4 fw-bold mb-3">
+                Live Demo: <span class="gradient-text">myInstructor 2.0</span>
+            </h1>
+            <p class="lead mb-4">
+                Experience the complete driving school management platform
+            </p>
+            <p class="text-muted">
+                Follow along as we demonstrate key features from login to lesson management
+            </p>
+        </div>
+
+        <!-- Demo Navigation -->
+        <div class="demo-nav">
+            <button class="demo-step active" data-step="login">
+                <i data-feather="log-in"></i> Login
+            </button>
+            <button class="demo-step" data-step="dashboard">
+                <i data-feather="home"></i> Dashboard
+            </button>
+            <button class="demo-step" data-step="students">
+                <i data-feather="users"></i> Add Student
+            </button>
+            <button class="demo-step" data-step="instructors">
+                <i data-feather="user-check"></i> Manage Instructors
+            </button>
+            <button class="demo-step" data-step="lessons">
+                <i data-feather="calendar"></i> Schedule Lesson
+            </button>
+            <button class="demo-step" data-step="whatsapp">
+                <i data-feather="message-circle"></i> WhatsApp Bot
+            </button>
+        </div>
+
+        <!-- Progress Indicator -->
+        <div class="progress-indicator">
+            <div class="progress-dot active" data-step="login"></div>
+            <div class="progress-line"></div>
+            <div class="progress-dot" data-step="dashboard"></div>
+            <div class="progress-line"></div>
+            <div class="progress-dot" data-step="students"></div>
+            <div class="progress-line"></div>
+            <div class="progress-dot" data-step="instructors"></div>
+            <div class="progress-line"></div>
+            <div class="progress-dot" data-step="lessons"></div>
+            <div class="progress-line"></div>
+            <div class="progress-dot" data-step="whatsapp"></div>
+        </div>
+
+        <!-- Demo Screen -->
+        <div class="demo-screen">
+            <!-- Login Demo -->
+            <div class="demo-content active" id="login">
+                <h2 class="mb-4"><i data-feather="log-in"></i> Secure Login System</h2>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="demo-form">
+                            <h4 class="mb-3">myInstructor 2.0 Login</h4>
+                            <div class="mb-3">
+                                <label class="form-label">Username</label>
+                                <input type="text" class="form-control" value="admin" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Password</label>
+                                <input type="password" class="form-control" value="••••••••••" readonly>
+                            </div>
+                            <button class="btn btn-primary w-100" disabled>
+                                <i data-feather="log-in"></i> Sign In
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="demo-card">
+                            <h5><i data-feather="shield"></i> Role-Based Access</h5>
+                            <div class="mt-3">
+                                <div class="badge bg-primary me-2">Super Admin</div>
+                                <div class="badge bg-success me-2">Admin</div>
+                                <div class="badge bg-info">Instructor</div>
+                            </div>
+                            <p class="mt-3 text-muted">
+                                Three distinct roles with different permissions and dashboard views
+                            </p>
+                        </div>
+                        <div class="demo-card">
+                            <h6><i data-feather="info"></i> Demo Credentials</h6>
+                            <small class="text-muted">
+                                Admin: admin / password123<br>
+                                Instructor: instructor / password123<br>
+                                Super Admin: superadmin / password123
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Demo -->
+            <div class="demo-content" id="dashboard">
+                <h2 class="mb-4"><i data-feather="home"></i> Admin Dashboard Overview</h2>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="demo-metric">
+                            <h3 class="gradient-text">45</h3>
+                            <small>Total Students</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="demo-metric">
+                            <h3 class="gradient-text">12</h3>
+                            <small>Active Instructors</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="demo-metric">
+                            <h3 class="gradient-text">156</h3>
+                            <small>Lessons This Month</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="demo-metric">
+                            <h3 class="gradient-text">$3,240</h3>
+                            <small>Monthly Revenue</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-md-8">
+                        <div class="demo-card">
+                            <h5><i data-feather="calendar"></i> Recent Lessons</h5>
+                            <div class="demo-table">
+                                <table class="table table-dark table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Student</th>
+                                            <th>Instructor</th>
+                                            <th>Date</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>John Smith</td>
+                                            <td>Sarah Johnson</td>
+                                            <td>Today 2:00 PM</td>
+                                            <td><span class="badge bg-success">Completed</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Emma Davis</td>
+                                            <td>Mike Wilson</td>
+                                            <td>Today 4:00 PM</td>
+                                            <td><span class="badge bg-primary">Scheduled</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="demo-card">
+                            <h6><i data-feather="trending-up"></i> Quick Stats</h6>
+                            <div class="mt-3">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Pass Rate</span>
+                                    <span class="text-success">94%</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Avg. Lessons/Student</span>
+                                    <span>18</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Customer Satisfaction</span>
+                                    <span class="text-success">4.8/5</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Students Demo -->
+            <div class="demo-content" id="students">
+                <h2 class="mb-4"><i data-feather="users"></i> Student Management</h2>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="demo-form">
+                            <h4 class="mb-3">Add New Student</h4>
+                            <div class="mb-3">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" class="form-control" value="Alex Johnson" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" value="+263777123456" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control" value="alex@example.com" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">License Type</label>
+                                <select class="form-select" disabled>
+                                    <option>Class 4 (Light Vehicle)</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Assigned Instructor</label>
+                                <select class="form-select" disabled>
+                                    <option>Sarah Johnson</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-success w-100" disabled>
+                                <i data-feather="user-plus"></i> Add Student
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="demo-card">
+                            <h5><i data-feather="list"></i> Student List</h5>
+                            <div class="demo-table">
+                                <table class="table table-dark table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Phone</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>John Smith</td>
+                                            <td>+263777111222</td>
+                                            <td><span class="badge bg-success">Active</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Emma Davis</td>
+                                            <td>+263777333444</td>
+                                            <td><span class="badge bg-primary">Learning</span></td>
+                                        </tr>
+                                        <tr class="table-success">
+                                            <td>Alex Johnson</td>
+                                            <td>+263777123456</td>
+                                            <td><span class="badge bg-warning">New</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="demo-card">
+                            <h6><i data-feather="smartphone"></i> WhatsApp Integration</h6>
+                            <p class="small text-muted">
+                                Students automatically receive WhatsApp notifications and can book lessons via chat bot
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructors Demo -->
+            <div class="demo-content" id="instructors">
+                <h2 class="mb-4"><i data-feather="user-check"></i> Instructor Management</h2>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="demo-card">
+                            <h5><i data-feather="users"></i> Active Instructors</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="demo-card">
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-primary rounded-circle p-2 me-3">
+                                                <i data-feather="user" style="width: 20px; height: 20px;"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0">Sarah Johnson</h6>
+                                                <small class="text-muted">15 students</small>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <div class="badge bg-success">Available</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="demo-card">
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-success rounded-circle p-2 me-3">
+                                                <i data-feather="user" style="width: 20px; height: 20px;"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0">Mike Wilson</h6>
+                                                <small class="text-muted">12 students</small>
+                                            </div>
+                                        </div>
+                                        <div class="mt-2">
+                                            <div class="badge bg-warning">Busy</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="demo-card">
+                            <h5><i data-feather="plus"></i> Add New Instructor</h5>
+                            <form>
+                                <div class="mb-3">
+                                    <label class="form-label">Full Name</label>
+                                    <input type="text" class="form-control" value="David Brown" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" value="david@myinstructor.com" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Phone</label>
+                                    <input type="tel" class="form-control" value="+263777555666" readonly>
+                                </div>
+                                <button class="btn btn-primary w-100" disabled>
+                                    <i data-feather="user-plus"></i> Create Instructor Account
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div class="demo-card mt-3">
+                    <h6><i data-feather="bar-chart"></i> Instructor Performance</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4 class="gradient-text">94%</h4>
+                                <small>Average Pass Rate</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4 class="gradient-text">4.7/5</h4>
+                                <small>Student Rating</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4 class="gradient-text">156</h4>
+                                <small>Lessons This Month</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lessons Demo -->
+            <div class="demo-content" id="lessons">
+                <h2 class="mb-4"><i data-feather="calendar"></i> Lesson Scheduling</h2>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="demo-form">
+                            <h4 class="mb-3">Schedule New Lesson</h4>
+                            <div class="mb-3">
+                                <label class="form-label">Student</label>
+                                <select class="form-select" disabled>
+                                    <option>Alex Johnson - Class 4</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Instructor</label>
+                                <select class="form-select" disabled>
+                                    <option>Sarah Johnson</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Date & Time</label>
+                                <input type="datetime-local" class="form-control" value="2024-02-15T14:00" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Duration</label>
+                                <select class="form-select" disabled>
+                                    <option>60 minutes - $45.00</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Notes</label>
+                                <textarea class="form-control" rows="2" readonly>Focus on parallel parking</textarea>
+                            </div>
+                            <button class="btn btn-success w-100" disabled>
+                                <i data-feather="calendar-plus"></i> Schedule Lesson
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="demo-card">
+                            <h5><i data-feather="clock"></i> Today's Schedule</h5>
+                            <div class="timeline">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="bg-success rounded-circle p-2 me-3">
+                                        <i data-feather="check" style="width: 16px; height: 16px;"></i>
+                                    </div>
+                                    <div>
+                                        <strong>10:00 AM</strong> - John Smith<br>
+                                        <small class="text-muted">with Sarah Johnson (Completed)</small>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="bg-primary rounded-circle p-2 me-3">
+                                        <i data-feather="clock" style="width: 16px; height: 16px;"></i>
+                                    </div>
+                                    <div>
+                                        <strong>2:00 PM</strong> - Alex Johnson<br>
+                                        <small class="text-muted">with Sarah Johnson (Scheduled)</small>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="bg-warning rounded-circle p-2 me-3">
+                                        <i data-feather="calendar" style="width: 16px; height: 16px;"></i>
+                                    </div>
+                                    <div>
+                                        <strong>4:00 PM</strong> - Emma Davis<br>
+                                        <small class="text-muted">with Mike Wilson (Scheduled)</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="demo-card">
+                            <h6><i data-feather="dollar-sign"></i> Pricing & Payments</h6>
+                            <div class="row">
+                                <div class="col-6">
+                                    <small>30 min: $25</small>
+                                </div>
+                                <div class="col-6">
+                                    <small>60 min: $45</small>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <div class="badge bg-success">Auto-deducted from balance</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WhatsApp Demo -->
+            <div class="demo-content" id="whatsapp">
+                <h2 class="mb-4"><i data-feather="message-circle"></i> WhatsApp Bot Integration</h2>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="demo-card">
+                            <h5><i data-feather="smartphone"></i> Student Chat Interface</h5>
+                            <div class="demo-chat">
+                                <div class="chat-message chat-student">
+                                    Hi, I'd like to book a lesson
+                                </div>
+                                <div class="chat-message chat-bot">
+                                    Hello Alex! 👋 I can help you book a lesson. Please choose your preferred duration:
+                                    
+                                    1. 30 minutes ($25)
+                                    2. 60 minutes ($45)
+                                    
+                                    Reply with 1 or 2
+                                </div>
+                                <div class="chat-message chat-student">
+                                    2
+                                </div>
+                                <div class="chat-message chat-bot">
+                                    Great! Here are available slots with Sarah Johnson:
+                                    
+                                    1. Today 2:00 PM
+                                    2. Tomorrow 10:00 AM
+                                    3. Tomorrow 3:00 PM
+                                    
+                                    Reply with your choice (1-3)
+                                </div>
+                                <div class="chat-message chat-student">
+                                    1
+                                </div>
+                                <div class="chat-message chat-bot">
+                                    ✅ Perfect! Your lesson is booked:
+                                    
+                                    📅 Today 2:00 PM
+                                    ⏱️ 60 minutes ($45)
+                                    👨‍🏫 Instructor: Sarah Johnson
+                                    💰 Deducted from balance
+                                    
+                                    You'll receive a reminder 30 minutes before your lesson. Good luck! 🚗
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="demo-card">
+                            <h5><i data-feather="settings"></i> Bot Features</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="demo-card text-center">
+                                        <i data-feather="calendar" class="text-primary mb-2"></i>
+                                        <h6>Lesson Booking</h6>
+                                        <small class="text-muted">24/7 automated booking</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="demo-card text-center">
+                                        <i data-feather="bell" class="text-success mb-2"></i>
+                                        <h6>Reminders</h6>
+                                        <small class="text-muted">Auto lesson reminders</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="demo-card text-center">
+                                        <i data-feather="credit-card" class="text-warning mb-2"></i>
+                                        <h6>Balance Check</h6>
+                                        <small class="text-muted">View account balance</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="demo-card text-center">
+                                        <i data-feather="help-circle" class="text-info mb-2"></i>
+                                        <h6>Support</h6>
+                                        <small class="text-muted">Instant help & FAQs</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="demo-card">
+                            <h6><i data-feather="trending-up"></i> Bot Performance</h6>
+                            <div class="row">
+                                <div class="col-4 text-center">
+                                    <h5 class="gradient-text">89%</h5>
+                                    <small>Auto-resolved queries</small>
+                                </div>
+                                <div class="col-4 text-center">
+                                    <h5 class="gradient-text">24/7</h5>
+                                    <small>Available</small>
+                                </div>
+                                <div class="col-4 text-center">
+                                    <h5 class="gradient-text">2min</h5>
+                                    <small>Avg response time</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Demo Controls -->
+        <div class="text-center mt-4">
+            <button class="btn btn-outline-light me-2" onclick="previousStep()">
+                <i data-feather="chevron-left"></i> Previous
+            </button>
+            <button class="btn btn-primary me-2" onclick="nextStep()">
+                Next <i data-feather="chevron-right"></i>
+            </button>
+            <a href="{{ url_for('login') }}" class="btn btn-success">
+                <i data-feather="play"></i> Try Live Demo
+            </a>
+        </div>
+
+        <!-- Call to Action -->
+        <div class="text-center mt-5 p-4 bg-dark rounded">
+            <h3 class="gradient-text mb-3">Ready to Transform Your Driving School?</h3>
+            <p class="text-muted mb-4">
+                Start your free trial today and experience the power of myInstructor 2.0
+            </p>
+            <div class="d-flex gap-3 justify-content-center">
+                <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">
+                    <i data-feather="log-in"></i> Start Free Trial
+                </a>
+                <button class="btn btn-outline-light btn-lg" onclick="restartDemo()">
+                    <i data-feather="refresh-cw"></i> Restart Demo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize Feather icons
+        feather.replace();
+
+        const steps = ['login', 'dashboard', 'students', 'instructors', 'lessons', 'whatsapp'];
+        let currentStep = 0;
+
+        function showStep(stepIndex) {
+            // Hide all content
+            document.querySelectorAll('.demo-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all buttons
+            document.querySelectorAll('.demo-step').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Remove active class from all progress dots
+            document.querySelectorAll('.progress-dot').forEach(dot => {
+                dot.classList.remove('active');
+            });
+            
+            // Show current step
+            document.getElementById(steps[stepIndex]).classList.add('active');
+            document.querySelector(`[data-step="${steps[stepIndex]}"]`).classList.add('active');
+            document.querySelector(`.progress-dot[data-step="${steps[stepIndex]}"]`).classList.add('active');
+            
+            currentStep = stepIndex;
+            
+            // Re-initialize icons for the new content
+            setTimeout(() => feather.replace(), 100);
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                showStep(currentStep + 1);
+            }
+        }
+
+        function previousStep() {
+            if (currentStep > 0) {
+                showStep(currentStep - 1);
+            }
+        }
+
+        function restartDemo() {
+            showStep(0);
+        }
+
+        // Add click handlers for demo navigation buttons
+        document.querySelectorAll('.demo-step').forEach((btn, index) => {
+            btn.addEventListener('click', () => {
+                const stepName = btn.getAttribute('data-step');
+                const stepIndex = steps.indexOf(stepName);
+                showStep(stepIndex);
+            });
+        });
+
+        // Auto-advance demo every 10 seconds (optional)
+        let autoAdvance = false;
+        if (autoAdvance) {
+            setInterval(() => {
+                nextStep();
+                if (currentStep === steps.length - 1) {
+                    setTimeout(() => showStep(0), 3000);
+                }
+            }, 10000);
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            showStep(0);
+        });
+    </script>
+</body>
+</html>
