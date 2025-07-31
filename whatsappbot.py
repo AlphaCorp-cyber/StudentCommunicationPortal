@@ -66,7 +66,7 @@ class WhatsAppBot:
             # Load environment variables first (from .env file)
             account_sid = os.getenv('TWILIO_ACCOUNT_SID')
             auth_token = os.getenv('TWILIO_AUTH_TOKEN')
-            
+
             # Try to get credentials from SystemConfig as fallback (only if we have app context)
             if not account_sid or not auth_token:
                 try:
@@ -76,9 +76,9 @@ class WhatsAppBot:
                     # No app context or database not available
                     pass
 
-            if account_sid and auth_token and account_sid != 'your_twilio_account_sid_here' and auth_token != 'your_twilio_auth_token_here':
+            if account_sid and auth_token and account_sid != 'your_twilio_account_sid_here' and auth_token != 'your_auth_token_here':
                 self.twilio_client = Client(account_sid, auth_token)
-                
+
                 # Get phone number from environment or SystemConfig
                 self.twilio_phone = os.getenv('TWILIO_PHONE_NUMBER')
                 if not self.twilio_phone:
@@ -86,7 +86,7 @@ class WhatsAppBot:
                         self.twilio_phone = SystemConfig.get_config('TWILIO_WHATSAPP_NUMBER')
                     except Exception:
                         self.twilio_phone = None
-                        
+
                 logger.info("✅ Twilio client initialized successfully - LIVE MODE")
                 logger.info(f"📞 Using Twilio phone: {self.twilio_phone}")
                 logger.info("🎯 Quick Reply buttons will be available")
@@ -165,7 +165,7 @@ class WhatsAppBot:
             session.last_message == 'showing_cancel_options'
         )):
             session.last_message = message
-            
+
         session.last_activity = datetime.now()
         session.is_active = True
 
@@ -208,7 +208,7 @@ class WhatsAppBot:
             parts = message.split()
             if len(parts) >= 2:
                 return self.process_instructor_selection(student, parts[1])
-        
+
         # Check for timeslot booking (e.g., "book 1" or "book 5")
         if message.startswith('book '):
             parts = message.split()
@@ -278,7 +278,7 @@ Welcome to myInstructor 2.0 WhatsApp Bot!
 👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}
 
 Choose an option below:"""
-        
+
         # Create quick reply buttons
         quick_replies = [
             {"id": "lessons", "title": "📅 View Lessons"},
@@ -286,9 +286,9 @@ Choose an option below:"""
             {"id": "progress", "title": "📊 Check Progress"},
             {"id": "help", "title": "❓ Get Help"}
         ]
-        
+
         return self.send_interactive_message(student.phone, message_body, quick_replies)
-    
+
     def send_interactive_message(self, phone_number, message_body, quick_replies=None, list_options=None):
         """Send interactive message with Quick Reply buttons using Twilio's Content API"""
         try:
@@ -315,56 +315,56 @@ Choose an option below:"""
                 from_number = f'whatsapp:{twilio_phone}'
             else:
                 from_number = twilio_phone
-            
+
             # Ensure to_number has correct WhatsApp format
             clean_phone = phone_number.replace("+", "").replace("whatsapp:", "")
             to_number = f'whatsapp:+{clean_phone}'
-            
+
             logger.info(f"📞 Sending from: {from_number} to: {to_number}")
-            
+
             if quick_replies and len(quick_replies) <= 3:
                 # Use simple numbered options - clean and reliable
                 try:
                     # Create clean numbered message
                     options_message = f"{message_body}\n\n"
-                    
+
                     for idx, reply in enumerate(quick_replies, 1):
                         options_message += f"{idx}. {reply['title']}\n"
-                    
+
                     options_message += f"\nReply with {', '.join([str(i) for i in range(1, len(quick_replies)+1)])}"
-                    
+
                     # Send the numbered options message
                     message = self.twilio_client.messages.create(
                         from_=from_number,
                         to=to_number,
                         body=options_message
                     )
-                    
+
                     logger.info(f"✅ Numbered options message sent to {phone_number}")
                     return "Message sent successfully"
-                    
+
                 except Exception as options_error:
                     logger.warning(f"Numbered options failed: {str(options_error)}")
-                    
+
                     # Fallback to basic text
                     try:
                         fallback_message = message_body + "\n\n"
                         for idx, reply in enumerate(quick_replies, 1):
                             fallback_message += f"{idx}. {reply['title']}\n"
                         fallback_message += "\nReply with number"
-                        
+
                         message = self.twilio_client.messages.create(
                             from_=from_number,
                             to=to_number,
                             body=fallback_message
                         )
-                        
+
                         logger.info(f"✅ Fallback message sent to {phone_number}")
                         return "Message sent successfully"
-                        
+
                     except Exception as text_error:
                         logger.error(f"All message formats failed: {str(text_error)}")
-                    
+
                     # Fallback: Try with approved content template if available
                     try:
                         content_sid = os.getenv('TWILIO_TEMPLATE_SID')
@@ -373,7 +373,7 @@ Choose an option below:"""
                             content_variables = {}
                             for idx, reply in enumerate(quick_replies[:3], 1):
                                 content_variables[str(idx)] = reply['title'][:24]
-                            
+
                             # Send using approved template
                             message = self.twilio_client.messages.create(
                                 from_=from_number,
@@ -381,47 +381,47 @@ Choose an option below:"""
                                 content_sid=content_sid,
                                 content_variables=json.dumps(content_variables)
                             )
-                            
+
                             logger.info(f"✅ Template message sent with SID: {content_sid}")
                             return "Interactive message sent successfully"
                         else:
                             raise Exception("No valid template SID available")
-                            
+
                     except Exception as template_error:
                         logger.warning(f"Template approach failed: {str(template_error)}")
-                        
+
                         # Final fallback to enhanced text with numbered options
                         reply_text = message_body + "\n\n*Quick Options:*\n"
                         for idx, reply in enumerate(quick_replies, 1):
                             reply_text += f"📱 *{idx}* - {reply['title']}\n"
                         reply_text += "\nJust type the number to select an option!"
-                        
+
                         message = self.twilio_client.messages.create(
                             from_=from_number,
                             to=to_number,
                             body=reply_text
                         )
-                    
+
             elif quick_replies and len(quick_replies) > 3:
                 # Use numbered list format for more than 3 options
                 list_text = message_body + "\n\n*Quick Options:*\n"
                 for idx, reply in enumerate(quick_replies, 1):
                     list_text += f"📱 *{idx}* - {reply['title']}\n"
                 list_text += "\nJust type the number to select!"
-                
+
                 message = self.twilio_client.messages.create(
                     from_=from_number,
                     to=to_number,
                     body=list_text
                 )
-                
+
             elif list_options:
                 # Send message with list options
                 list_text = message_body + "\n\n*Options:*\n"
                 for idx, option in enumerate(list_options, 1):
                     list_text += f"📱 *{idx}* - {option['title']}\n"
                 list_text += "\nJust type the number to select!"
-                
+
                 message = self.twilio_client.messages.create(
                     from_=from_number,
                     to=to_number,
@@ -434,10 +434,10 @@ Choose an option below:"""
                     to=to_number,
                     body=message_body
                 )
-            
+
             logger.info(f"📱 Message sent to {phone_number}")
             return "Message sent successfully"
-            
+
         except Exception as e:
             logger.error(f"❌ Error sending message: {str(e)}")
             # Fallback to regular message format for demo mode
@@ -493,7 +493,7 @@ Choose an option below:"""
             {"id": "progress", "title": "📊 Check Progress"},
             {"id": "menu", "title": "🏠 Main Menu"}
         ]
-        
+
         return self.send_interactive_message(student.phone, response, quick_replies)
 
     def handle_schedule(self, student):
@@ -670,7 +670,7 @@ Choose an option below:"""
             response += f"\n🎯 {remaining} lessons remaining to complete your course!"
         else:
             response += f"\n🎉 Congratulations! You've completed all required lessons!"
-            
+
         # Add quick reply options based on progress
         if remaining > 0:
             quick_replies = [
@@ -683,7 +683,7 @@ Choose an option below:"""
                 {"id": "lessons", "title": "📋 View History"},
                 {"id": "menu", "title": "🏠 Main Menu"}
             ]
-            
+
         return self.send_interactive_message(student.phone, response, quick_replies)
 
     def handle_cancel_lesson(self, student):
@@ -735,7 +735,7 @@ Choose an option below:"""
             ).order_by(Lesson.scheduled_date).all()
 
             if lesson_num < 1 or lesson_num > len(upcoming_lessons):
-                return f"❌ Invalid lesson number. You have {len(upcoming_lessons)} upcoming lessons."
+                return f"❌ Invalid lessonnumber. You have {len(upcoming_lessons)} upcoming lessons."
 
             lesson = upcoming_lessons[lesson_num - 1]
 
@@ -786,14 +786,14 @@ Choose an option below:"""
 • Tomorrow's lessons: book after 6:00 PM today
 
 📞 Need more help? Contact your instructor directly."""
-        
+
         quick_replies = [
             {"id": "book", "title": "📅 Book Lesson"},
             {"id": "lessons", "title": "📋 My Lessons"},
             {"id": "progress", "title": "📊 My Progress"},
             {"id": "menu", "title": "🏠 Main Menu"}
         ]
-        
+
         return self.send_interactive_message(student.phone, message_body, quick_replies)
 
     def handle_menu(self, student):
@@ -805,7 +805,7 @@ Choose an option below:"""
 💰 Account balance: ${float(student.account_balance):.2f}
 
 Choose what you'd like to do:"""
-        
+
         quick_replies = [
             {"id": "instructors", "title": "👨‍🏫 Find Instructors"},
             {"id": "lessons", "title": "📅 View Lessons"},
@@ -813,31 +813,31 @@ Choose what you'd like to do:"""
             {"id": "balance", "title": "💰 Check Balance"},
             {"id": "help", "title": "❓ Get Help"}
         ]
-        
+
         return self.send_interactive_message(student.phone, message_body, quick_replies)
 
     def handle_find_instructors(self, student):
         """Handle instructor search based on student location"""
         if not student.current_location:
             return self.handle_set_location_first(student)
-        
+
         # Get instructors in student's area
         nearby_instructors = self.get_nearby_instructors(student)
-        
+
         if not nearby_instructors:
             message_body = f"""❌ No instructors found in {student.current_location}.
 
 Try expanding your search or updating your location."""
-            
+
             quick_replies = [
                 {"id": "location", "title": "📍 Change Location"},
                 {"id": "menu", "title": "🏠 Main Menu"}
             ]
             return self.send_interactive_message(student.phone, message_body, quick_replies)
-        
+
         # Show available instructors
         response = f"👨‍🏫 *Available Instructors in {student.current_location}:*\n\n"
-        
+
         for i, instructor in enumerate(nearby_instructors[:5], 1):  # Show max 5
             response += f"*{i}. {instructor.get_full_name()}*\n"
             response += f"📍 Area: {instructor.base_location}\n"
@@ -846,24 +846,24 @@ Try expanding your search or updating your location."""
             if instructor.bio:
                 response += f"ℹ️ {instructor.bio[:100]}...\n"
             response += f"📅 Type *select {i}* to view schedule\n\n"
-        
+
         response += "💡 *Commands:*\n"
         response += "• *select [number]* - View instructor schedule\n"
         response += "• *location* - Change your location\n"
         response += "• *menu* - Main menu"
-        
+
         return response
 
     def get_nearby_instructors(self, student):
         """Get instructors near student's location"""
         import json
-        
+
         # Get all active instructors
         instructors = User.query.filter_by(role='instructor', active=True).all()
         nearby_instructors = []
-        
+
         student_location = student.current_location.lower() if student.current_location else ""
-        
+
         for instructor in instructors:
             if instructor.service_areas:
                 try:
@@ -879,7 +879,7 @@ Try expanding your search or updating your location."""
                 # Simple text matching for base location
                 if student_location in instructor.base_location.lower() or instructor.base_location.lower() in student_location:
                     nearby_instructors.append(instructor)
-        
+
         return nearby_instructors
 
     def handle_set_location_first(self, student):
@@ -900,10 +900,10 @@ To find instructors near you, please set your current location.
 • Glen View
 
 Type your area name (e.g., "CBD" or "Avondale")"""
-        
+
         # Set state to await location input
         self.set_session_state(student, 'awaiting_location_update')
-        
+
         return message_body
 
     def handle_change_location(self, student):
@@ -927,10 +927,10 @@ Current location: {student.current_location or "Not set"}
 • Budiriro
 
 Type the name of your area:"""
-        
+
         # Set state to await location input
         self.set_session_state(student, 'awaiting_location_update')
-        
+
         return message_body
 
     def handle_profile_management(self, student):
@@ -945,14 +945,14 @@ Type the name of your area:"""
 💰 Balance: ${float(student.account_balance):.2f}
 
 What would you like to update?"""
-        
+
         quick_replies = [
             {"id": "location", "title": "📍 Change Location"},
             {"id": "email", "title": "📧 Update Email"},
             {"id": "fund", "title": "💰 Fund Account"},
             {"id": "menu", "title": "🏠 Main Menu"}
         ]
-        
+
         return self.send_interactive_message(student.phone, message_body, quick_replies)
 
     def handle_check_balance(self, student):
@@ -963,24 +963,24 @@ Current Balance: ${float(student.account_balance):.2f}
 
 Recent Activity:
 """
-        
+
         # Get recent payments
         recent_payments = Payment.query.filter_by(student_id=student.id).order_by(Payment.created_at.desc()).limit(3).all()
-        
+
         if recent_payments:
             for payment in recent_payments:
                 date_str = payment.created_at.strftime('%Y-%m-%d')
                 message_body += f"• +${float(payment.amount):.2f} on {date_str}\n"
         else:
             message_body += "No recent payments found.\n"
-        
+
         message_body += "\n💡 Need to fund your account? Type *fund*"
-        
+
         quick_replies = [
             {"id": "fund", "title": "💰 Fund Account"},
             {"id": "menu", "title": "🏠 Main Menu"}
         ]
-        
+
         return self.send_interactive_message(student.phone, message_body, quick_replies)
 
     def handle_fund_account(self, student):
@@ -1005,12 +1005,12 @@ Current Balance: ${float(student.account_balance):.2f}
 📞 Contact: +263 77 123 4567
 
 For immediate assistance, contact our office."""
-        
+
         quick_replies = [
             {"id": "balance", "title": "💰 Check Balance"},
             {"id": "menu", "title": "🏠 Main Menu"}
         ]
-        
+
         return self.send_interactive_message(student.phone, message_body, quick_replies)
 
     def handle_menu_option(self, student, option):
@@ -1036,13 +1036,13 @@ For immediate assistance, contact our office."""
         message_body = """📅 *Book a Lesson*
 
 Choose your lesson duration:"""
-        
+
         quick_replies = [
             {"id": "30", "title": "30 minutes"},
             {"id": "60", "title": "60 minutes"},
             {"id": "menu", "title": "Back to Menu"}
         ]
-        
+
         return self.send_interactive_message(student.phone, message_body, quick_replies)
 
     def handle_duration_selection(self, student, duration_minutes):
@@ -1186,7 +1186,7 @@ Choose your lesson duration:"""
                             # Can book tomorrow only after 6 PM today
                             if current_time.hour >= 18:
                                 available_slots.append({
-                                    
+
                                 'start': slot_time,
                                     'end': slot_time + timedelta(minutes=duration_minutes)
                                 })
@@ -1494,14 +1494,14 @@ I've cleared everything. Let's start fresh!
 👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}
 
 Choose what you'd like to do:"""
-        
+
         quick_replies = [
             {"id": "lessons", "title": "📅 View Lessons"},
             {"id": "book", "title": "🎯 Book Lesson"},
             {"id": "progress", "title": "📊 Check Progress"},
             {"id": "help", "title": "❓ Get Help"}
         ]
-        
+
         return self.send_interactive_message(student.phone, message_body, quick_replies)
 
     def process_location_update(self, student, location_text):
@@ -1509,23 +1509,23 @@ Choose what you'd like to do:"""
         try:
             # Clean and validate location
             location = location_text.strip().title()
-            
+
             # Valid Harare areas
             valid_areas = [
                 'CBD', 'Avondale', 'Eastlea', 'Mount Pleasant', 'Borrowdale',
                 'Waterfalls', 'Mbare', 'Highfield', 'Glen View', 'Warren Park',
                 'Kuwadzana', 'Budiriro', 'Chitungwiza', 'Epworth', 'Ruwa'
             ]
-            
+
             # Find matching area (fuzzy matching)
             matched_area = None
             location_lower = location.lower()
-            
+
             for area in valid_areas:
                 if location_lower in area.lower() or area.lower() in location_lower:
                     matched_area = area
                     break
-            
+
             if not matched_area:
                 return f"""❌ Location "{location}" not recognized.
 
@@ -1539,25 +1539,25 @@ Please choose from these areas:
 • And more...
 
 Type your area name again:"""
-            
+
             # Update student location
             student.current_location = matched_area
             db.session.commit()
-            
+
             # Clear location update state
             self.set_session_state(student, 'main_menu')
-            
+
             response = f"✅ *Location Updated Successfully!*\n\n"
             response += f"📍 Your location is now set to: *{matched_area}*\n\n"
             response += "You can now find instructors in your area!"
-            
+
             quick_replies = [
                 {"id": "instructors", "title": "👨‍🏫 Find Instructors"},
                 {"id": "menu", "title": "🏠 Main Menu"}
             ]
-            
+
             return self.send_interactive_message(student.phone, response, quick_replies)
-            
+
         except Exception as e:
             logger.error(f"Error updating location: {str(e)}")
             return "❌ Error updating location. Please try again or contact support."
@@ -1566,28 +1566,28 @@ Type your area name again:"""
         """Process instructor selection and show their schedule"""
         try:
             instructor_num = int(instructor_number)
-            
+
             # Get nearby instructors again
             nearby_instructors = self.get_nearby_instructors(student)
-            
+
             if instructor_num < 1 or instructor_num > len(nearby_instructors):
                 return f"❌ Invalid instructor number. Please choose between 1 and {len(nearby_instructors)}."
-            
+
             selected_instructor = nearby_instructors[instructor_num - 1]
-            
+
             # Show instructor details and schedule
             response = f"👨‍🏫 *{selected_instructor.get_full_name()}*\n\n"
             response += f"📍 Base Area: {selected_instructor.base_location}\n"
             response += f"⭐ Experience: {selected_instructor.experience_years or 'N/A'} years\n"
             response += f"💰 30min lesson: ${float(selected_instructor.hourly_rate_30min or 0):.2f}\n"
             response += f"💰 60min lesson: ${float(selected_instructor.hourly_rate_60min or 0):.2f}\n"
-            
+
             if selected_instructor.bio:
                 response += f"\nℹ️ *About:*\n{selected_instructor.bio}\n"
-            
+
             # Get available slots for this instructor
             available_slots = self.get_instructor_available_slots(selected_instructor, days_ahead=3)
-            
+
             if available_slots:
                 response += f"\n📅 *Next Available Slots:*\n"
                 for i, slot in enumerate(available_slots[:3], 1):
@@ -1596,14 +1596,14 @@ Type your area name again:"""
                     response += f"{i}. {date_str} at {time_str}\n"
             else:
                 response += "\n❌ No available slots in the next 3 days."
-            
+
             response += f"\n💡 *To book with this instructor:*\n"
             response += f"• Type *choose {instructor_num}* to select them\n"
             response += f"• Type *instructors* to see other options\n"
             response += f"• Type *menu* for main menu"
-            
+
             return response
-            
+
         except ValueError:
             return "❌ Please provide a valid instructor number. Example: *select 1*"
         except Exception as e:
@@ -1612,7 +1612,7 @@ Type your area name again:"""
 
     def handle_unknown_student(self, phone_number):
         """Handle messages from unknown phone numbers"""
-        return """👋 *Welcome to myInstructor 2.0!*
+        return f"""👋 *Welcome to DriveLink!*
 
 Sorry, I don't recognize this phone number. 📱
 
@@ -1637,7 +1637,7 @@ Visit our office or call to register!"""
                 return self.handle_unknown_student(phone_number)
 
             logger.info(f"🔘 Processing button '{button_payload}' for student {student.name}")
-            
+
             # Update session activity
             self.update_session(student, f"button:{button_payload}")
 
@@ -1681,7 +1681,7 @@ Visit our office or call to register!"""
                 "body": body_text,
                 "buttons": []
             }
-            
+
             # Add buttons (max 3 for Quick Reply)
             for idx, button_text in enumerate(button_texts[:3]):
                 template_content["buttons"].append({
@@ -1696,10 +1696,10 @@ Visit our office or call to register!"""
                 content_type="twilio/quick-reply",
                 content=template_content
             )
-            
+
             logger.info(f"✅ Created template '{template_name}' with SID: {content.sid}")
             return content.sid
-            
+
         except Exception as e:
             logger.error(f"❌ Error creating template: {str(e)}")
             return None
@@ -1713,11 +1713,11 @@ def webhook_handler():
         # Ensure Twilio client is initialized (in case environment changed)
         if not whatsapp_bot.twilio_client:
             whatsapp_bot.initialize_twilio()
-        
+
         # Get Twilio webhook data
         from_number = request.form.get('From', '')
         message_body = request.form.get('Body', '')
-        
+
         # Check for button response data (2025 Twilio format)
         button_text = request.form.get('ButtonText', '')
         button_payload = request.form.get('ButtonPayload', '')
