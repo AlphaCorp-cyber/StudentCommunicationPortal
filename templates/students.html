@@ -174,21 +174,40 @@
                             <label for="address" class="form-label">Address</label>
                             <textarea class="form-control" id="address" name="address" rows="2"></textarea>
                         </div>
+                        
                         <div class="row">
                             <div class="col-md-6">
-                                <label for="license_type" class="form-label">License Type</label>
-                                <select class="form-select" id="license_type" name="license_type">
-                                    <option value="Class 4" selected>Class 4 (Light Motor Vehicle)</option>
-                                    <option value="Class 2">Class 2 (Heavy Motor Vehicle)</option>
-                                    <option value="Class 1">Class 1 (Extra Heavy Motor Vehicle)</option>
-                                    <option value="Class 3">Class 3 (Motor Cycle)</option>
-                                    <option value="Class 5">Class 5 (Tractor)</option>
-                                </select>
+                                <label for="email" class="form-label">Email (Optional)</label>
+                                <input type="email" class="form-control" id="email" name="email">
                             </div>
                             <div class="col-md-6">
-                                <label for="total_lessons_required" class="form-label">Total Lessons Required</label>
-                                <input type="number" class="form-control" id="total_lessons_required" 
-                                       name="total_lessons_required" value="20" min="1">
+                                <label for="current_location" class="form-label">Current Location</label>
+                                <select class="form-select" id="current_location" name="current_location">
+                                    <option value="">Select Location</option>
+                                    <option value="CBD">CBD</option>
+                                    <option value="Avondale">Avondale</option>
+                                    <option value="Eastlea">Eastlea</option>
+                                    <option value="Mount Pleasant">Mount Pleasant</option>
+                                    <option value="Borrowdale">Borrowdale</option>
+                                    <option value="Waterfalls">Waterfalls</option>
+                                    <option value="Mbare">Mbare</option>
+                                    <option value="Highfield">Highfield</option>
+                                    <option value="Glen View">Glen View</option>
+                                    <option value="Warren Park">Warren Park</option>
+                                    <option value="Kuwadzana">Kuwadzana</option>
+                                    <option value="Budiriro">Budiriro</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <label for="license_type" class="form-label">License Type</label>
+                                <select class="form-select" id="license_type" name="license_type" required>
+                                    <option value="Class 4">Class 4 (Light Motor Vehicle)</option>
+                                    <option value="Class 2">Class 2 (Heavy Motor Vehicle)</option>
+                                    <option value="Class 1">Class 1 (Motorcycle)</option>
+                                </select>
                             </div>
                         </div>
                         <div class="mb-3">

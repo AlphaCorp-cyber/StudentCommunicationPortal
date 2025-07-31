@@ -25,6 +25,16 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), default=ROLE_INSTRUCTOR)
     active = db.Column(db.Boolean, default=True)
     
+    # Instructor location fields
+    service_areas = db.Column(db.Text, nullable=True)  # JSON string of areas they serve
+    base_location = db.Column(db.String(100), nullable=True)  # Main operating area
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    hourly_rate_30min = db.Column(db.Numeric(10, 2), nullable=True)
+    hourly_rate_60min = db.Column(db.Numeric(10, 2), nullable=True)
+    bio = db.Column(db.Text, nullable=True)  # Instructor bio/description
+    experience_years = db.Column(db.Integer, nullable=True)
+    
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
     
@@ -67,8 +77,14 @@ class Student(db.Model):
     date_of_birth = db.Column(db.Date, nullable=True)
     license_type = db.Column(db.String(10), default='Class 4')
     
-    # Foreign key to instructor (now required)
-    instructor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    # Location fields
+    current_location = db.Column(db.String(100), nullable=True)  # e.g., "Avondale", "CBD", "Eastlea"
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    preferred_radius_km = db.Column(db.Integer, default=10)  # How far willing to travel
+    
+    # Foreign key to instructor (now optional - will be assigned after selection)
+    instructor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     
     # Status tracking
     registration_date = db.Column(db.DateTime, default=datetime.now)

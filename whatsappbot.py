@@ -24,7 +24,12 @@ class WhatsAppBot:
             'progress': self.handle_progress,
             'cancel': self.handle_cancel_lesson,
             'help': self.handle_help,
-            'menu': self.handle_menu
+            'menu': self.handle_menu,
+            'instructors': self.handle_find_instructors,
+            'profile': self.handle_profile_management,
+            'location': self.handle_change_location,
+            'balance': self.handle_check_balance,
+            'fund': self.handle_fund_account
         }
 
         # Initialize Twilio client - will be done later with app context
@@ -198,6 +203,12 @@ class WhatsAppBot:
             if len(parts) >= 2:
                 return self.process_cancel_lesson_by_number(student, parts[1])
 
+        # Check for instructor selection (e.g., "select 1")
+        if message.startswith('select '):
+            parts = message.split()
+            if len(parts) >= 2:
+                return self.process_instructor_selection(student, parts[1])
+        
         # Check for timeslot booking (e.g., "book 1" or "book 5")
         if message.startswith('book '):
             parts = message.split()
@@ -205,7 +216,11 @@ class WhatsAppBot:
                 return self.process_timeslot_booking(student, parts[1])
 
         # Context-aware message handling based on session state
-        if session_state == 'awaiting_duration':
+        if session_state == 'awaiting_location_update':
+            return self.process_location_update(student, message)
+        elif session_state == 'awaiting_instructor_selection':
+            return self.process_instructor_selection(student, message)
+        elif session_state == 'awaiting_duration':
             # Handle numbered choices for duration (1=30min, 2=60min, 3=menu)
             if message == '1':
                 return self.handle_duration_selection(student, 30)
@@ -786,14 +801,214 @@ Choose an option below:"""
         message_body = f"""📋 *Main Menu:*
 
 👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}
+📍 Your location: {student.current_location or "Not set"}
+💰 Account balance: ${float(student.account_balance):.2f}
 
 Choose what you'd like to do:"""
         
         quick_replies = [
+            {"id": "instructors", "title": "👨‍🏫 Find Instructors"},
             {"id": "lessons", "title": "📅 View Lessons"},
-            {"id": "book", "title": "🎯 Book Lesson"},
-            {"id": "progress", "title": "📊 Check Progress"},
+            {"id": "profile", "title": "👤 Update Profile"},
+            {"id": "balance", "title": "💰 Check Balance"},
             {"id": "help", "title": "❓ Get Help"}
+        ]
+        
+        return self.send_interactive_message(student.phone, message_body, quick_replies)
+
+    def handle_find_instructors(self, student):
+        """Handle instructor search based on student location"""
+        if not student.current_location:
+            return self.handle_set_location_first(student)
+        
+        # Get instructors in student's area
+        nearby_instructors = self.get_nearby_instructors(student)
+        
+        if not nearby_instructors:
+            message_body = f"""❌ No instructors found in {student.current_location}.
+
+Try expanding your search or updating your location."""
+            
+            quick_replies = [
+                {"id": "location", "title": "📍 Change Location"},
+                {"id": "menu", "title": "🏠 Main Menu"}
+            ]
+            return self.send_interactive_message(student.phone, message_body, quick_replies)
+        
+        # Show available instructors
+        response = f"👨‍🏫 *Available Instructors in {student.current_location}:*\n\n"
+        
+        for i, instructor in enumerate(nearby_instructors[:5], 1):  # Show max 5
+            response += f"*{i}. {instructor.get_full_name()}*\n"
+            response += f"📍 Area: {instructor.base_location}\n"
+            response += f"⭐ Experience: {instructor.experience_years or 'N/A'} years\n"
+            response += f"💰 Rates: ${float(instructor.hourly_rate_30min or 0):.2f}/30min, ${float(instructor.hourly_rate_60min or 0):.2f}/60min\n"
+            if instructor.bio:
+                response += f"ℹ️ {instructor.bio[:100]}...\n"
+            response += f"📅 Type *select {i}* to view schedule\n\n"
+        
+        response += "💡 *Commands:*\n"
+        response += "• *select [number]* - View instructor schedule\n"
+        response += "• *location* - Change your location\n"
+        response += "• *menu* - Main menu"
+        
+        return response
+
+    def get_nearby_instructors(self, student):
+        """Get instructors near student's location"""
+        import json
+        
+        # Get all active instructors
+        instructors = User.query.filter_by(role='instructor', active=True).all()
+        nearby_instructors = []
+        
+        student_location = student.current_location.lower() if student.current_location else ""
+        
+        for instructor in instructors:
+            if instructor.service_areas:
+                try:
+                    service_areas = json.loads(instructor.service_areas)
+                    # Check if student's location matches any service area
+                    for area in service_areas:
+                        if student_location in area.lower() or area.lower() in student_location:
+                            nearby_instructors.append(instructor)
+                            break
+                except:
+                    pass
+            elif instructor.base_location:
+                # Simple text matching for base location
+                if student_location in instructor.base_location.lower() or instructor.base_location.lower() in student_location:
+                    nearby_instructors.append(instructor)
+        
+        return nearby_instructors
+
+    def handle_set_location_first(self, student):
+        """Prompt student to set location first"""
+        message_body = """📍 *Set Your Location First*
+
+To find instructors near you, please set your current location.
+
+*Harare Areas Available:*
+• CBD
+• Avondale
+• Eastlea
+• Mount Pleasant
+• Borrowdale
+• Waterfalls
+• Mbare
+• Highfield
+• Glen View
+
+Type your area name (e.g., "CBD" or "Avondale")"""
+        
+        # Set state to await location input
+        self.set_session_state(student, 'awaiting_location_update')
+        
+        return message_body
+
+    def handle_change_location(self, student):
+        """Handle location change request"""
+        message_body = f"""📍 *Update Your Location*
+
+Current location: {student.current_location or "Not set"}
+
+*Available Areas in Harare:*
+• CBD
+• Avondale  
+• Eastlea
+• Mount Pleasant
+• Borrowdale
+• Waterfalls
+• Mbare
+• Highfield
+• Glen View
+• Warren Park
+• Kuwadzana
+• Budiriro
+
+Type the name of your area:"""
+        
+        # Set state to await location input
+        self.set_session_state(student, 'awaiting_location_update')
+        
+        return message_body
+
+    def handle_profile_management(self, student):
+        """Handle profile management menu"""
+        message_body = f"""👤 *Your Profile*
+
+📝 Name: {student.name}
+📞 Phone: {student.phone}
+📧 Email: {student.email or "Not set"}
+📍 Location: {student.current_location or "Not set"}
+🎯 License Type: {student.license_type}
+💰 Balance: ${float(student.account_balance):.2f}
+
+What would you like to update?"""
+        
+        quick_replies = [
+            {"id": "location", "title": "📍 Change Location"},
+            {"id": "email", "title": "📧 Update Email"},
+            {"id": "fund", "title": "💰 Fund Account"},
+            {"id": "menu", "title": "🏠 Main Menu"}
+        ]
+        
+        return self.send_interactive_message(student.phone, message_body, quick_replies)
+
+    def handle_check_balance(self, student):
+        """Handle balance inquiry"""
+        message_body = f"""💰 *Account Balance*
+
+Current Balance: ${float(student.account_balance):.2f}
+
+Recent Activity:
+"""
+        
+        # Get recent payments
+        recent_payments = Payment.query.filter_by(student_id=student.id).order_by(Payment.created_at.desc()).limit(3).all()
+        
+        if recent_payments:
+            for payment in recent_payments:
+                date_str = payment.created_at.strftime('%Y-%m-%d')
+                message_body += f"• +${float(payment.amount):.2f} on {date_str}\n"
+        else:
+            message_body += "No recent payments found.\n"
+        
+        message_body += "\n💡 Need to fund your account? Type *fund*"
+        
+        quick_replies = [
+            {"id": "fund", "title": "💰 Fund Account"},
+            {"id": "menu", "title": "🏠 Main Menu"}
+        ]
+        
+        return self.send_interactive_message(student.phone, message_body, quick_replies)
+
+    def handle_fund_account(self, student):
+        """Handle account funding request"""
+        message_body = f"""💰 *Fund Your Account*
+
+Current Balance: ${float(student.account_balance):.2f}
+
+*Payment Methods Available:*
+• EcoCash
+• OneMoney  
+• Bank Transfer
+• Cash (Visit Office)
+
+*How to fund:*
+1. Make payment using any method above
+2. Send screenshot/reference to this number
+3. Your account will be updated within 1 hour
+
+*Office Location:*
+📍 123 Main Street, Harare CBD
+📞 Contact: +263 77 123 4567
+
+For immediate assistance, contact our office."""
+        
+        quick_replies = [
+            {"id": "balance", "title": "💰 Check Balance"},
+            {"id": "menu", "title": "🏠 Main Menu"}
         ]
         
         return self.send_interactive_message(student.phone, message_body, quick_replies)
@@ -1011,6 +1226,14 @@ Choose your lesson duration:"""
 
         message = session.last_message
 
+        # Check for location update state
+        if message == 'awaiting_location_update':
+            return 'awaiting_location_update'
+
+        # Check for instructor selection state
+        if message == 'awaiting_instructor_selection':
+            return 'awaiting_instructor_selection'
+
         # Check if waiting for duration selection
         if message == 'awaiting_duration':
             return 'awaiting_duration'
@@ -1037,7 +1260,11 @@ Choose your lesson duration:"""
             )
             db.session.add(session)
 
-        if state == 'awaiting_duration':
+        if state == 'awaiting_location_update':
+            session.last_message = 'awaiting_location_update'
+        elif state == 'awaiting_instructor_selection':
+            session.last_message = 'awaiting_instructor_selection'
+        elif state == 'awaiting_duration':
             session.last_message = 'awaiting_duration'
         elif state == 'awaiting_booking_slot' and data:
             import json
@@ -1277,13 +1504,129 @@ Choose what you'd like to do:"""
         
         return self.send_interactive_message(student.phone, message_body, quick_replies)
 
+    def process_location_update(self, student, location_text):
+        """Process location update from student"""
+        try:
+            # Clean and validate location
+            location = location_text.strip().title()
+            
+            # Valid Harare areas
+            valid_areas = [
+                'CBD', 'Avondale', 'Eastlea', 'Mount Pleasant', 'Borrowdale',
+                'Waterfalls', 'Mbare', 'Highfield', 'Glen View', 'Warren Park',
+                'Kuwadzana', 'Budiriro', 'Chitungwiza', 'Epworth', 'Ruwa'
+            ]
+            
+            # Find matching area (fuzzy matching)
+            matched_area = None
+            location_lower = location.lower()
+            
+            for area in valid_areas:
+                if location_lower in area.lower() or area.lower() in location_lower:
+                    matched_area = area
+                    break
+            
+            if not matched_area:
+                return f"""❌ Location "{location}" not recognized.
+
+Please choose from these areas:
+• CBD
+• Avondale
+• Eastlea
+• Mount Pleasant
+• Borrowdale
+• Waterfalls
+• And more...
+
+Type your area name again:"""
+            
+            # Update student location
+            student.current_location = matched_area
+            db.session.commit()
+            
+            # Clear location update state
+            self.set_session_state(student, 'main_menu')
+            
+            response = f"✅ *Location Updated Successfully!*\n\n"
+            response += f"📍 Your location is now set to: *{matched_area}*\n\n"
+            response += "You can now find instructors in your area!"
+            
+            quick_replies = [
+                {"id": "instructors", "title": "👨‍🏫 Find Instructors"},
+                {"id": "menu", "title": "🏠 Main Menu"}
+            ]
+            
+            return self.send_interactive_message(student.phone, response, quick_replies)
+            
+        except Exception as e:
+            logger.error(f"Error updating location: {str(e)}")
+            return "❌ Error updating location. Please try again or contact support."
+
+    def process_instructor_selection(self, student, instructor_number):
+        """Process instructor selection and show their schedule"""
+        try:
+            instructor_num = int(instructor_number)
+            
+            # Get nearby instructors again
+            nearby_instructors = self.get_nearby_instructors(student)
+            
+            if instructor_num < 1 or instructor_num > len(nearby_instructors):
+                return f"❌ Invalid instructor number. Please choose between 1 and {len(nearby_instructors)}."
+            
+            selected_instructor = nearby_instructors[instructor_num - 1]
+            
+            # Show instructor details and schedule
+            response = f"👨‍🏫 *{selected_instructor.get_full_name()}*\n\n"
+            response += f"📍 Base Area: {selected_instructor.base_location}\n"
+            response += f"⭐ Experience: {selected_instructor.experience_years or 'N/A'} years\n"
+            response += f"💰 30min lesson: ${float(selected_instructor.hourly_rate_30min or 0):.2f}\n"
+            response += f"💰 60min lesson: ${float(selected_instructor.hourly_rate_60min or 0):.2f}\n"
+            
+            if selected_instructor.bio:
+                response += f"\nℹ️ *About:*\n{selected_instructor.bio}\n"
+            
+            # Get available slots for this instructor
+            available_slots = self.get_instructor_available_slots(selected_instructor, days_ahead=3)
+            
+            if available_slots:
+                response += f"\n📅 *Next Available Slots:*\n"
+                for i, slot in enumerate(available_slots[:3], 1):
+                    date_str = slot['start'].strftime('%A, %B %d')
+                    time_str = slot['start'].strftime('%I:%M %p')
+                    response += f"{i}. {date_str} at {time_str}\n"
+            else:
+                response += "\n❌ No available slots in the next 3 days."
+            
+            response += f"\n💡 *To book with this instructor:*\n"
+            response += f"• Type *choose {instructor_num}* to select them\n"
+            response += f"• Type *instructors* to see other options\n"
+            response += f"• Type *menu* for main menu"
+            
+            return response
+            
+        except ValueError:
+            return "❌ Please provide a valid instructor number. Example: *select 1*"
+        except Exception as e:
+            logger.error(f"Error processing instructor selection: {str(e)}")
+            return "❌ Error processing selection. Please try again."
+
     def handle_unknown_student(self, phone_number):
         """Handle messages from unknown phone numbers"""
-        return """Sorry, I don't recognize this phone number. 📱
+        return """👋 *Welcome to myInstructor 2.0!*
 
-Please make sure you're registered as a student with myInstructor 2.0.
+Sorry, I don't recognize this phone number. 📱
 
-Contact your driving school for assistance with registration."""
+*To get started:*
+1. Register on our platform
+2. Fund your account  
+3. Set your location
+4. Find instructors in your area
+
+📞 *Contact us:*
+Phone: +263 77 123 4567
+Office: 123 Main Street, Harare CBD
+
+Visit our office or call to register!"""
 
     def process_button_response(self, phone_number, button_text, button_payload):
         """Process button responses from Quick Reply buttons"""

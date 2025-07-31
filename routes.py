@@ -319,7 +319,8 @@ def add_student():
         student.email = request.form.get('email', '').strip() or None
         student.address = request.form.get('address', '').strip() or None
         student.license_type = license_type
-        student.instructor_id = available_instructor.id
+        student.current_location = request.form.get('current_location', '').strip() or None
+        student.instructor_id = None  # Will be assigned when student selects instructor
         student.total_lessons_required = int(request.form.get('total_lessons_required', 20))
         
         db.session.add(student)
