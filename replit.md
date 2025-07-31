@@ -38,10 +38,12 @@ myInstructor 2.0 is a modern driving school management platform that combines Wh
 - **Admins**: Full driving school operations management
 - **Super Admins**: System-wide configuration and user management
 
-### WhatsApp Integration (Mock)
-- **Bot Interface**: Simulated WhatsApp bot functionality for demonstration
-- **Message Handling**: Session tracking for student interactions
-- **Automation**: Lesson reminders and booking confirmations
+### WhatsApp Integration
+- **Dual User Support**: Same bot handles both students and instructors based on phone number recognition
+- **Student Features**: Lesson booking, progress tracking, instructor finding, balance management
+- **Instructor Features**: Student management, lesson scheduling, progress monitoring, lesson status updates
+- **Session Management**: Context-aware conversation tracking for complex workflows
+- **Real-time Notifications**: Automatic lesson confirmations, cancellations, and reminders
 
 ### Web Portal Features
 - **Dashboard System**: Role-specific dashboards with relevant statistics
@@ -123,6 +125,9 @@ The application now uses a .env file for easy configuration management:
 - **SESSION_SECRET**: Flask session secret key
 
 ### WhatsApp Bot Features
+- **Dual Interface**: Automatically detects students vs instructors by phone number
+- **Student Commands**: book, lessons, progress, cancel, help, menu, instructors, balance, fund
+- **Instructor Commands**: students, today, schedule, lessons, cancel [id], confirm [id], complete [id], availability, help
 - **Simple numbered options**: Clean, reliable text-based interaction system
 - **Session state management** for booking flow tracking
 - **Interactive lesson booking** with duration selection (30/60 minutes)
@@ -139,6 +144,7 @@ The application now uses a .env file for easy configuration management:
 
 ## Changelog
 
+- July 31, 2025: Added instructor WhatsApp functionality - instructors can now use the same WhatsApp bot with dedicated features like viewing students, managing lessons, and checking schedules
 - July 31, 2025: Successfully migrated from Replit Agent to Replit environment with PostgreSQL database setup, fixed JavaScript errors, and restored DriveLink branding
 - July 16, 2025: Simplified to reliable numbered text system (1, 2, 3) instead of Quick Reply buttons due to WhatsApp Business approval requirements
 - July 9, 2025: Added .env configuration support and Twilio template integration

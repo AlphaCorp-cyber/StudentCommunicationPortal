@@ -8,7 +8,7 @@ from flask import request, jsonify
 from twilio.rest import Client
 from twilio.twiml.messaging_response import MessagingResponse
 from sqlalchemy import and_
-from models import Student, Lesson, WhatsAppSession, db, LESSON_SCHEDULED, LESSON_COMPLETED, LESSON_CANCELLED, SystemConfig
+from models import User, Student, Lesson, WhatsAppSession, db, LESSON_SCHEDULED, LESSON_COMPLETED, LESSON_CANCELLED, SystemConfig
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -101,25 +101,36 @@ class WhatsAppBot:
             self.twilio_client = None
 
     def process_message(self, phone_number, message):
-        """Process incoming WhatsApp message"""
+        """Process incoming WhatsApp message for both students and instructors"""
         try:
             # Clean phone number format
             phone_number = self.clean_phone_number(phone_number)
 
-            # Find student by phone number
+            # First check if it's an instructor
+            instructor = User.query.filter_by(phone=phone_number, active=True).filter(
+                User.role.in_(['instructor', 'admin', 'super_admin'])
+            ).first()
+
+            if instructor:
+                # Handle instructor message
+                response = self.handle_instructor_message(instructor, message.lower().strip())
+                logger.info(f"WhatsApp message processed for instructor {instructor.get_full_name()}: {message}")
+                return response
+
+            # Check if it's a student
             student = Student.query.filter_by(phone=phone_number, is_active=True).first()
 
-            if not student:
-                return self.handle_unknown_student(phone_number)
+            if student:
+                # Update or create WhatsApp session
+                self.update_session(student, message)
 
-            # Update or create WhatsApp session
-            self.update_session(student, message)
+                # Process student message
+                response = self.handle_message(student, message.lower().strip())
+                logger.info(f"WhatsApp message processed for student {student.name}: {message}")
+                return response
 
-            # Process message
-            response = self.handle_message(student, message.lower().strip())
-
-            logger.info(f"WhatsApp message processed for {student.name}: {message}")
-            return response
+            # Unknown number
+            return self.handle_unknown_student(phone_number)
 
         except Exception as e:
             logger.error(f"Error processing WhatsApp message: {str(e)}")
@@ -1703,6 +1714,262 @@ Visit our office or call to register!"""
         except Exception as e:
             logger.error(f"❌ Error creating template: {str(e)}")
             return None
+
+    # Instructor-specific message handlers
+    def handle_instructor_message(self, instructor, message):
+        """Handle messages from instructors"""
+        instructor_commands = {
+            'hi': lambda: self.instructor_greeting(instructor),
+            'hello': lambda: self.instructor_greeting(instructor),
+            'students': lambda: self.handle_instructor_students(instructor),
+            'schedule': lambda: self.handle_instructor_schedule(instructor),
+            'lessons': lambda: self.handle_instructor_lessons(instructor),
+            'help': lambda: self.instructor_help(instructor),
+            'menu': lambda: self.instructor_menu(instructor),
+            'today': lambda: self.handle_instructor_today_lessons(instructor),
+            'cancel': lambda: self.handle_instructor_cancel_lesson(instructor, message),
+            'confirm': lambda: self.handle_instructor_confirm_lesson(instructor, message),
+            'complete': lambda: self.handle_instructor_complete_lesson(instructor, message),
+            'availability': lambda: self.handle_instructor_availability(instructor),
+        }
+
+        # Check for specific instructor commands first
+        for command, handler in instructor_commands.items():
+            if command in message:
+                return handler()
+
+        # Handle lesson status updates with lesson ID
+        if message.startswith('cancel ') or message.startswith('confirm ') or message.startswith('complete '):
+            return self.handle_instructor_lesson_action(instructor, message)
+
+        # Default instructor response
+        return self.instructor_menu(instructor)
+
+    def instructor_greeting(self, instructor):
+        """Instructor greeting message"""
+        return f"""👨‍🏫 Hello {instructor.get_full_name()}!
+
+Welcome to DriveLink Instructor Portal.
+
+📊 Quick Stats:
+• Students: {len(instructor.instructor_students)} assigned
+• Today's lessons: {self.count_instructor_today_lessons(instructor)}
+
+What would you like to do?
+
+1. students - View your students
+2. today - Today's lessons
+3. schedule - Weekly schedule
+4. lessons - All upcoming lessons
+5. help - Get help
+
+Just type the number or word!"""
+
+    def instructor_menu(self, instructor):
+        """Show instructor main menu"""
+        return f"""🏠 Instructor Menu - {instructor.get_full_name()}
+
+📚 Available Commands:
+
+1. students - View assigned students
+2. today - Today's lesson schedule
+3. schedule - This week's schedule  
+4. lessons - All upcoming lessons
+5. availability - Set your availability
+6. help - Get detailed help
+
+💡 Quick Actions:
+• cancel [lesson_id] - Cancel a lesson
+• confirm [lesson_id] - Confirm a lesson
+• complete [lesson_id] - Mark lesson complete
+
+📞 Type any number or command!"""
+
+    def handle_instructor_students(self, instructor):
+        """Show instructor's assigned students"""
+        students = instructor.instructor_students
+        if not students:
+            return "📚 No students assigned to you yet."
+
+        response = f"👥 Your Students ({len(students)}):\n\n"
+        for i, student in enumerate(students, 1):
+            active_lessons = len([l for l in student.lessons if l.status == LESSON_SCHEDULED])
+            response += f"{i}. {student.name}\n"
+            response += f"   📞 {student.phone}\n"
+            response += f"   📍 {student.current_location or 'Location not set'}\n"
+            response += f"   📅 Active lessons: {active_lessons}\n"
+            response += f"   💰 Balance: ${float(student.account_balance):.2f}\n\n"
+
+        response += "💡 To view a student's details, type: student [number]"
+        return response
+
+    def handle_instructor_today_lessons(self, instructor):
+        """Show today's lessons for instructor"""
+        today = datetime.now().date()
+        today_lessons = Lesson.query.filter(
+            Lesson.instructor_id == instructor.id,
+            Lesson.status == LESSON_SCHEDULED,
+            Lesson.scheduled_date >= datetime.combine(today, datetime.min.time()),
+            Lesson.scheduled_date < datetime.combine(today + timedelta(days=1), datetime.min.time())
+        ).order_by(Lesson.scheduled_date).all()
+
+        if not today_lessons:
+            return f"📅 No lessons scheduled for today ({today.strftime('%A, %B %d')}).\n\nEnjoy your day off! 😊"
+
+        response = f"📅 Today's Lessons - {today.strftime('%A, %B %d')}:\n\n"
+        for i, lesson in enumerate(today_lessons, 1):
+            time_str = lesson.scheduled_date.strftime('%I:%M %p')
+            response += f"{i}. {time_str} - {lesson.student.name}\n"
+            response += f"   📞 {lesson.student.phone}\n"
+            response += f"   ⏱️ {lesson.duration_minutes} minutes\n"
+            response += f"   📍 {lesson.location or 'Location TBD'}\n"
+            response += f"   💰 ${float(lesson.cost):.2f}\n"
+            response += f"   🆔 Lesson ID: {lesson.id}\n\n"
+
+        response += "💡 Commands:\n"
+        response += "• confirm [id] - Confirm lesson\n"
+        response += "• cancel [id] - Cancel lesson\n"
+        response += "• complete [id] - Mark complete"
+        return response
+
+    def handle_instructor_schedule(self, instructor):
+        """Show instructor's weekly schedule"""
+        start_date = datetime.now().date()
+        end_date = start_date + timedelta(days=7)
+        
+        lessons = Lesson.query.filter(
+            Lesson.instructor_id == instructor.id,
+            Lesson.status == LESSON_SCHEDULED,
+            Lesson.scheduled_date >= datetime.combine(start_date, datetime.min.time()),
+            Lesson.scheduled_date < datetime.combine(end_date, datetime.min.time())
+        ).order_by(Lesson.scheduled_date).all()
+
+        if not lessons:
+            return "📅 No lessons scheduled for the next 7 days."
+
+        response = f"📅 Your Schedule (Next 7 days):\n\n"
+        current_date = None
+        
+        for lesson in lessons:
+            lesson_date = lesson.scheduled_date.date()
+            if lesson_date != current_date:
+                response += f"\n📆 {lesson_date.strftime('%A, %B %d')}:\n"
+                current_date = lesson_date
+            
+            time_str = lesson.scheduled_date.strftime('%I:%M %p')
+            response += f"  • {time_str} - {lesson.student.name}\n"
+            response += f"    ⏱️ {lesson.duration_minutes}min | 💰 ${float(lesson.cost):.2f}\n"
+
+        return response
+
+    def handle_instructor_lessons(self, instructor):
+        """Show all upcoming lessons for instructor"""
+        upcoming_lessons = Lesson.query.filter(
+            Lesson.instructor_id == instructor.id,
+            Lesson.status == LESSON_SCHEDULED,
+            Lesson.scheduled_date >= datetime.now()
+        ).order_by(Lesson.scheduled_date).limit(10).all()
+
+        if not upcoming_lessons:
+            return "📅 No upcoming lessons scheduled."
+
+        response = f"📚 Upcoming Lessons (Next 10):\n\n"
+        for i, lesson in enumerate(upcoming_lessons, 1):
+            date_str = lesson.scheduled_date.strftime('%m/%d')
+            time_str = lesson.scheduled_date.strftime('%I:%M %p')
+            response += f"{i}. {date_str} {time_str} - {lesson.student.name}\n"
+            response += f"   ⏱️ {lesson.duration_minutes}min | 💰 ${float(lesson.cost):.2f}\n"
+            response += f"   🆔 ID: {lesson.id}\n\n"
+
+        response += "💡 Use lesson ID for actions (cancel/confirm/complete)"
+        return response
+
+    def handle_instructor_lesson_action(self, instructor, message):
+        """Handle lesson actions like cancel, confirm, complete"""
+        parts = message.split()
+        if len(parts) < 2:
+            return "❌ Please provide lesson ID. Example: cancel 123"
+
+        action = parts[0].lower()
+        try:
+            lesson_id = int(parts[1])
+        except ValueError:
+            return "❌ Please provide a valid lesson ID number."
+
+        # Find the lesson
+        lesson = Lesson.query.filter_by(id=lesson_id, instructor_id=instructor.id).first()
+        if not lesson:
+            return f"❌ Lesson {lesson_id} not found or not assigned to you."
+
+        if action == 'cancel':
+            lesson.status = LESSON_CANCELLED
+            db.session.commit()
+            # Notify student
+            if lesson.student.phone:
+                cancel_msg = f"❌ Your lesson on {lesson.scheduled_date.strftime('%m/%d at %I:%M %p')} has been cancelled by your instructor. Please reschedule."
+                send_whatsapp_message(lesson.student.phone, cancel_msg)
+            return f"✅ Lesson {lesson_id} cancelled. Student has been notified."
+
+        elif action == 'confirm':
+            # Add confirmation logic if needed
+            return f"✅ Lesson {lesson_id} confirmed."
+
+        elif action == 'complete':
+            lesson.status = LESSON_COMPLETED
+            db.session.commit()
+            # Update student progress
+            lesson.student.total_lessons_completed += 1
+            db.session.commit()
+            return f"✅ Lesson {lesson_id} marked as completed. Student progress updated."
+
+        return "❌ Unknown action. Use: cancel, confirm, or complete"
+
+    def handle_instructor_availability(self, instructor):
+        """Handle instructor availability settings"""
+        return f"""📅 Availability Settings
+
+Current working hours: Mon-Sat, 6:00 AM - 4:00 PM
+
+To update your availability, please:
+1. Use the web portal at DriveLink.com
+2. Or contact your admin
+
+This feature is coming to WhatsApp soon! 🚀"""
+
+    def count_instructor_today_lessons(self, instructor):
+        """Count today's lessons for instructor"""
+        today = datetime.now().date()
+        return Lesson.query.filter(
+            Lesson.instructor_id == instructor.id,
+            Lesson.status == LESSON_SCHEDULED,
+            Lesson.scheduled_date >= datetime.combine(today, datetime.min.time()),
+            Lesson.scheduled_date < datetime.combine(today + timedelta(days=1), datetime.min.time())
+        ).count()
+
+    def instructor_help(self, instructor):
+        """Show instructor help"""
+        return """❓ Instructor Help - DriveLink
+
+🎯 Quick Commands:
+• students - View your assigned students
+• today - Today's lesson schedule
+• schedule - This week's schedule
+• lessons - All upcoming lessons
+• menu - Return to main menu
+
+📋 Lesson Management:
+• cancel [id] - Cancel a lesson
+• confirm [id] - Confirm a lesson  
+• complete [id] - Mark lesson complete
+
+💡 Examples:
+• "today" - See today's lessons
+• "cancel 123" - Cancel lesson #123
+• "students" - View all your students
+
+🌐 For advanced features, use the web portal at DriveLink.com
+
+Need more help? Contact your admin!"""
 
 # Global bot instance - will be initialized later with app context
 whatsapp_bot = WhatsAppBot()

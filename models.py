@@ -22,6 +22,7 @@ class User(UserMixin, db.Model):
     first_name = db.Column(db.String(100), nullable=True)
     last_name = db.Column(db.String(100), nullable=True)
     profile_image_url = db.Column(db.String, nullable=True)
+    phone = db.Column(db.String(20), nullable=True)  # WhatsApp number for instructors
     role = db.Column(db.String(20), default=ROLE_INSTRUCTOR)
     active = db.Column(db.Boolean, default=True)
     
