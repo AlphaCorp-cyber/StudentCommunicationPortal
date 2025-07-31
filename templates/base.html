@@ -21,7 +21,7 @@
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="{{ url_for('dashboard') }}">
                 <i data-feather="navigation" class="me-2"></i>
-                DriveLink
+                myInstructor 2.0
             </a>
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -123,19 +123,16 @@
     </main>
 
     <!-- Footer -->
-    {% if current_user.is_authenticated %}
-    <footer class="bg-dark text-light py-4 mt-5">
+    {% if not current_user.is_authenticated %}
+    <footer class="bg-dark text-white py-4 mt-5">
         <div class="container">
             <div class="row">
                 <div class="col-md-6">
-                    <h6>myInstructor 2.0</h6>
-                    <p class="small text-muted">Modern driving school management platform</p>
+                    <h5>myInstructor 2.0</h5>
+                    <p class="mb-0">Modern driving school management platform</p>
                 </div>
                 <div class="col-md-6 text-md-end">
-                    <p class="small text-muted">
-                        Logged in as {{ current_user.get_full_name() }} 
-                        ({{ current_user.role.title().replace('_', ' ') }})
-                    </p>
+                    <p class="mb-0">&copy; 2025 myInstructor 2.0</p>
                 </div>
             </div>
         </div>
@@ -145,32 +142,31 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Custom JS -->
+    <!-- Custom JavaScript -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 
-    <!-- Initialize Feather Icons -->
+    <!-- Initialize Feather Icons and Theme Toggle -->
     <script>
+        // Initialize Feather icons
         feather.replace();
 
-        // Theme Toggle Functionality
+        // Theme toggle functionality
         document.addEventListener('DOMContentLoaded', function() {
             const themeToggle = document.getElementById('themeToggle');
             const themeIcon = document.getElementById('themeIcon');
-            const htmlElement = document.documentElement;
+            
+            if (!themeToggle || !themeIcon) {
+                return; // Exit if elements don't exist
+            }
 
-            // Get saved theme or default to dark
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            htmlElement.setAttribute('data-bs-theme', savedTheme);
-            updateThemeIcon(savedTheme);
+            // Get current theme from localStorage or default to dark
+            let currentTheme = localStorage.getItem('theme') || 'dark';
+            applyTheme(currentTheme);
 
-            // Theme toggle click handler
             themeToggle.addEventListener('click', function() {
-                const currentTheme = htmlElement.getAttribute('data-bs-theme');
-                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-
-                htmlElement.setAttribute('data-bs-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
-                updateThemeIcon(newTheme);
+                currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                applyTheme(currentTheme);
+                localStorage.setItem('theme', currentTheme);
 
                 // Add visual feedback
                 themeToggle.style.transform = 'scale(0.9)';
@@ -178,6 +174,11 @@
                     themeToggle.style.transform = 'scale(1)';
                 }, 100);
             });
+
+            function applyTheme(theme) {
+                document.documentElement.setAttribute('data-bs-theme', theme);
+                updateThemeIcon(theme);
+            }
 
             function updateThemeIcon(theme) {
                 if (theme === 'dark') {
@@ -188,670 +189,14 @@
                     themeToggle.setAttribute('title', 'Switch to Dark Mode');
                 }
 
-                // Force re-render the specific icon
-                const iconElement = themeIcon;
-                feather.replace({ 'data-feather': iconElement.getAttribute('data-feather') });
-
-                // Alternative: Replace just this specific icon
-                setTimeout(() => {
-                    const newIcon = feather.icons[iconElement.getAttribute('data-feather')];
-                    if (newIcon) {
-                        iconElement.innerHTML = newIcon.toSvg();
-                    }
-                }, 10);
-            }
-        });
-    </script>
-</body>
-</html>
-```
-
-```html
-<!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}myInstructor 2.0{% endblock %}</title>
-
-    <!-- Bootstrap CSS with Replit theme -->
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
-
-    <!-- Feather Icons -->
-    <script src="https://unpkg.com/feather-icons"></script>
-
-    <!-- Custom CSS -->
-    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-</head>
-<body>
-    {% if current_user.is_authenticated %}
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="{{ url_for('dashboard') }}">
-                <i data-feather="navigation" class="me-2"></i>
-                DriveLink
-            </a>
-
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('dashboard') }}">
-                            <i data-feather="home" class="me-1"></i>Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('students') }}">
-                            <i data-feather="users" class="me-1"></i>Students
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('lessons') }}">
-                            <i data-feather="calendar" class="me-1"></i>Lessons
-                        </a>
-                    </li>
-                    {% if current_user.is_admin() or current_user.is_super_admin() %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('whatsapp_bot') }}">
-                            <i data-feather="message-circle" class="me-1"></i>WhatsApp
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <button class="nav-link btn btn-link" id="themeToggle" title="Toggle Theme">
-                            <i data-feather="sun" id="themeIcon"></i>
-                        </button>
-                    </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
-                            {% if current_user.profile_image_url %}
-                            <img src="{{ current_user.profile_image_url }}" alt="Profile" class="rounded-circle me-2" width="24" height="24" style="object-fit: cover;">
-                            {% else %}
-                            <i data-feather="user" class="me-2"></i>
-                            {% endif %}
-                            {{ current_user.get_full_name() }}
-                            <span class="badge bg-secondary ms-2">
-                                {% if current_user.is_super_admin() %}Super Admin
-                                {% elif current_user.is_admin() %}Admin
-                                {% else %}Instructor{% endif %}
-                            </span>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{{ url_for('account_settings') }}">
-                                <i data-feather="user" class="me-2"></i>Account Settings
-                            </a></li>
-                            {% if current_user.is_super_admin() %}
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('super_admin_dashboard') }}">
-                                <i data-feather="settings" class="me-2"></i>System Settings
-                            </a></li>
-                            {% endif %}
-                            {% if current_user.is_admin() or current_user.is_super_admin() %}
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">
-                                <i data-feather="briefcase" class="me-2"></i>Admin Panel
-                            </a></li>
-                            {% endif %}
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">
-                                <i data-feather="log-out" class="me-2"></i>Logout
-                            </a></li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-    {% endif %}
-
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class="container mt-3">
-            {% for category, message in messages %}
-            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
-                <i data-feather="{% if category == 'success' %}check-circle{% elif category == 'error' %}alert-circle{% else %}info{% endif %}" class="me-2"></i>
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-    {% endwith %}
-
-    <!-- Main Content -->
-    <main class="{% if current_user.is_authenticated %}container my-4{% endif %}">
-        {% block content %}{% endblock %}
-    </main>
-
-    <!-- Footer -->
-    {% if current_user.is_authenticated %}
-    <footer class="bg-dark text-light py-4 mt-5">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <h6>myInstructor 2.0</h6>
-                    <p class="small text-muted">Modern driving school management platform</p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <p class="small text-muted">
-                        Logged in as {{ current_user.get_full_name() }} 
-                        ({{ current_user.role.title().replace('_', ' ') }})
-                    </p>
-                </div>
-            </div>
-        </div>
-    </footer>
-    {% endif %}
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- Custom JS -->
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-
-    <!-- Initialize Feather Icons -->
-    <script>
-        feather.replace();
-
-        // Theme Toggle Functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const themeToggle = document.getElementById('themeToggle');
-            const themeIcon = document.getElementById('themeIcon');
-            const htmlElement = document.documentElement;
-
-            // Get saved theme or default to dark
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            htmlElement.setAttribute('data-bs-theme', savedTheme);
-            updateThemeIcon(savedTheme);
-
-            // Theme toggle click handler
-            themeToggle.addEventListener('click', function() {
-                const currentTheme = htmlElement.getAttribute('data-bs-theme');
-                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-
-                htmlElement.setAttribute('data-bs-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
-                updateThemeIcon(newTheme);
-
-                // Add visual feedback
-                themeToggle.style.transform = 'scale(0.9)';
-                setTimeout(() => {
-                    themeToggle.style.transform = 'scale(1)';
-                }, 100);
-            });
-
-            function updateThemeIcon(theme) {
-                if (theme === 'dark') {
-                    themeIcon.setAttribute('data-feather', 'sun');
-                    themeToggle.setAttribute('title', 'Switch to Light Mode');
-                } else {
-                    themeIcon.setAttribute('data-feather', 'moon');
-                    themeToggle.setAttribute('title', 'Switch to Dark Mode');
+                // Safely replace the icon
+                try {
+                    feather.replace();
+                } catch (error) {
+                    console.warn('Feather icon replacement failed:', error);
                 }
-
-                // Force re-render the specific icon
-                const iconElement = themeIcon;
-                feather.replace({ 'data-feather': iconElement.getAttribute('data-feather') });
-
-                // Alternative: Replace just this specific icon
-                setTimeout(() => {
-                    const newIcon = feather.icons[iconElement.getAttribute('data-feather')];
-                    if (newIcon) {
-                        iconElement.innerHTML = newIcon.toSvg();
-                    }
-                }, 10);
             }
         });
     </script>
 </body>
-</html>
-```
-
-```html
-<!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
-
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}myInstructor 2.0{% endblock %}</title>
-
-  <!-- Bootstrap CSS with Replit theme -->
-  <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
-
-  <!-- Feather Icons -->
-  <script src="https://unpkg.com/feather-icons"></script>
-
-  <!-- Custom CSS -->
-  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-</head>
-
-<body>
-  {% if current_user.is_authenticated %}
-  <!-- Navigation -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-    <div class="container">
-      <a class="navbar-brand d-flex align-items-center" href="{{ url_for('dashboard') }}">
-        <i data-feather="navigation" class="me-2"></i>
-        DriveLink
-      </a>
-
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav me-auto">
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('dashboard') }}">
-              <i data-feather="home" class="me-1"></i>Dashboard
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('students') }}">
-              <i data-feather="users" class="me-1"></i>Students
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('lessons') }}">
-              <i data-feather="calendar" class="me-1"></i>Lessons
-            </a>
-          </li>
-          {% if current_user.is_admin() or current_user.is_super_admin() %}
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('whatsapp_bot') }}">
-              <i data-feather="message-circle" class="me-1"></i>WhatsApp
-            </a>
-          </li>
-          {% endif %}
-        </ul>
-
-        <ul class="navbar-nav">
-          <li class="nav-item">
-            <button class="nav-link btn btn-link" id="themeToggle" title="Toggle Theme">
-              <i data-feather="sun" id="themeIcon"></i>
-            </button>
-          </li>
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button"
-              data-bs-toggle="dropdown">
-              {% if current_user.profile_image_url %}
-              <img src="{{ current_user.profile_image_url }}" alt="Profile" class="rounded-circle me-2" width="24"
-                height="24" style="object-fit: cover;">
-              {% else %}
-              <i data-feather="user" class="me-2"></i>
-              {% endif %}
-              {{ current_user.get_full_name() }}
-              <span class="badge bg-secondary ms-2">
-                {% if current_user.is_super_admin() %}Super Admin
-                {% elif current_user.is_admin() %}Admin
-                {% else %}Instructor{% endif %}
-              </span>
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="{{ url_for('account_settings') }}">
-                  <i data-feather="user" class="me-2"></i>Account Settings
-                </a></li>
-              {% if current_user.is_super_admin() %}
-              <li>
-                <hr class="dropdown-divider">
-              </li>
-              <li><a class="dropdown-item" href="{{ url_for('super_admin_dashboard') }}">
-                  <i data-feather="settings" class="me-2"></i>System Settings
-                </a></li>
-              {% endif %}
-              {% if current_user.is_admin() or current_user.is_super_admin() %}
-              <li>
-                <hr class="dropdown-divider">
-              </li>
-              <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">
-                  <i data-feather="briefcase" class="me-2"></i>Admin Panel
-                </a></li>
-              {% endif %}
-              <li>
-                <hr class="dropdown-divider">
-              </li>
-              <li><a class="dropdown-item" href="{{ url_for('logout') }}">
-                  <i data-feather="log-out" class="me-2"></i>Logout
-                </a></li>
-            </ul>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </nav>
-  {% endif %}
-
-  <!-- Flash Messages -->
-  {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-  <div class="container mt-3">
-    {% for category, message in messages %}
-    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
-      role="alert">
-      <i data-feather="{% if category == 'success' %}check-circle{% elif category == 'error' %}alert-circle{% else %}info{% endif %}"
-        class="me-2"></i>
-      {{ message }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-  {% endwith %}
-
-  <!-- Main Content -->
-  <main class="{% if current_user.is_authenticated %}container my-4{% endif %}">
-    {% block content %}{% endblock %}
-  </main>
-
-  <!-- Footer -->
-  {% if current_user.is_authenticated %}
-  <footer class="bg-dark text-light py-4 mt-5">
-    <div class="container">
-      <div class="row">
-        <div class="col-md-6">
-          <h6>myInstructor 2.0</h6>
-          <p class="small text-muted">Modern driving school management platform</p>
-        </div>
-        <div class="col-md-6 text-md-end">
-          <p class="small text-muted">
-            Logged in as {{ current_user.get_full_name() }}
-            ({{ current_user.role.title().replace('_', ' ') }})
-          </p>
-        </div>
-      </div>
-    </div>
-  </footer>
-  {% endif %}
-
-  <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-  <!-- Custom JS -->
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-
-  <!-- Initialize Feather Icons -->
-  <script>
-    feather.replace();
-
-    // Theme Toggle Functionality
-    document.addEventListener('DOMContentLoaded', function () {
-      const themeToggle = document.getElementById('themeToggle');
-      const themeIcon = document.getElementById('themeIcon');
-      const htmlElement = document.documentElement;
-
-      // Get saved theme or default to dark
-      const savedTheme = localStorage.getItem('theme') || 'dark';
-      htmlElement.setAttribute('data-bs-theme', savedTheme);
-      updateThemeIcon(savedTheme);
-
-      // Theme toggle click handler
-      themeToggle.addEventListener('click', function () {
-        const currentTheme = htmlElement.getAttribute('data-bs-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-
-        htmlElement.setAttribute('data-bs-theme', newTheme);
-        localStorage.setItem('theme', newTheme);
-        updateThemeIcon(newTheme);
-
-        // Add visual feedback
-        themeToggle.style.transform = 'scale(0.9)';
-        setTimeout(() => {
-          themeToggle.style.transform = 'scale(1)';
-        }, 100);
-      });
-
-      function updateThemeIcon(theme) {
-        if (theme === 'dark') {
-          themeIcon.setAttribute('data-feather', 'sun');
-          themeToggle.setAttribute('title', 'Switch to Light Mode');
-        } else {
-          themeIcon.setAttribute('data-feather', 'moon');
-          themeToggle.setAttribute('title', 'Switch to Dark Mode');
-        }
-
-        // Force re-render the specific icon
-        const iconElement = themeIcon;
-        feather.replace({ 'data-feather': iconElement.getAttribute('data-feather') });
-
-        // Alternative: Replace just this specific icon
-        setTimeout(() => {
-          const newIcon = feather.icons[iconElement.getAttribute('data-feather')];
-          if (newIcon) {
-            iconElement.innerHTML = newIcon.toSvg();
-          }
-        }, 10);
-      }
-    });
-  </script>
-</body>
-
-</html>
-```
-
-```html
-<!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
-
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}DriveLink{% endblock %}</title>
-
-  <!-- Bootstrap CSS with Replit theme -->
-  <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
-
-  <!-- Feather Icons -->
-  <script src="https://unpkg.com/feather-icons"></script>
-
-  <!-- Custom CSS -->
-  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-</head>
-
-<body>
-  {% if current_user.is_authenticated %}
-  <!-- Navigation -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-    <div class="container">
-      <a class="navbar-brand d-flex align-items-center" href="{{ url_for('dashboard') }}">
-        <i data-feather="navigation" class="me-2"></i>
-        DriveLink
-      </a>
-
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav me-auto">
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('dashboard') }}">
-              <i data-feather="home" class="me-1"></i>Dashboard
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('students') }}">
-              <i data-feather="users" class="me-1"></i>Students
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('lessons') }}">
-              <i data-feather="calendar" class="me-1"></i>Lessons
-            </a>
-          </li>
-          {% if current_user.is_admin() or current_user.is_super_admin() %}
-          <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('whatsapp_bot') }}">
-              <i data-feather="message-circle" class="me-1"></i>WhatsApp
-            </a>
-          </li>
-          {% endif %}
-        </ul>
-
-        <ul class="navbar-nav">
-          <li class="nav-item">
-            <button class="nav-link btn btn-link" id="themeToggle" title="Toggle Theme">
-              <i data-feather="sun" id="themeIcon"></i>
-            </button>
-          </li>
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button"
-              data-bs-toggle="dropdown">
-              {% if current_user.profile_image_url %}
-              <img src="{{ current_user.profile_image_url }}" alt="Profile" class="rounded-circle me-2" width="24"
-                height="24" style="object-fit: cover;">
-              {% else %}
-              <i data-feather="user" class="me-2"></i>
-              {% endif %}
-              {{ current_user.get_full_name() }}
-              <span class="badge bg-secondary ms-2">
-                {% if current_user.is_super_admin() %}Super Admin
-                {% elif current_user.is_admin() %}Admin
-                {% else %}Instructor{% endif %}
-              </span>
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li><a class="dropdown-item" href="{{ url_for('account_settings') }}">
-                  <i data-feather="user" class="me-2"></i>Account Settings
-                </a></li>
-              {% if current_user.is_super_admin() %}
-              <li>
-                <hr class="dropdown-divider">
-              </li>
-              <li><a class="dropdown-item" href="{{ url_for('super_admin_dashboard') }}">
-                  <i data-feather="settings" class="me-2"></i>System Settings
-                </a></li>
-              {% endif %}
-              {% if current_user.is_admin() or current_user.is_super_admin() %}
-              <li>
-                <hr class="dropdown-divider">
-              </li>
-              <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">
-                  <i data-feather="briefcase" class="me-2"></i>Admin Panel
-                </a></li>
-              {% endif %}
-              <li>
-                <hr class="dropdown-divider">
-              </li>
-              <li><a class="dropdown-item" href="{{ url_for('logout') }}">
-                  <i data-feather="log-out" class="me-2"></i>Logout
-                </a></li>
-            </ul>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </nav>
-  {% endif %}
-
-  <!-- Flash Messages -->
-  {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-  <div class="container mt-3">
-    {% for category, message in messages %}
-    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
-      role="alert">
-      <i data-feather="{% if category == 'success' %}check-circle{% elif category == 'error' %}alert-circle{% else %}info{% endif %}"
-        class="me-2"></i>
-      {{ message }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-  {% endwith %}
-
-  <!-- Main Content -->
-  <main class="{% if current_user.is_authenticated %}container my-4{% endif %}">
-    {% block content %}{% endblock %}
-  </main>
-
-  <!-- Footer -->
-  {% if current_user.is_authenticated %}
-  <footer class="bg-dark text-light py-4 mt-5">
-    <div class="container">
-      <div class="row">
-        <div class="col-md-6">
-          <h6>myInstructor 2.0</h6>
-          <p class="small text-muted">Modern driving school management platform</p>
-        </div>
-        <div class="col-md-6 text-md-end">
-          <p class="small text-muted">
-            Logged in as {{ current_user.get_full_name() }}
-            ({{ current_user.role.title().replace('_', ' ') }})
-          </p>
-        </div>
-      </div>
-    </div>
-  </footer>
-  {% endif %}
-
-  <!-- Bootstrap JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-  <!-- Custom JS -->
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script><!-- Initialize Feather Icons -->
-  <script>
-    feather.replace();
-
-    // Theme Toggle Functionality
-    document.addEventListener('DOMContentLoaded', function() {
-      const themeToggle = document.getElementById('themeToggle');
-      const themeIcon = document.getElementById('themeIcon');
-      const htmlElement = document.documentElement;
-
-      // Get saved theme or default to dark
-      const savedTheme = localStorage.getItem('theme') || 'dark';
-      htmlElement.setAttribute('data-bs-theme', savedTheme);
-      updateThemeIcon(savedTheme);
-
-      // Theme toggle click handler
-      themeToggle.addEventListener('click', function() {
-        const currentTheme = htmlElement.getAttribute('data-bs-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-
-        htmlElement.setAttribute('data-bs-theme', newTheme);
-        localStorage.setItem('theme', newTheme);
-        updateThemeIcon(newTheme);
-
-        // Add visual feedback
-        themeToggle.style.transform = 'scale(0.9)';
-        setTimeout(() => {
-          themeToggle.style.transform = 'scale(1)';
-        }, 100);
-      });
-
-      function updateThemeIcon(theme) {
-        if (theme === 'dark') {
-          themeIcon.setAttribute('data-feather', 'sun');
-          themeToggle.setAttribute('title', 'Switch to Light Mode');
-        } else {
-          themeIcon.setAttribute('data-feather', 'moon');
-          themeToggle.setAttribute('title', 'Switch to Dark Mode');
-        }
-
-        // Force re-render the specific icon
-        const iconElement = themeIcon;
-        feather.replace({ 'data-feather': iconElement.getAttribute('data-feather') });
-
-        // Alternative: Replace just this specific icon
-        setTimeout(() => {
-          const newIcon = feather.icons[iconElement.getAttribute('data-feather')];
-          if (newIcon) {
-            iconElement.innerHTML = newIcon.toSvg();
-          }
-        }, 10);
-      }
-    });
-  </script>
-</body>
-
 </html>
