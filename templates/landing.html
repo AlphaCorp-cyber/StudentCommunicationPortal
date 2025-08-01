@@ -1,12 +1,14 @@
-{% extends "base.html" %}
-
-{% block title %}DriveLink - Modern Driving School Management{% endblock %}
-
-{% block content %}
+{% extends "base.html" %} {% block title %}DriveLink - Modern Driving School
+Management{% endblock %} {% block content %}
 <style>
     /* Landing page specific styles */
     .hero-section {
-        background: linear-gradient(135deg, #1a1d29 0%, #2d3748 50%, #4a5568 100%);
+        background: linear-gradient(
+            135deg,
+            #1a1d29 0%,
+            #2d3748 50%,
+            #4a5568 100%
+        );
         min-height: 100vh;
         display: flex;
         align-items: center;
@@ -14,9 +16,9 @@
         position: relative;
         overflow: hidden;
     }
-    
+
     .hero-section::before {
-        content: '';
+        content: "";
         position: absolute;
         top: 0;
         left: 0;
@@ -25,19 +27,23 @@
         background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="1.5" fill="rgba(255,255,255,0.08)"/><circle cx="40" cy="70" r="1" fill="rgba(255,255,255,0.12)"/><circle cx="90" cy="80" r="1.2" fill="rgba(255,255,255,0.06)"/><circle cx="10" cy="60" r="0.8" fill="rgba(255,255,255,0.1)"/></svg>');
         animation: sparkle 20s linear infinite;
     }
-    
+
     @keyframes sparkle {
-        0% { transform: translateY(0) rotate(0deg); }
-        100% { transform: translateY(-100vh) rotate(360deg); }
+        0% {
+            transform: translateY(0) rotate(0deg);
+        }
+        100% {
+            transform: translateY(-100vh) rotate(360deg);
+        }
     }
-    
+
     .gradient-text {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
     }
-    
+
     .cta-button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border: none;
@@ -51,27 +57,32 @@
         position: relative;
         overflow: hidden;
     }
-    
+
     .cta-button::before {
-        content: '';
+        content: "";
         position: absolute;
         top: 0;
         left: -100%;
         width: 100%;
         height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.2),
+            transparent
+        );
         transition: left 0.5s;
     }
-    
+
     .cta-button:hover::before {
         left: 100%;
     }
-    
+
     .cta-button:hover {
         transform: translateY(-3px);
         box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
     }
-    
+
     .feature-card {
         background: rgba(255, 255, 255, 0.05);
         backdrop-filter: blur(20px);
@@ -82,13 +93,13 @@
         transition: all 0.3s ease;
         height: 100%;
     }
-    
+
     .feature-card:hover {
         transform: translateY(-10px);
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         border-color: rgba(102, 126, 234, 0.3);
     }
-    
+
     .feature-icon {
         width: 80px;
         height: 80px;
@@ -100,16 +111,16 @@
         margin: 0 auto 1.5rem;
         transition: all 0.3s ease;
     }
-    
+
     .feature-card:hover .feature-icon {
         transform: scale(1.1) rotate(5deg);
     }
-    
+
     .stats-section {
         background: linear-gradient(135deg, #2d3748 0%, #1a1d29 100%);
         padding: 5rem 0;
     }
-    
+
     .stats-card {
         background: rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(10px);
@@ -119,42 +130,47 @@
         text-align: center;
         transition: all 0.3s ease;
     }
-    
+
     .stats-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
     }
-    
+
     .demo-section {
         padding: 6rem 0;
         background: linear-gradient(135deg, #1a1d29 0%, #2d3748 100%);
     }
-    
+
     .demo-preview {
         border-radius: 20px;
         overflow: hidden;
         box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
         transition: all 0.3s ease;
     }
-    
+
     .demo-preview:hover {
         transform: scale(1.02);
         box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
     }
-    
+
     .floating-animation {
         animation: float 6s ease-in-out infinite;
     }
-    
+
     @keyframes float {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-20px); }
+        0%,
+        100% {
+            transform: translateY(0px);
+        }
+        50% {
+            transform: translateY(-20px);
+        }
     }
-    
+
     .section-padding {
         padding: 5rem 0;
     }
-    
+
     .testimonial-card {
         background: rgba(255, 255, 255, 0.05);
         backdrop-filter: blur(20px);
@@ -163,18 +179,18 @@
         padding: 2rem;
         transition: all 0.3s ease;
     }
-    
+
     .testimonial-card:hover {
         transform: translateY(-5px);
         border-color: rgba(102, 126, 234, 0.3);
     }
-    
+
     .whatsapp-demo {
         background: #25d366;
         color: white;
         border-radius: 20px;
         padding: 1.5rem;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
         max-width: 300px;
         margin: 0 auto;
         box-shadow: 0 10px 30px rgba(37, 211, 102, 0.3);
@@ -188,18 +204,23 @@
             <div class="col-lg-6">
                 <div class="mb-4">
                     <span class="badge bg-primary px-3 py-2 rounded-pill mb-3">
-                        <i data-feather="zap" class="me-1" style="width: 16px; height: 16px;"></i>
+                        <i
+                            data-feather="zap"
+                            class="me-1"
+                            style="width: 16px; height: 16px"
+                        ></i>
                         Revolutionary Platform
                     </span>
                 </div>
                 <h1 class="display-2 fw-bold mb-4">
-                    <span class="gradient-text">DriveLink</span><br>
+                    <span class="gradient-text">DriveLink</span><br />
                     Driving School
                 </h1>
                 <p class="lead mb-4 text-light opacity-75">
-                    Professional driving instruction with modern technology. Learn to drive safely 
-                    and confidently with our experienced certified instructors and innovative WhatsApp-based 
-                    booking system.
+                    Professional driving instruction with modern technology.
+                    Learn to drive safely and confidently with our experienced
+                    certified instructors and innovative WhatsApp-based booking
+                    system.
                 </p>
                 <div class="d-flex flex-wrap gap-3 mb-5">
                     <a href="#contact" class="btn cta-button btn-lg">
@@ -235,8 +256,12 @@
             <div class="col-lg-6">
                 <div class="text-center floating-animation">
                     <div class="demo-preview">
-                        <img src="{{ url_for('static', filename='images/dashboard-screenshot.svg') }}" 
-                             alt="DriveLink Dashboard" class="img-fluid" style="max-height: 500px;">
+                        <img
+                            src="{{ url_for('static', filename='images/dashboard-screenshot.svg') }}"
+                            alt="DriveLink Dashboard"
+                            class="img-fluid"
+                            style="max-height: 500px"
+                        />
                     </div>
                 </div>
             </div>
@@ -245,7 +270,10 @@
 </section>
 
 <!-- Features Section -->
-<section class="section-padding" style="background: linear-gradient(135deg, #2d3748 0%, #1a1d29 100%);">
+<section
+    class="section-padding"
+    style="background: linear-gradient(135deg, #2d3748 0%, #1a1d29 100%)"
+>
     <div class="container">
         <div class="text-center mb-5">
             <h2 class="display-4 fw-bold text-white mb-3">
@@ -255,82 +283,106 @@
                 Professional driving instruction with modern convenience
             </p>
         </div>
-        
+
         <div class="row g-4">
             <div class="col-lg-4 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i data-feather="message-circle" style="color: white; width: 32px; height: 32px;"></i>
+                        <i
+                            data-feather="message-circle"
+                            style="color: white; width: 32px; height: 32px"
+                        ></i>
                     </div>
                     <h4 class="text-white mb-3">Easy WhatsApp Booking</h4>
                     <p class="text-light opacity-75">
-                        Book your driving lessons instantly through WhatsApp. Check your progress, 
-                        reschedule lessons, and communicate with your instructor - all through one familiar app.
+                        Book your driving lessons instantly through WhatsApp.
+                        Check your progress, reschedule lessons, and communicate
+                        with your instructor - all through one familiar app.
                     </p>
                 </div>
             </div>
-            
+
             <div class="col-lg-4 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i data-feather="users" style="color: white; width: 32px; height: 32px;"></i>
+                        <i
+                            data-feather="users"
+                            style="color: white; width: 32px; height: 32px"
+                        ></i>
                     </div>
                     <h4 class="text-white mb-3">Certified Instructors</h4>
                     <p class="text-light opacity-75">
-                        Learn from experienced, fully certified driving instructors who are passionate 
-                        about road safety and committed to helping you become a confident driver.
+                        Learn from experienced, fully certified driving
+                        instructors who are passionate about road safety and
+                        committed to helping you become a confident driver.
                     </p>
                 </div>
             </div>
-            
+
             <div class="col-lg-4 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i data-feather="calendar" style="color: white; width: 32px; height: 32px;"></i>
+                        <i
+                            data-feather="calendar"
+                            style="color: white; width: 32px; height: 32px"
+                        ></i>
                     </div>
                     <h4 class="text-white mb-3">Flexible Scheduling</h4>
                     <p class="text-light opacity-75">
-                        Book lessons at times that work for you. Our flexible scheduling accommodates 
-                        your busy lifestyle with early morning, evening, and weekend slots available.
+                        Book lessons at times that work for you. Our flexible
+                        scheduling accommodates your busy lifestyle with early
+                        morning, evening, and weekend slots available.
                     </p>
                 </div>
             </div>
-            
+
             <div class="col-lg-4 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i data-feather="bar-chart-2" style="color: white; width: 32px; height: 32px;"></i>
+                        <i
+                            data-feather="bar-chart-2"
+                            style="color: white; width: 32px; height: 32px"
+                        ></i>
                     </div>
                     <h4 class="text-white mb-3">Track Your Progress</h4>
                     <p class="text-light opacity-75">
-                        Monitor your learning journey with detailed progress tracking. See your improvements, 
-                        review lesson feedback, and know exactly when you're ready for your road test.
+                        Monitor your learning journey with detailed progress
+                        tracking. See your improvements, review lesson feedback,
+                        and know exactly when you're ready for your road test.
                     </p>
                 </div>
             </div>
-            
+
             <div class="col-lg-4 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i data-feather="dollar-sign" style="color: white; width: 32px; height: 32px;"></i>
+                        <i
+                            data-feather="dollar-sign"
+                            style="color: white; width: 32px; height: 32px"
+                        ></i>
                     </div>
                     <h4 class="text-white mb-3">Transparent Pricing</h4>
                     <p class="text-light opacity-75">
-                        Clear, upfront pricing with no hidden fees. Pay as you learn with 
-                        flexible payment options and transparent balance tracking.
+                        Clear, upfront pricing with no hidden fees. Pay as you
+                        learn with flexible payment options and transparent
+                        balance tracking.
                     </p>
                 </div>
             </div>
-            
+
             <div class="col-lg-4 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i data-feather="shield" style="color: white; width: 32px; height: 32px;"></i>
+                        <i
+                            data-feather="shield"
+                            style="color: white; width: 32px; height: 32px"
+                        ></i>
                     </div>
                     <h4 class="text-white mb-3">Safety First</h4>
                     <p class="text-light opacity-75">
-                        Our top priority is your safety. All our vehicles are regularly maintained, 
-                        fully insured, and equipped with modern safety features for your peace of mind.
+                        Our top priority is your safety. All our vehicles are
+                        regularly maintained, fully insured, and equipped with
+                        modern safety features for your peace of mind.
                     </p>
                 </div>
             </div>
@@ -347,18 +399,49 @@
                     Simple <span class="gradient-text">WhatsApp</span> Booking
                 </h2>
                 <p class="lead text-light opacity-75 mb-4">
-                    No apps to download, no complex systems to learn. Book and manage your 
-                    driving lessons through WhatsApp - the app you already use every day.
+                    No apps to download, no complex systems to learn. Book and
+                    manage your driving lessons through WhatsApp - the app you
+                    already use every day.
                 </p>
-                
+
                 <div class="mb-4">
                     <h5 class="text-white mb-3">What You Can Do:</h5>
                     <ul class="list-unstyled text-light opacity-75">
-                        <li class="mb-2"><i data-feather="check" class="me-2 text-success"></i>Book lessons instantly - day or night</li>
-                        <li class="mb-2"><i data-feather="check" class="me-2 text-success"></i>Check your learning progress</li>
-                        <li class="mb-2"><i data-feather="check" class="me-2 text-success"></i>Reschedule when plans change</li>
-                        <li class="mb-2"><i data-feather="check" class="me-2 text-success"></i>Get lesson reminders and updates</li>
-                        <li class="mb-2"><i data-feather="check" class="me-2 text-success"></i>Chat directly with your instructor</li>
+                        <li class="mb-2">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                            ></i
+                            >Book lessons instantly - day or night
+                        </li>
+                        <li class="mb-2">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                            ></i
+                            >Check your learning progress
+                        </li>
+                        <li class="mb-2">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                            ></i
+                            >Reschedule when plans change
+                        </li>
+                        <li class="mb-2">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                            ></i
+                            >Get lesson reminders and updates
+                        </li>
+                        <li class="mb-2">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                            ></i
+                            >Chat directly with your instructor
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -367,31 +450,38 @@
                     <div class="whatsapp-demo">
                         <div class="d-flex align-items-center mb-3">
                             <div class="bg-white rounded-circle p-2 me-3">
-                                <i data-feather="navigation" style="color: #25d366; width: 20px; height: 20px;"></i>
+                                <i
+                                    data-feather="navigation"
+                                    style="
+                                        color: #25d366;
+                                        width: 20px;
+                                        height: 20px;
+                                    "
+                                ></i>
                             </div>
                             <div>
                                 <strong>DriveLink Bot</strong>
-                                <br><small class="opacity-75">Online</small>
+                                <br /><small class="opacity-75">Online</small>
                             </div>
                         </div>
                         <div class="bg-white text-dark p-3 rounded-3 mb-2">
                             Hi! I'd like to book a lesson.
                         </div>
                         <div class="bg-success p-3 rounded-3 mb-2">
-                            Hello! I can help you book a lesson.<br><br>
-                            Choose duration:<br>
-                            1. 30 minutes - $25<br>
-                            2. 60 minutes - $45<br><br>
+                            Hello! I can help you book a lesson.<br /><br />
+                            Choose duration:<br />
+                            1. 30 minutes - $4<br />
+                            2. 60 minutes - $8<br /><br />
                             Just reply with the number!
                         </div>
                         <div class="bg-white text-dark p-3 rounded-3 mb-2">
                             2
                         </div>
                         <div class="bg-success p-3 rounded-3">
-                            Perfect! Here are available slots:<br><br>
-                            Tomorrow, Feb 1<br>
-                            1. 9:00 AM - 10:00 AM<br>
-                            2. 2:00 PM - 3:00 PM<br><br>
+                            Perfect! Here are available slots:<br /><br />
+                            Tomorrow, Feb 1<br />
+                            1. 9:00 AM - 10:00 AM<br />
+                            2. 2:00 PM - 3:00 PM<br /><br />
                             Reply with slot number to book!
                         </div>
                     </div>
@@ -434,7 +524,11 @@
 </section>
 
 <!-- Courses Section -->
-<section id="courses" class="section-padding" style="background: linear-gradient(135deg, #1a1d29 0%, #2d3748 100%);">
+<section
+    id="courses"
+    class="section-padding"
+    style="background: linear-gradient(135deg, #1a1d29 0%, #2d3748 100%)"
+>
     <div class="container">
         <div class="text-center mb-5">
             <h2 class="display-4 fw-bold text-white mb-3">
@@ -444,80 +538,212 @@
                 Comprehensive driving instruction for all license classes
             </p>
         </div>
-        
+
         <div class="row g-4">
             <div class="col-lg-6 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i data-feather="car" style="color: white; width: 32px; height: 32px;"></i>
+                        <i
+                            data-feather="car"
+                            style="color: white; width: 32px; height: 32px"
+                        ></i>
                     </div>
-                    <h4 class="text-white mb-3">Class 4 - Light Motor Vehicles</h4>
+                    <h4 class="text-white mb-3">
+                        Class 4 - Light Motor Vehicles
+                    </h4>
                     <p class="text-light opacity-75 mb-3">
-                        Standard car driving lessons for personal vehicles. Learn everything from basic controls 
-                        to highway driving, parking, and road test preparation.
+                        Standard car driving lessons for personal vehicles.
+                        Learn everything from basic controls to highway driving,
+                        parking, and road test preparation.
                     </p>
                     <ul class="list-unstyled text-light opacity-75">
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>Basic vehicle controls</li>
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>City and highway driving</li>
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>Parallel and reverse parking</li>
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>Road test preparation</li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >Basic vehicle controls
+                        </li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >City and highway driving
+                        </li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >Parallel and reverse parking
+                        </li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >Road test preparation
+                        </li>
                     </ul>
                 </div>
             </div>
-            
+
             <div class="col-lg-6 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i data-feather="truck" style="color: white; width: 32px; height: 32px;"></i>
+                        <i
+                            data-feather="truck"
+                            style="color: white; width: 32px; height: 32px"
+                        ></i>
                     </div>
-                    <h4 class="text-white mb-3">Class 2 - Heavy Motor Vehicles</h4>
+                    <h4 class="text-white mb-3">
+                        Class 2 - Heavy Motor Vehicles
+                    </h4>
                     <p class="text-light opacity-75 mb-3">
-                        Commercial truck driving instruction for those seeking professional driving careers. 
-                        Learn to operate large commercial vehicles safely and efficiently.
+                        Commercial truck driving instruction for those seeking
+                        professional driving careers. Learn to operate large
+                        commercial vehicles safely and efficiently.
                     </p>
                     <ul class="list-unstyled text-light opacity-75">
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>Commercial vehicle operation</li>
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>Air brake system training</li>
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>Loading and cargo handling</li>
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>Commercial road test prep</li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >Commercial vehicle operation
+                        </li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >Air brake system training
+                        </li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >Loading and cargo handling
+                        </li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >Commercial road test prep
+                        </li>
                     </ul>
                 </div>
             </div>
-            
+
             <div class="col-lg-6 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i data-feather="zap" style="color: white; width: 32px; height: 32px;"></i>
+                        <i
+                            data-feather="zap"
+                            style="color: white; width: 32px; height: 32px"
+                        ></i>
                     </div>
                     <h4 class="text-white mb-3">Class 1 - Motorcycles</h4>
                     <p class="text-light opacity-75 mb-3">
-                        Motorcycle training from beginner to advanced levels. Learn safe riding techniques, 
-                        traffic navigation, and defensive riding strategies.
+                        Motorcycle training from beginner to advanced levels.
+                        Learn safe riding techniques, traffic navigation, and
+                        defensive riding strategies.
                     </p>
                     <ul class="list-unstyled text-light opacity-75">
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>Basic motorcycle controls</li>
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>Traffic navigation skills</li>
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>Defensive riding techniques</li>
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>Road test preparation</li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >Basic motorcycle controls
+                        </li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >Traffic navigation skills
+                        </li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >Defensive riding techniques
+                        </li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >Road test preparation
+                        </li>
                     </ul>
                 </div>
             </div>
-            
+
             <div class="col-lg-6 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i data-feather="users" style="color: white; width: 32px; height: 32px;"></i>
+                        <i
+                            data-feather="users"
+                            style="color: white; width: 32px; height: 32px"
+                        ></i>
                     </div>
                     <h4 class="text-white mb-3">Class 5 - Minibuses</h4>
                     <p class="text-light opacity-75 mb-3">
-                        Training for operating minibuses and light passenger vehicles. Perfect for those 
-                        seeking employment in passenger transportation or tourism.
+                        Training for operating minibuses and light passenger
+                        vehicles. Perfect for those seeking employment in
+                        passenger transportation or tourism.
                     </p>
                     <ul class="list-unstyled text-light opacity-75">
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>Passenger vehicle operation</li>
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>Passenger safety procedures</li>
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>Route planning and navigation</li>
-                        <li class="mb-1"><i data-feather="check" class="me-2 text-success" style="width: 16px; height: 16px;"></i>Commercial driving test prep</li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >Passenger vehicle operation
+                        </li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >Passenger safety procedures
+                        </li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >Route planning and navigation
+                        </li>
+                        <li class="mb-1">
+                            <i
+                                data-feather="check"
+                                class="me-2 text-success"
+                                style="width: 16px; height: 16px"
+                            ></i
+                            >Commercial driving test prep
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -526,71 +752,115 @@
 </section>
 
 <!-- Contact Section -->
-<section id="contact" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 6rem 0;">
+<section
+    id="contact"
+    style="
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 6rem 0;
+    "
+>
     <div class="container">
         <div class="text-center mb-5">
             <h2 class="display-4 fw-bold text-white mb-4">
                 Ready to Start Your Driving Journey?
             </h2>
             <p class="lead text-white opacity-75 mb-5">
-                Contact us today to book your first lesson or learn more about our courses
+                Contact us today to book your first lesson or learn more about
+                our courses
             </p>
         </div>
-        
+
         <div class="row g-4">
             <div class="col-lg-4">
                 <div class="text-center text-white">
                     <div class="mb-3">
-                        <i data-feather="phone" style="width: 48px; height: 48px;" class="mb-3"></i>
+                        <i
+                            data-feather="phone"
+                            style="width: 48px; height: 48px"
+                            class="mb-3"
+                        ></i>
                     </div>
                     <h4 class="mb-3">Call Us</h4>
                     <p class="opacity-75 mb-3">Speak with our friendly team</p>
-                    <a href="tel:+1234567890" class="btn btn-light rounded-pill px-4 py-2">
-                        <i data-feather="phone" class="me-2" style="width: 16px; height: 16px;"></i>
+                    <a
+                        href="tel:+1234567890"
+                        class="btn btn-light rounded-pill px-4 py-2"
+                    >
+                        <i
+                            data-feather="phone"
+                            class="me-2"
+                            style="width: 16px; height: 16px"
+                        ></i>
                         (123) 456-7890
                     </a>
                 </div>
             </div>
-            
+
             <div class="col-lg-4">
                 <div class="text-center text-white">
                     <div class="mb-3">
-                        <i data-feather="message-circle" style="width: 48px; height: 48px;" class="mb-3"></i>
+                        <i
+                            data-feather="message-circle"
+                            style="width: 48px; height: 48px"
+                            class="mb-3"
+                        ></i>
                     </div>
                     <h4 class="mb-3">WhatsApp</h4>
                     <p class="opacity-75 mb-3">Book lessons instantly</p>
-                    <a href="https://wa.me/1234567890" class="btn btn-light rounded-pill px-4 py-2">
-                        <i data-feather="message-circle" class="me-2" style="width: 16px; height: 16px;"></i>
+                    <a
+                        href="https://wa.me/1234567890"
+                        class="btn btn-light rounded-pill px-4 py-2"
+                    >
+                        <i
+                            data-feather="message-circle"
+                            class="me-2"
+                            style="width: 16px; height: 16px"
+                        ></i>
                         Chat with Us
                     </a>
                 </div>
             </div>
-            
+
             <div class="col-lg-4">
                 <div class="text-center text-white">
                     <div class="mb-3">
-                        <i data-feather="mail" style="width: 48px; height: 48px;" class="mb-3"></i>
+                        <i
+                            data-feather="mail"
+                            style="width: 48px; height: 48px"
+                            class="mb-3"
+                        ></i>
                     </div>
                     <h4 class="mb-3">Email</h4>
                     <p class="opacity-75 mb-3">Send us a message</p>
-                    <a href="mailto:info@drivelink.com" class="btn btn-light rounded-pill px-4 py-2">
-                        <i data-feather="mail" class="me-2" style="width: 16px; height: 16px;"></i>
+                    <a
+                        href="mailto:info@drivelink.com"
+                        class="btn btn-light rounded-pill px-4 py-2"
+                    >
+                        <i
+                            data-feather="mail"
+                            class="me-2"
+                            style="width: 16px; height: 16px"
+                        ></i>
                         info@drivelink.com
                     </a>
                 </div>
             </div>
         </div>
-        
+
         <div class="row mt-5">
             <div class="col-lg-8 mx-auto">
                 <div class="text-center text-white">
                     <h4 class="mb-3">Office Hours</h4>
                     <div class="row">
                         <div class="col-md-6">
-                            <p class="opacity-75">Monday - Friday: 8:00 AM - 8:00 PM</p>
+                            <p class="opacity-75">
+                                Monday - Friday: 8:00 AM - 8:00 PM
+                            </p>
                         </div>
                         <div class="col-md-6">
-                            <p class="opacity-75">Saturday - Sunday: 9:00 AM - 6:00 PM</p>
+                            <p class="opacity-75">
+                                Saturday - Sunday: 9:00 AM - 6:00 PM
+                            </p>
                         </div>
                     </div>
                 </div>
