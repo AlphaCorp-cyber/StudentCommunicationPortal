@@ -2567,7 +2567,7 @@ Need more help? Contact your admin!"""
 
     # Authentication System Methods
     def initiate_authentication(self, phone_number):
-        """Start secure authentication process using challenge-response"""
+        """Start secure authentication process using PIN"""
         # Check if it's a known user
         user = User.query.filter_by(phone=phone_number, active=True).first()
         student = Student.query.filter_by(phone=phone_number, is_active=True).first()
@@ -2575,37 +2575,63 @@ Need more help? Contact your admin!"""
         if not user and not student:
             return self.handle_unknown_student(phone_number)
         
-        # Generate secure challenge questions based on user data
-        import random
-        challenges = self.generate_security_challenges(user or student)
-        
-        if not challenges:
-            # Fallback to simple verification if no data available
-            return self.initiate_simple_verification(phone_number, user or student)
-        
-        # Select random challenge
-        selected_challenge = random.choice(challenges)
-        
-        # Store authentication state
-        self.set_auth_state(phone_number, {
-            'state': 'awaiting_challenge_response',
-            'challenge': selected_challenge,
-            'attempts': 0,
-            'max_attempts': 3,
-            'timestamp': datetime.now().isoformat()
-        })
-        
-        # Determine user type and name
-        if user:
-            user_name = user.get_full_name()
-            user_type = "instructor"
-        else:
-            user_name = student.name
-            user_type = "student"
-        
-        return f"""🔐 *Secure Identity Verification*
+        # For students, use PIN authentication
+        if student:
+            if not student.pin_hash:
+                return f"""🔐 *PIN Setup Required*
 
-Hi {user_name}!
+Hi {student.name}!
+
+You need to set up a 4-digit PIN for secure access.
+
+Please visit the web portal to set up your PIN:
+https://your-app-url.replit.app/student-register
+
+Or contact your instructor for assistance.
+
+The same PIN will work for both WhatsApp and web access."""
+            
+            # Store PIN authentication state
+            self.set_auth_state(phone_number, {
+                'state': 'awaiting_pin',
+                'user_type': 'student',
+                'attempts': 0,
+                'max_attempts': 3,
+                'timestamp': datetime.now().isoformat()
+            })
+            
+            return f"""🔐 *PIN Authentication*
+
+Hi {student.name}!
+
+Please enter your 4-digit PIN to access your account:
+
+⚠️ You have 3 attempts
+⚠️ This session expires in 5 minutes
+
+Type your PIN to continue."""
+        
+        # For instructors, use the existing challenge system
+        else:
+            import random
+            challenges = self.generate_security_challenges(user)
+            
+            if not challenges:
+                return self.initiate_simple_verification(phone_number, user)
+            
+            selected_challenge = random.choice(challenges)
+            
+            self.set_auth_state(phone_number, {
+                'state': 'awaiting_challenge_response',
+                'challenge': selected_challenge,
+                'attempts': 0,
+                'max_attempts': 3,
+                'timestamp': datetime.now().isoformat()
+            })
+            
+            return f"""🔐 *Secure Identity Verification*
+
+Hi {user.get_full_name()}!
 
 For your security, please answer this question to verify your identity:
 
@@ -2702,7 +2728,71 @@ Type *VERIFY* to confirm you want to access your {user_type} account.
 
     def handle_authentication_step(self, phone_number, message, auth_state):
         """Handle secure authentication step"""
-        if auth_state['state'] == 'awaiting_challenge_response':
+        if auth_state['state'] == 'awaiting_pin':
+            user_pin = message.strip()
+            attempts = auth_state.get('attempts', 0)
+            max_attempts = auth_state.get('max_attempts', 3)
+            
+            # Validate PIN format
+            if len(user_pin) != 4 or not user_pin.isdigit():
+                attempts += 1
+                auth_state['attempts'] = attempts
+                
+                if attempts >= max_attempts:
+                    self.clear_auth_state(phone_number)
+                    return f"""❌ *Authentication Failed*
+
+Too many incorrect attempts. For security, access has been temporarily locked.
+
+Please wait 15 minutes before trying again, or contact support:
+📞 +263 77 123 4567"""
+                else:
+                    self.set_auth_state(phone_number, auth_state)
+                    remaining = max_attempts - attempts
+                    return f"""❌ Invalid PIN format. 
+
+Please enter your 4-digit PIN.
+
+You have {remaining} attempt(s) remaining."""
+            
+            # Check PIN
+            student = Student.query.filter_by(phone=phone_number, is_active=True).first()
+            
+            if student and student.check_pin(user_pin):
+                # Authentication successful
+                self.set_authenticated(phone_number)
+                self.clear_auth_state(phone_number)
+                
+                return f"""✅ *Authentication Successful!*
+
+Welcome back, {student.name}!
+
+🛡️ Your PIN has been verified securely.
+
+Type *menu* to see your options."""
+            else:
+                # Wrong PIN
+                attempts += 1
+                auth_state['attempts'] = attempts
+                
+                if attempts >= max_attempts:
+                    self.clear_auth_state(phone_number)
+                    return f"""❌ *Authentication Failed*
+
+Too many incorrect attempts. For security, access has been temporarily locked.
+
+Please wait 15 minutes before trying again, or contact support:
+📞 +263 77 123 4567"""
+                else:
+                    self.set_auth_state(phone_number, auth_state)
+                    remaining = max_attempts - attempts
+                    return f"""❌ Incorrect PIN.
+
+Please enter your 4-digit PIN.
+
+You have {remaining} attempt(s) remaining."""
+        
+        elif auth_state['state'] == 'awaiting_challenge_response':
             user_answer = message.strip().lower()
             correct_answer = auth_state['challenge']['answer'].lower()
             attempts = auth_state.get('attempts', 0)

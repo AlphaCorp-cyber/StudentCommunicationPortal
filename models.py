@@ -96,6 +96,9 @@ class Student(db.Model):
     # Financial tracking
     account_balance = db.Column(db.Numeric(10, 2), default=0.00)
     
+    # Authentication
+    pin_hash = db.Column(db.String(256), nullable=True)  # For PIN-based login
+    
     # Relationships
     lessons = db.relationship('Lesson', backref='student', lazy=True, cascade='all, delete-orphan')
     whatsapp_sessions = db.relationship('WhatsAppSession', backref='student', lazy=True)
@@ -136,6 +139,18 @@ class Student(db.Model):
                 return True
         
         return False
+
+    def set_pin(self, pin):
+        """Set PIN hash for authentication"""
+        from werkzeug.security import generate_password_hash
+        self.pin_hash = generate_password_hash(str(pin))
+
+    def check_pin(self, pin):
+        """Check if provided PIN matches hash"""
+        from werkzeug.security import check_password_hash
+        if not self.pin_hash:
+            return False
+        return check_password_hash(self.pin_hash, str(pin))
 
 class Lesson(db.Model):
     __tablename__ = 'lessons'

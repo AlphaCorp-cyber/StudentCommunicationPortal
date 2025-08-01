@@ -1,3 +1,7 @@
+Adding student navigation links to the base template based on session status for logged-in students.
+```
+
+```html
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="dark">
 <head>
@@ -13,7 +17,7 @@
 
     <!-- Custom CSS -->
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
-    
+
     <!-- Custom styles for navbar -->
     <style>
         .navbar-modern {
@@ -22,7 +26,7 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
-        
+
         .navbar-brand {
             font-weight: 700;
             font-size: 1.5rem;
@@ -31,7 +35,7 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-        
+
         .nav-link {
             font-weight: 500;
             transition: all 0.3s ease;
@@ -39,21 +43,21 @@
             margin: 0 4px;
             position: relative;
         }
-        
+
         .nav-link:hover {
             background: rgba(102, 126, 234, 0.1);
             transform: translateY(-1px);
         }
-        
+
         .nav-link.active {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white !important;
         }
-        
+
         .navbar-nav .nav-link i {
             margin-right: 6px;
         }
-        
+
         .user-avatar {
             width: 32px;
             height: 32px;
@@ -61,19 +65,19 @@
             border: 2px solid rgba(102, 126, 234, 0.3);
             transition: all 0.3s ease;
         }
-        
+
         .user-avatar:hover {
             border-color: #667eea;
             transform: scale(1.1);
         }
-        
+
         .badge-role {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             font-size: 0.7rem;
             padding: 4px 8px;
             border-radius: 12px;
         }
-        
+
         .dropdown-menu {
             background: rgba(26, 29, 41, 0.95);
             backdrop-filter: blur(20px);
@@ -81,19 +85,19 @@
             border-radius: 12px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
         }
-        
+
         .dropdown-item {
             color: rgba(255, 255, 255, 0.8);
             transition: all 0.3s ease;
             border-radius: 8px;
             margin: 2px 4px;
         }
-        
+
         .dropdown-item:hover {
             background: rgba(102, 126, 234, 0.1);
             color: white;
         }
-        
+
         .theme-toggle {
             background: rgba(102, 126, 234, 0.1);
             border: 1px solid rgba(102, 126, 234, 0.3);
@@ -102,7 +106,7 @@
             height: 40px;
             transition: all 0.3s ease;
         }
-        
+
         .theme-toggle:hover {
             background: rgba(102, 126, 234, 0.2);
             transform: rotate(180deg);
@@ -188,9 +192,33 @@
                             </a></li>
                             {% endif %}
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">
-                                <i data-feather="log-out" class="me-2"></i>Logout
-                            </a></li>
+                            <a class="nav-link" href="{{ url_for('logout') }}">
+                            <i data-feather="log-out"></i>
+                            Logout
+                        </a>
+                    {% endif %}
+                    {% if session.get('student_logged_in') %}
+                        <a class="nav-link" href="{{ url_for('student_dashboard') }}">
+                            <i data-feather="home"></i>
+                            Dashboard
+                        </a>
+                        <a class="nav-link" href="{{ url_for('student_lessons') }}">
+                            <i data-feather="calendar"></i>
+                            Lessons
+                        </a>
+                        <a class="nav-link" href="{{ url_for('student_progress') }}">
+                            <i data-feather="trending-up"></i>
+                            Progress
+                        </a>
+                        <a class="nav-link" href="{{ url_for('student_profile') }}">
+                            <i data-feather="user"></i>
+                            Profile
+                        </a>
+                        <a class="nav-link" href="{{ url_for('student_logout') }}">
+                            <i data-feather="log-out"></i>
+                            Logout
+                        </a>
+                    {% endif %}
                         </ul>
                     </li>
                 </ul>
@@ -222,7 +250,7 @@
             </div>
         </div>
     </nav>
-    
+
     <!-- Add padding to body when navbar is fixed -->
     {% if current_user.is_authenticated or request.endpoint != 'index' %}
     <div style="padding-top: 80px;">
@@ -247,7 +275,7 @@
     <main class="{% if current_user.is_authenticated %}container my-4{% endif %}">
         {% block content %}{% endblock %}
     </main>
-    
+
     {% if current_user.is_authenticated or request.endpoint != 'index' %}
     </div>
     {% endif %}
@@ -284,7 +312,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const themeToggle = document.getElementById('themeToggle');
             const themeIcon = document.getElementById('themeIcon');
-            
+
             if (!themeToggle || !themeIcon) {
                 return; // Exit if elements don't exist
             }
@@ -330,3 +358,4 @@
     </script>
 </body>
 </html>
+`

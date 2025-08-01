@@ -1,0 +1,88 @@
+
+{% extends "base.html" %}
+
+{% block title %}Student Login - DriveLink{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-5 col-md-7">
+                <div class="card shadow">
+                    <div class="card-body p-5">
+                        <div class="text-center mb-4">
+                            <i data-feather="navigation" style="width: 60px; height: 60px" class="text-primary mb-3"></i>
+                            <h2>DriveLink</h2>
+                            <p class="text-muted">Student Portal - Sign in with your phone number and PIN</p>
+                        </div>
+
+                        <form method="POST">
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Phone Number</label>
+                                <input type="tel" class="form-control" id="phone" name="phone" required autofocus 
+                                       placeholder="+263 77 123 4567" pattern="^\+263[0-9]{9}$">
+                                <div class="form-text">Enter your registered WhatsApp number</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="pin" class="form-label">PIN</label>
+                                <input type="password" class="form-control" id="pin" name="pin" required 
+                                       placeholder="Enter your 4-digit PIN" pattern="[0-9]{4}" maxlength="4">
+                                <div class="form-text">Use the same PIN you set for WhatsApp</div>
+                            </div>
+
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                                <label class="form-check-label" for="remember">
+                                    Remember me
+                                </label>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i data-feather="log-in" class="me-2"></i>
+                                Sign In
+                            </button>
+                        </form>
+
+                        <div class="text-center mt-4">
+                            <p class="text-muted">Don't have a PIN? <a href="{{ url_for('student_register') }}">Set up your PIN</a></p>
+                            <p class="text-muted">Back to <a href="{{ url_for('login') }}">Staff Login</a></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Help Info -->
+                <div class="card mt-4 bg-light">
+                    <div class="card-body">
+                        <h6 class="card-title">
+                            <i data-feather="help-circle" class="me-2"></i>
+                            Need Help?
+                        </h6>
+                        <p class="text-sm mb-0">
+                            Contact your instructor or call our office at <strong>+263 77 123 4567</strong> 
+                            if you've forgotten your PIN or need assistance.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('phone').addEventListener('input', function() {
+    let value = this.value.replace(/\D/g, '');
+    if (value.startsWith('263')) {
+        this.value = '+' + value;
+    } else if (value.startsWith('0')) {
+        this.value = '+263' + value.substring(1);
+    } else if (value.length > 0 && !value.startsWith('263')) {
+        this.value = '+263' + value;
+    }
+});
+
+document.getElementById('pin').addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g, '').substring(0, 4);
+});
+</script>
+{% endblock %}

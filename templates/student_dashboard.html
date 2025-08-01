@@ -1,0 +1,276 @@
+
+{% extends "base.html" %}
+
+{% block title %}Student Dashboard - DriveLink{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Student Dashboard</h1>
+    <div class="d-flex align-items-center">
+        <span class="badge bg-success me-2">Student</span>
+        <small class="text-muted">Welcome back, {{ student.name }}</small>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title mb-0">Progress</h6>
+                        <h2 class="mb-0">{{ "%.1f"|format(student.get_progress_percentage()) }}%</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i data-feather="trending-up" style="width: 32px; height: 32px;"></i>
+                    </div>
+                </div>
+                <small>{{ student.lessons_completed }}/{{ student.total_lessons_required }} lessons completed</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title mb-0">Balance</h6>
+                        <h2 class="mb-0">${{ "%.2f"|format(student.account_balance) }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i data-feather="dollar-sign" style="width: 32px; height: 32px;"></i>
+                    </div>
+                </div>
+                <small>Account balance</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title mb-0">Upcoming</h6>
+                        <h2 class="mb-0">{{ upcoming_lessons|length }}</h2>
+                    </div>
+                    <div class="align-self-center">
+                        <i data-feather="calendar" style="width: 32px; height: 32px;"></i>
+                    </div>
+                </div>
+                <small>Lessons scheduled</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title mb-0">Instructor</h6>
+                        <h6 class="mb-0">{{ student.instructor.get_full_name() if student.instructor else "Not assigned" }}</h6>
+                    </div>
+                    <div class="align-self-center">
+                        <i data-feather="user" style="width: 32px; height: 32px;"></i>
+                    </div>
+                </div>
+                <small>Your driving instructor</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="row">
+    <!-- Upcoming Lessons -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i data-feather="calendar"></i>
+                    Upcoming Lessons
+                </h5>
+                <a href="{{ url_for('student_lessons') }}" class="btn btn-primary btn-sm">
+                    <i data-feather="plus"></i>
+                    Book Lesson
+                </a>
+            </div>
+            <div class="card-body">
+                {% if upcoming_lessons %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Duration</th>
+                                    <th>Instructor</th>
+                                    <th>Location</th>
+                                    <th>Cost</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lesson in upcoming_lessons %}
+                                <tr>
+                                    <td>
+                                        <div>
+                                            <strong>{{ lesson.scheduled_date.strftime('%B %d, %Y') }}</strong><br>
+                                            <small class="text-muted">{{ lesson.scheduled_date.strftime('%I:%M %p') }}</small>
+                                        </div>
+                                    </td>
+                                    <td>{{ lesson.duration_minutes }} min</td>
+                                    <td>{{ lesson.instructor.get_full_name() }}</td>
+                                    <td>{{ lesson.location or 'TBD' }}</td>
+                                    <td>${{ "%.2f"|format(lesson.cost) }}</td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('cancel_student_lesson', lesson_id=lesson.id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm" 
+                                                    onclick="return confirm('Cancel this lesson?')">
+                                                <i data-feather="x"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i data-feather="calendar" style="width: 48px; height: 48px;" class="text-muted mb-3"></i>
+                        <h6>No upcoming lessons</h6>
+                        <p class="text-muted">Book your first lesson to get started!</p>
+                        <a href="{{ url_for('student_lessons') }}" class="btn btn-primary">
+                            <i data-feather="plus"></i>
+                            Book Lesson
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions & Profile -->
+    <div class="col-lg-4">
+        <!-- Quick Actions -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i data-feather="zap"></i>
+                    Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('student_lessons') }}" class="btn btn-primary">
+                        <i data-feather="calendar"></i>
+                        Book Lesson
+                    </a>
+                    <a href="{{ url_for('student_progress') }}" class="btn btn-outline-primary">
+                        <i data-feather="trending-up"></i>
+                        View Progress
+                    </a>
+                    <a href="{{ url_for('student_payments') }}" class="btn btn-outline-success">
+                        <i data-feather="dollar-sign"></i>
+                        Fund Account
+                    </a>
+                    <a href="{{ url_for('student_profile') }}" class="btn btn-outline-secondary">
+                        <i data-feather="user"></i>
+                        Update Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Summary -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i data-feather="user"></i>
+                    Profile Summary
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>Name:</strong></td>
+                        <td>{{ student.name }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Phone:</strong></td>
+                        <td>{{ student.phone }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Email:</strong></td>
+                        <td>{{ student.email or 'Not set' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Location:</strong></td>
+                        <td>{{ student.current_location or 'Not set' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>License Type:</strong></td>
+                        <td>{{ student.license_type }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Joined:</strong></td>
+                        <td>{{ student.registration_date.strftime('%B %Y') if student.registration_date else 'N/A' }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i data-feather="activity"></i>
+                    Recent Lesson History
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_lessons %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Duration</th>
+                                    <th>Instructor</th>
+                                    <th>Rating</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lesson in recent_lessons %}
+                                <tr>
+                                    <td>{{ lesson.completed_date.strftime('%B %d, %Y') if lesson.completed_date else 'N/A' }}</td>
+                                    <td>{{ lesson.duration_minutes }} min</td>
+                                    <td>{{ lesson.instructor.get_full_name() }}</td>
+                                    <td>
+                                        {% if lesson.rating %}
+                                            {% for i in range(lesson.rating) %}⭐{% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">Not rated</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ lesson.notes[:50] + '...' if lesson.notes and lesson.notes|length > 50 else (lesson.notes or 'No notes') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-3">
+                        <p class="text-muted">No completed lessons yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

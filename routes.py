@@ -1366,6 +1366,216 @@ def clear_all_whatsapp_auth():
     
     return redirect(url_for('whatsapp_auth_management'))
 
+# Student Portal Routes
+@app.route('/student-login', methods=['GET', 'POST'])
+def student_login():
+    """Student login with phone number and PIN"""
+    if request.method == 'POST':
+        phone = request.form['phone'].strip()
+        pin = request.form['pin'].strip()
+        
+        # Clean phone number format
+        if not phone.startswith('+'):
+            if phone.startswith('0'):
+                phone = '+263' + phone[1:]
+            elif phone.startswith('263'):
+                phone = '+' + phone
+            else:
+                phone = '+263' + phone
+        
+        # Find student by phone
+        student = Student.query.filter_by(phone=phone, is_active=True).first()
+        
+        if student and student.check_pin(pin):
+            # Store student login in session
+            session['student_id'] = student.id
+            session['student_logged_in'] = True
+            
+            remember = bool(request.form.get('remember'))
+            if remember:
+                session.permanent = True
+            
+            flash(f'Welcome back, {student.name}!', 'success')
+            return redirect(url_for('student_dashboard'))
+        else:
+            flash('Invalid phone number or PIN.', 'error')
+    
+    return render_template('student_login.html')
+
+@app.route('/student-register', methods=['GET', 'POST'])
+def student_register():
+    """Student PIN setup"""
+    if request.method == 'POST':
+        phone = request.form['phone'].strip()
+        pin = request.form['pin'].strip()
+        confirm_pin = request.form['confirm_pin'].strip()
+        
+        # Validate PIN
+        if len(pin) != 4 or not pin.isdigit():
+            flash('PIN must be exactly 4 digits.', 'error')
+            return render_template('student_register.html')
+        
+        if pin != confirm_pin:
+            flash('PINs do not match.', 'error')
+            return render_template('student_register.html')
+        
+        # Clean phone number format
+        if not phone.startswith('+'):
+            if phone.startswith('0'):
+                phone = '+263' + phone[1:]
+            elif phone.startswith('263'):
+                phone = '+' + phone
+            else:
+                phone = '+263' + phone
+        
+        # Find student by phone
+        student = Student.query.filter_by(phone=phone, is_active=True).first()
+        
+        if not student:
+            flash('Phone number not found. Please contact your driving school to register first.', 'error')
+            return render_template('student_register.html')
+        
+        if student.pin_hash:
+            flash('PIN already set for this number. Use the login page instead.', 'error')
+            return redirect(url_for('student_login'))
+        
+        # Set PIN
+        student.set_pin(pin)
+        db.session.commit()
+        
+        flash('PIN set successfully! You can now log in.', 'success')
+        return redirect(url_for('student_login'))
+    
+    return render_template('student_register.html')
+
+@app.route('/student-dashboard')
+def student_dashboard():
+    """Student dashboard"""
+    if not session.get('student_logged_in') or not session.get('student_id'):
+        flash('Please log in to access your dashboard.', 'error')
+        return redirect(url_for('student_login'))
+    
+    student = Student.query.get(session['student_id'])
+    if not student or not student.is_active:
+        session.clear()
+        flash('Student account not found or inactive.', 'error')
+        return redirect(url_for('student_login'))
+    
+    # Get upcoming lessons
+    upcoming_lessons = Lesson.query.filter(
+        Lesson.student_id == student.id,
+        Lesson.status == LESSON_SCHEDULED,
+        Lesson.scheduled_date >= datetime.now()
+    ).order_by(Lesson.scheduled_date).limit(5).all()
+    
+    # Get recent completed lessons
+    recent_lessons = Lesson.query.filter(
+        Lesson.student_id == student.id,
+        Lesson.status == LESSON_COMPLETED
+    ).order_by(Lesson.completed_date.desc()).limit(5).all()
+    
+    return render_template('student_dashboard.html', 
+                         student=student,
+                         upcoming_lessons=upcoming_lessons,
+                         recent_lessons=recent_lessons)
+
+@app.route('/student-logout')
+def student_logout():
+    """Student logout"""
+    session.clear()
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('student_login'))
+
+@app.route('/student-lessons')
+def student_lessons():
+    """Student lessons page"""
+    if not session.get('student_logged_in') or not session.get('student_id'):
+        return redirect(url_for('student_login'))
+    
+    student = Student.query.get(session['student_id'])
+    if not student:
+        return redirect(url_for('student_login'))
+    
+    # Get all student lessons
+    all_lessons = Lesson.query.filter_by(student_id=student.id).order_by(Lesson.scheduled_date.desc()).all()
+    
+    return render_template('student_lessons.html', student=student, lessons=all_lessons)
+
+@app.route('/student-progress')
+def student_progress():
+    """Student progress page"""
+    if not session.get('student_logged_in') or not session.get('student_id'):
+        return redirect(url_for('student_login'))
+    
+    student = Student.query.get(session['student_id'])
+    if not student:
+        return redirect(url_for('student_login'))
+    
+    # Get completed lessons with details
+    completed_lessons = Lesson.query.filter(
+        Lesson.student_id == student.id,
+        Lesson.status == LESSON_COMPLETED
+    ).order_by(Lesson.completed_date.desc()).all()
+    
+    return render_template('student_progress.html', student=student, completed_lessons=completed_lessons)
+
+@app.route('/student-profile')
+def student_profile():
+    """Student profile page"""
+    if not session.get('student_logged_in') or not session.get('student_id'):
+        return redirect(url_for('student_login'))
+    
+    student = Student.query.get(session['student_id'])
+    if not student:
+        return redirect(url_for('student_login'))
+    
+    return render_template('student_profile.html', student=student)
+
+@app.route('/student-payments')
+def student_payments():
+    """Student payments page"""
+    if not session.get('student_logged_in') or not session.get('student_id'):
+        return redirect(url_for('student_login'))
+    
+    student = Student.query.get(session['student_id'])
+    if not student:
+        return redirect(url_for('student_login'))
+    
+    # Get payment history
+    payments = Payment.query.filter_by(student_id=student.id).order_by(Payment.created_at.desc()).all()
+    
+    return render_template('student_payments.html', student=student, payments=payments)
+
+@app.route('/cancel-student-lesson/<int:lesson_id>', methods=['POST'])
+def cancel_student_lesson(lesson_id):
+    """Cancel a student lesson"""
+    if not session.get('student_logged_in') or not session.get('student_id'):
+        return redirect(url_for('student_login'))
+    
+    student = Student.query.get(session['student_id'])
+    lesson = Lesson.query.filter_by(id=lesson_id, student_id=student.id).first()
+    
+    if not lesson:
+        flash('Lesson not found.', 'error')
+        return redirect(url_for('student_dashboard'))
+    
+    if lesson.status != LESSON_SCHEDULED:
+        flash('Only scheduled lessons can be cancelled.', 'error')
+        return redirect(url_for('student_dashboard'))
+    
+    # Check if cancellation is allowed (at least 2 hours before)
+    time_until_lesson = lesson.scheduled_date - datetime.now()
+    if time_until_lesson.total_seconds() < 7200:  # 2 hours
+        flash('Cannot cancel lessons less than 2 hours before the scheduled time.', 'error')
+        return redirect(url_for('student_dashboard'))
+    
+    lesson.status = LESSON_CANCELLED
+    lesson.updated_at = datetime.now()
+    db.session.commit()
+    
+    flash('Lesson cancelled successfully.', 'success')
+    return redirect(url_for('student_dashboard'))
+
 @app.errorhandler(403)
 def forbidden(error):
     return render_template('403.html'), 403
