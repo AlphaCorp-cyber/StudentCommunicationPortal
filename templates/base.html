@@ -192,33 +192,9 @@ Adding student navigation links to the base template based on session status for
                             </a></li>
                             {% endif %}
                             <li><hr class="dropdown-divider"></li>
-                            <a class="nav-link" href="{{ url_for('logout') }}">
-                            <i data-feather="log-out"></i>
-                            Logout
-                        </a>
-                    {% endif %}
-                    {% if session.get('student_logged_in') %}
-                        <a class="nav-link" href="{{ url_for('student_dashboard') }}">
-                            <i data-feather="home"></i>
-                            Dashboard
-                        </a>
-                        <a class="nav-link" href="{{ url_for('student_lessons') }}">
-                            <i data-feather="calendar"></i>
-                            Lessons
-                        </a>
-                        <a class="nav-link" href="{{ url_for('student_progress') }}">
-                            <i data-feather="trending-up"></i>
-                            Progress
-                        </a>
-                        <a class="nav-link" href="{{ url_for('student_profile') }}">
-                            <i data-feather="user"></i>
-                            Profile
-                        </a>
-                        <a class="nav-link" href="{{ url_for('student_logout') }}">
-                            <i data-feather="log-out"></i>
-                            Logout
-                        </a>
-                    {% endif %}
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">
+                                <i data-feather="log-out" class="me-2"></i>Logout
+                            </a></li>
                         </ul>
                     </li>
                 </ul>
