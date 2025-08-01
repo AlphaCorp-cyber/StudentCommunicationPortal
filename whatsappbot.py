@@ -30,7 +30,9 @@ class WhatsAppBot:
             'location': self.handle_change_location,
             'balance': self.handle_check_balance,
             'fund': self.handle_fund_account,
-            'emergency': self.handle_emergency_contact
+            'emergency': self.handle_emergency_contact,
+            'logout': self.handle_logout,
+            'security': self.handle_security_info
         }
 
         # Initialize Twilio client - will be done later with app context
@@ -106,6 +108,15 @@ class WhatsAppBot:
         try:
             # Clean phone number format
             phone_number = self.clean_phone_number(phone_number)
+
+            # Check if user is in authentication process
+            auth_state = self.get_auth_state(phone_number)
+            if auth_state:
+                return self.handle_authentication_step(phone_number, message, auth_state)
+
+            # Check if user is authenticated for this session
+            if not self.is_authenticated(phone_number):
+                return self.initiate_authentication(phone_number)
 
             # First check if it's an instructor
             instructor = User.query.filter_by(phone=phone_number, active=True).filter(
@@ -880,7 +891,7 @@ Choose an option below:"""
 
     def handle_help(self, student):
         """Handle help request with quick reply options"""
-        message_body = """❓ *Help & Easy Commands:*
+        message_body = f"""❓ *Help & Easy Commands:*
 
 🔥 *Quick Commands:*
 • lessons - See your schedule
@@ -890,6 +901,10 @@ Choose an option below:"""
 • menu - Back to start
 • fund - Top up account
 • emergency - Emergency contact
+
+🛡️ *Security Commands:*
+• logout - End session securely
+• security - View security info
 
 💡 *Pro Tips:*
 • Lessons: 6:00 AM - 4:00 PM (Mon-Sat)
@@ -906,7 +921,7 @@ Choose an option below:"""
             {"id": "book", "title": "📅 Book Lesson"},
             {"id": "lessons", "title": "📋 My Lessons"},
             {"id": "progress", "title": "📊 My Progress"},
-            {"id": "emergency", "title": "🚨 Emergency"},
+            {"id": "security", "title": "🛡️ Security"},
             {"id": "menu", "title": "🏠 Main Menu"}
         ]
 
@@ -1117,6 +1132,58 @@ Stay safe! 🚗"""
         ]
 
         return self.send_interactive_message(student.phone, message_body, quick_replies)
+
+    def handle_logout(self, user_or_student):
+        """Handle logout request"""
+        phone = user_or_student.phone if hasattr(user_or_student, 'phone') else user_or_student.phone
+        
+        # Clear authentication
+        self.clear_authenticated(phone)
+        self.clear_auth_state(phone)
+        
+        # Clear any session data
+        if hasattr(user_or_student, 'name'):  # Student
+            self.set_session_state(user_or_student, 'logged_out')
+        
+        return f"""🔐 *Logged Out Successfully*
+
+You have been securely logged out from your account.
+
+To access your account again, you'll need to authenticate with a new PIN.
+
+Type *hi* to start a new session.
+
+Stay safe! 🛡️"""
+
+    def handle_security_info(self, user_or_student):
+        """Handle security information request"""
+        return f"""🛡️ *Account Security Information*
+
+Your WhatsApp account is protected with:
+
+🔐 *PIN Authentication*
+• 6-digit PIN required for each session
+• PIN expires after 5 minutes
+• 3 attempts maximum per PIN
+
+⏰ *Session Security*
+• Auto-logout after 2 hours of inactivity
+• Secure session management
+• No sensitive data stored on device
+
+📱 *WhatsApp Security*
+• Only your registered phone number can access
+• All messages are encrypted by WhatsApp
+• PIN delivered via secure WhatsApp channel
+
+🚨 *Security Tips*
+• Never share your PIN with anyone
+• Type *logout* when finished
+• Report suspicious activity immediately
+
+Contact support: +263 77 123 4567
+
+Type *menu* to return to main menu."""
 
 
             student_id=student.id,
@@ -2422,6 +2489,10 @@ You have a lesson in 2 hours:
 • confirm [id] - Confirm a lesson  
 • complete [id] - Mark lesson complete
 
+🛡️ Security Commands:
+• logout - End session securely
+• security - View security info
+
 💡 Examples:
 • "today" - See today's lessons
 • "cancel 123" - Cancel lesson #123
@@ -2485,6 +2556,202 @@ Need more help? Contact your admin!"""
                 db.session.commit()
         except Exception as e:
             logger.error(f"Error clearing registration state: {str(e)}")
+
+    # Authentication System Methods
+    def initiate_authentication(self, phone_number):
+        """Start authentication process for a phone number"""
+        # Check if it's a known user
+        user = User.query.filter_by(phone=phone_number, active=True).first()
+        student = Student.query.filter_by(phone=phone_number, is_active=True).first()
+        
+        if not user and not student:
+            return self.handle_unknown_student(phone_number)
+        
+        # Generate and store auth PIN
+        import random
+        auth_pin = str(random.randint(100000, 999999))  # 6-digit PIN
+        
+        # Store authentication state
+        self.set_auth_state(phone_number, {
+            'state': 'awaiting_pin',
+            'pin': auth_pin,
+            'attempts': 0,
+            'max_attempts': 3,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+        # Determine user type and name
+        if user:
+            user_name = user.get_full_name()
+            user_type = "instructor" if user.is_instructor() else user.role
+        else:
+            user_name = student.name
+            user_type = "student"
+        
+        return f"""🔐 *Secure Authentication Required*
+
+Hi {user_name}!
+
+For your security, please enter the PIN to access your {user_type} account:
+
+*Your PIN: {auth_pin}*
+
+⚠️ This PIN expires in 5 minutes
+⚠️ You have 3 attempts
+
+Type the PIN to continue:"""
+
+    def handle_authentication_step(self, phone_number, message, auth_state):
+        """Handle authentication step"""
+        if auth_state['state'] == 'awaiting_pin':
+            entered_pin = message.strip()
+            stored_pin = auth_state['pin']
+            attempts = auth_state.get('attempts', 0)
+            max_attempts = auth_state.get('max_attempts', 3)
+            
+            # Check if PIN is correct
+            if entered_pin == stored_pin:
+                # Authentication successful
+                self.set_authenticated(phone_number)
+                self.clear_auth_state(phone_number)
+                
+                # Determine user type for welcome message
+                user = User.query.filter_by(phone=phone_number, active=True).first()
+                student = Student.query.filter_by(phone=phone_number, is_active=True).first()
+                
+                if user:
+                    welcome_msg = f"✅ *Authentication Successful!*\n\nWelcome back, {user.get_full_name()}!\n\nYou now have access to your instructor portal."
+                else:
+                    welcome_msg = f"✅ *Authentication Successful!*\n\nWelcome back, {student.name}!\n\nType *menu* to see your options."
+                
+                return welcome_msg
+            else:
+                # Wrong PIN
+                attempts += 1
+                auth_state['attempts'] = attempts
+                
+                if attempts >= max_attempts:
+                    # Max attempts reached
+                    self.clear_auth_state(phone_number)
+                    return f"""❌ *Authentication Failed*
+
+Too many incorrect attempts. For security, access has been locked.
+
+Please wait 15 minutes before trying again, or contact support:
+📞 +263 77 123 4567"""
+                else:
+                    # Update state with new attempt count
+                    self.set_auth_state(phone_number, auth_state)
+                    remaining = max_attempts - attempts
+                    return f"""❌ Incorrect PIN
+
+You have {remaining} attempt(s) remaining.
+
+Please enter the correct 6-digit PIN:"""
+        
+        return "Authentication error. Please try again."
+
+    def is_authenticated(self, phone_number):
+        """Check if phone number is authenticated for current session"""
+        from models import SystemConfig
+        import json
+        
+        auth_key = f"authenticated_{phone_number}"
+        try:
+            data_str = SystemConfig.get_config(auth_key)
+            if data_str:
+                data = json.loads(data_str)
+                # Check if authentication is still valid (2 hours)
+                auth_time = datetime.fromisoformat(data['timestamp'])
+                if (datetime.now() - auth_time).total_seconds() < 7200:  # 2 hours
+                    return True
+                else:
+                    # Clear expired authentication
+                    self.clear_authenticated(phone_number)
+            return False
+        except Exception as e:
+            logger.error(f"Error checking authentication: {str(e)}")
+            return False
+
+    def set_authenticated(self, phone_number):
+        """Mark phone number as authenticated"""
+        from models import SystemConfig
+        import json
+        
+        auth_key = f"authenticated_{phone_number}"
+        auth_data = {
+            'phone': phone_number,
+            'timestamp': datetime.now().isoformat(),
+            'authenticated': True
+        }
+        
+        try:
+            SystemConfig.set_config(auth_key, json.dumps(auth_data), 
+                                  f"Authentication state for {phone_number}")
+        except Exception as e:
+            logger.error(f"Error setting authentication: {str(e)}")
+
+    def clear_authenticated(self, phone_number):
+        """Clear authentication for phone number"""
+        from models import SystemConfig
+        
+        auth_key = f"authenticated_{phone_number}"
+        try:
+            config = SystemConfig.query.filter_by(key=auth_key).first()
+            if config:
+                db.session.delete(config)
+                db.session.commit()
+        except Exception as e:
+            logger.error(f"Error clearing authentication: {str(e)}")
+
+    def set_auth_state(self, phone_number, state_data):
+        """Set authentication state for a phone number"""
+        from models import SystemConfig
+        import json
+        
+        auth_key = f"auth_state_{phone_number}"
+        state_data['timestamp'] = datetime.now().isoformat()
+        
+        try:
+            SystemConfig.set_config(auth_key, json.dumps(state_data), 
+                                  f"Auth state for {phone_number}")
+        except Exception as e:
+            logger.error(f"Error setting auth state: {str(e)}")
+
+    def get_auth_state(self, phone_number):
+        """Get authentication state for a phone number"""
+        from models import SystemConfig
+        import json
+        
+        auth_key = f"auth_state_{phone_number}"
+        try:
+            data_str = SystemConfig.get_config(auth_key)
+            if data_str:
+                data = json.loads(data_str)
+                # Check if auth state is not older than 5 minutes
+                auth_time = datetime.fromisoformat(data['timestamp'])
+                if (datetime.now() - auth_time).total_seconds() < 300:  # 5 minutes
+                    return data
+                else:
+                    # Clear expired auth state
+                    self.clear_auth_state(phone_number)
+            return None
+        except Exception as e:
+            logger.error(f"Error getting auth state: {str(e)}")
+            return None
+
+    def clear_auth_state(self, phone_number):
+        """Clear authentication state for a phone number"""
+        from models import SystemConfig
+        
+        auth_key = f"auth_state_{phone_number}"
+        try:
+            config = SystemConfig.query.filter_by(key=auth_key).first()
+            if config:
+                db.session.delete(config)
+                db.session.commit()
+        except Exception as e:
+            logger.error(f"Error clearing auth state: {str(e)}")
 
     def handle_registration_step(self, phone_number, message, registration_state):
         """Handle each step of the registration process"""

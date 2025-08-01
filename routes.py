@@ -1278,6 +1278,94 @@ def create_whatsapp_template():
     
     return redirect(url_for('test_twilio_config'))
 
+@app.route('/whatsapp-auth-management')
+@require_role('admin')
+def whatsapp_auth_management():
+    """Manage WhatsApp authentication states"""
+    from models import SystemConfig
+    
+    # Get all authentication-related configs
+    auth_configs = SystemConfig.query.filter(
+        or_(
+            SystemConfig.key.like('authenticated_%'),
+            SystemConfig.key.like('auth_state_%')
+        )
+    ).order_by(SystemConfig.updated_at.desc()).all()
+    
+    active_sessions = []
+    pending_auths = []
+    
+    for config in auth_configs:
+        if config.key.startswith('authenticated_'):
+            phone = config.key.replace('authenticated_', '')
+            # Find associated user
+            user = User.query.filter_by(phone=phone).first()
+            student = Student.query.filter_by(phone=phone).first()
+            
+            active_sessions.append({
+                'phone': phone,
+                'user_type': 'instructor' if user else 'student',
+                'name': user.get_full_name() if user else (student.name if student else 'Unknown'),
+                'last_activity': config.updated_at,
+                'config_id': config.id
+            })
+        elif config.key.startswith('auth_state_'):
+            phone = config.key.replace('auth_state_', '')
+            user = User.query.filter_by(phone=phone).first()
+            student = Student.query.filter_by(phone=phone).first()
+            
+            pending_auths.append({
+                'phone': phone,
+                'user_type': 'instructor' if user else 'student',
+                'name': user.get_full_name() if user else (student.name if student else 'Unknown'),
+                'timestamp': config.updated_at,
+                'config_id': config.id
+            })
+    
+    return render_template('whatsapp_auth.html', 
+                         active_sessions=active_sessions, 
+                         pending_auths=pending_auths)
+
+@app.route('/clear-whatsapp-auth/<int:config_id>', methods=['POST'])
+@require_role('admin')
+def clear_whatsapp_auth(config_id):
+    """Clear a specific WhatsApp authentication"""
+    try:
+        config = SystemConfig.query.get_or_404(config_id)
+        phone = config.key.replace('authenticated_', '').replace('auth_state_', '')
+        
+        db.session.delete(config)
+        db.session.commit()
+        
+        flash(f'Authentication cleared for {phone}', 'success')
+    except Exception as e:
+        flash(f'Error clearing authentication: {str(e)}', 'error')
+    
+    return redirect(url_for('whatsapp_auth_management'))
+
+@app.route('/clear-all-whatsapp-auth', methods=['POST'])
+@require_role('admin')
+def clear_all_whatsapp_auth():
+    """Clear all WhatsApp authentications"""
+    try:
+        auth_configs = SystemConfig.query.filter(
+            or_(
+                SystemConfig.key.like('authenticated_%'),
+                SystemConfig.key.like('auth_state_%')
+            )
+        ).all()
+        
+        count = len(auth_configs)
+        for config in auth_configs:
+            db.session.delete(config)
+        
+        db.session.commit()
+        flash(f'Cleared {count} authentication sessions', 'success')
+    except Exception as e:
+        flash(f'Error clearing all authentications: {str(e)}', 'error')
+    
+    return redirect(url_for('whatsapp_auth_management'))
+
 @app.errorhandler(403)
 def forbidden(error):
     return render_template('403.html'), 403

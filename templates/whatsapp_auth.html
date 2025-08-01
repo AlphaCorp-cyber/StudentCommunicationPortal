@@ -1,0 +1,156 @@
+
+{% extends "base.html" %}
+
+{% block title %}WhatsApp Authentication Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i data-feather="shield"></i> WhatsApp Authentication Management</h2>
+                <div>
+                    <a href="{{ url_for('whatsapp_bot') }}" class="btn btn-outline-primary">
+                        <i data-feather="message-circle"></i> WhatsApp Bot
+                    </a>
+                    <form method="POST" action="{{ url_for('clear_all_whatsapp_auth') }}" class="d-inline">
+                        <button type="submit" class="btn btn-outline-danger" 
+                                onclick="return confirm('Clear ALL WhatsApp authentication sessions?')">
+                            <i data-feather="x-circle"></i> Clear All Sessions
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Active Sessions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4><i data-feather="users"></i> Active Sessions ({{ active_sessions|length }})</h4>
+                </div>
+                <div class="card-body">
+                    {% if active_sessions %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Phone Number</th>
+                                    <th>User Type</th>
+                                    <th>Name</th>
+                                    <th>Last Activity</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in active_sessions %}
+                                <tr>
+                                    <td>{{ session.phone }}</td>
+                                    <td>
+                                        <span class="badge badge-{% if session.user_type == 'instructor' %}primary{% else %}success{% endif %}">
+                                            {{ session.user_type.title() }}
+                                        </span>
+                                    </td>
+                                    <td>{{ session.name }}</td>
+                                    <td>{{ session.last_activity.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('clear_whatsapp_auth', config_id=session.config_id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                    onclick="return confirm('Clear authentication for {{ session.phone }}?')">
+                                                <i data-feather="log-out"></i> Clear
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i data-feather="info"></i> No active authentication sessions.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Pending Authentications -->
+            <div class="card">
+                <div class="card-header">
+                    <h4><i data-feather="clock"></i> Pending Authentications ({{ pending_auths|length }})</h4>
+                </div>
+                <div class="card-body">
+                    {% if pending_auths %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Phone Number</th>
+                                    <th>User Type</th>
+                                    <th>Name</th>
+                                    <th>Started</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for auth in pending_auths %}
+                                <tr>
+                                    <td>{{ auth.phone }}</td>
+                                    <td>
+                                        <span class="badge badge-{% if auth.user_type == 'instructor' %}primary{% else %}success{% endif %}">
+                                            {{ auth.user_type.title() }}
+                                        </span>
+                                    </td>
+                                    <td>{{ auth.name }}</td>
+                                    <td>{{ auth.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td>
+                                        <form method="POST" action="{{ url_for('clear_whatsapp_auth', config_id=auth.config_id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-warning"
+                                                    onclick="return confirm('Clear pending authentication for {{ auth.phone }}?')">
+                                                <i data-feather="x"></i> Clear
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i data-feather="info"></i> No pending authentication requests.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Security Information -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h4><i data-feather="info"></i> Security Information</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Authentication Process</h5>
+                            <ul>
+                                <li>6-digit PIN generated for each session</li>
+                                <li>PIN expires after 5 minutes</li>
+                                <li>Maximum 3 attempts per PIN</li>
+                                <li>Session timeout after 2 hours</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Security Features</h5>
+                            <ul>
+                                <li>Phone number validation</li>
+                                <li>Encrypted WhatsApp delivery</li>
+                                <li>Automatic session management</li>
+                                <li>Admin monitoring and control</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
