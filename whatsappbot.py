@@ -129,7 +129,12 @@ class WhatsAppBot:
                 logger.info(f"WhatsApp message processed for student {student.name}: {message}")
                 return response
 
-            # Unknown number
+            # Check if this is an ongoing registration
+            registration_state = self.get_registration_state(phone_number)
+            if registration_state:
+                return self.handle_registration_step(phone_number, message, registration_state)
+            
+            # Unknown number - start registration
             return self.handle_unknown_student(phone_number)
 
         except Exception as e:
@@ -229,6 +234,8 @@ class WhatsAppBot:
         # Context-aware message handling based on session state
         if session_state == 'awaiting_location_update':
             return self.process_location_update(student, message)
+        elif session_state == 'awaiting_email_update':
+            return self.process_email_update(student, message)
         elif session_state == 'awaiting_instructor_selection':
             return self.process_instructor_selection(student, message)
         elif session_state == 'awaiting_duration':
@@ -276,6 +283,10 @@ class WhatsAppBot:
             return self.handle_lessons(student)
         elif any(word in ['progress', 'status', 'report'] for word in message_words):
             return self.handle_progress(student)
+        elif any(word in ['instructor', 'teacher', 'switch'] for word in message_words):
+            return self.handle_instructor_switch(student)
+        elif any(word in ['email', 'update'] for word in message_words):
+            return self.handle_email_update(student)
 
         # Intelligent fallback - guide user based on context
         return self.handle_contextual_fallback(student, message, session_state)
@@ -946,6 +957,9 @@ Type the name of your area:"""
 
     def handle_profile_management(self, student):
         """Handle profile management menu"""
+        # Check if student can switch instructor
+        can_switch_instructor = self.can_switch_instructor(student)
+        
         message_body = f"""👤 *Your Profile*
 
 📝 Name: {student.name}
@@ -953,6 +967,7 @@ Type the name of your area:"""
 📧 Email: {student.email or "Not set"}
 📍 Location: {student.current_location or "Not set"}
 🎯 License Type: {student.license_type}
+👨‍🏫 Instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}
 💰 Balance: ${float(student.account_balance):.2f}
 
 What would you like to update?"""
@@ -960,11 +975,101 @@ What would you like to update?"""
         quick_replies = [
             {"id": "location", "title": "📍 Change Location"},
             {"id": "email", "title": "📧 Update Email"},
-            {"id": "fund", "title": "💰 Fund Account"},
-            {"id": "menu", "title": "🏠 Main Menu"}
+            {"id": "fund", "title": "💰 Fund Account"}
         ]
+        
+        if can_switch_instructor:
+            quick_replies.insert(-1, {"id": "instructor", "title": "👨‍🏫 Switch Instructor"})
+        
+        quick_replies.append({"id": "menu", "title": "🏠 Main Menu"})
 
         return self.send_interactive_message(student.phone, message_body, quick_replies)
+
+    def can_switch_instructor(self, student):
+        """Check if student can switch instructor (after 5 lessons or 1 week)"""
+        from models import Lesson, LESSON_COMPLETED
+        
+        # Check if student has completed at least 5 lessons
+        completed_lessons = Lesson.query.filter_by(
+            student_id=student.id,
+            status=LESSON_COMPLETED
+        ).count()
+        
+        if completed_lessons >= 5:
+            return True
+        
+        # Check if it's been at least 1 week since registration
+        if student.registration_date:
+            days_since_registration = (datetime.now() - student.registration_date).days
+            if days_since_registration >= 7:
+                return True
+        
+        return False
+
+    def handle_instructor_switch(self, student):
+        """Handle instructor switching request"""
+        if not self.can_switch_instructor(student):
+            completed_lessons = Lesson.query.filter_by(
+                student_id=student.id,
+                status=LESSON_COMPLETED
+            ).count()
+            
+            days_since_registration = (datetime.now() - student.registration_date).days if student.registration_date else 0
+            
+            return f"""❌ *Cannot Switch Instructor Yet*
+
+You can switch instructors after:
+• Completing 5 lessons (current: {completed_lessons})
+• OR after 1 week of registration (current: {days_since_registration} days)
+
+This policy ensures continuity in your learning process.
+
+Type *menu* to return to main menu."""
+        
+        # Show available instructors
+        return self.handle_find_instructors(student)
+
+    def handle_email_update(self, student):
+        """Handle email update request"""
+        self.set_session_state(student, 'awaiting_email_update')
+        
+        return f"""📧 *Update Email Address*
+
+Current email: {student.email or "Not set"}
+
+Enter your new email address:
+
+Example: newemail@example.com
+
+Or type *cancel* to go back"""
+
+    def process_email_update(self, student, email_text):
+        """Process email update from student"""
+        try:
+            if email_text.lower().strip() == 'cancel':
+                self.set_session_state(student, 'main_menu')
+                return self.handle_profile_management(student)
+            
+            email = email_text.strip().lower()
+            if '@' not in email or '.' not in email.split('@')[1]:
+                return "Please enter a valid email address or type *cancel* to go back"
+            
+            # Update student email
+            student.email = email
+            db.session.commit()
+            
+            # Clear state
+            self.set_session_state(student, 'main_menu')
+            
+            return f"""✅ *Email Updated Successfully!*
+
+Your new email: {email}
+
+Type *menu* to return to main menu."""
+            
+        except Exception as e:
+            logger.error(f"Error updating email: {str(e)}")
+            return "❌ Error updating email. Please try again or contact support."
 
     def handle_check_balance(self, student):
         """Handle balance inquiry"""
@@ -1241,6 +1346,10 @@ Choose your lesson duration:"""
         if message == 'awaiting_location_update':
             return 'awaiting_location_update'
 
+        # Check for email update state
+        if message == 'awaiting_email_update':
+            return 'awaiting_email_update'
+
         # Check for instructor selection state
         if message == 'awaiting_instructor_selection':
             return 'awaiting_instructor_selection'
@@ -1273,6 +1382,8 @@ Choose your lesson duration:"""
 
         if state == 'awaiting_location_update':
             session.last_message = 'awaiting_location_update'
+        elif state == 'awaiting_email_update':
+            session.last_message = 'awaiting_email_update'
         elif state == 'awaiting_instructor_selection':
             session.last_message = 'awaiting_instructor_selection'
         elif state == 'awaiting_duration':
@@ -1622,22 +1733,21 @@ Type your area name again:"""
             return "❌ Error processing selection. Please try again."
 
     def handle_unknown_student(self, phone_number):
-        """Handle messages from unknown phone numbers"""
+        """Handle messages from unknown phone numbers - start registration"""
+        # Set registration state for this phone number
+        self.set_registration_state(phone_number, 'awaiting_name')
+        
         return f"""👋 *Welcome to DriveLink!*
 
-Sorry, I don't recognize this phone number. 📱
+I don't recognize this number, but I can help you register right now! 📱
 
-*To get started:*
-1. Register on our platform
-2. Fund your account  
-3. Set your location
-4. Find instructors in your area
+Let's get you set up in just a few steps:
 
-📞 *Contact us:*
-Phone: +263 77 123 4567
-Office: 123 Main Street, Harare CBD
+*Step 1 of 5: What's your full name?*
 
-Visit our office or call to register!"""
+Just type your name and I'll guide you through the rest.
+
+Example: John Doe"""
 
     def process_button_response(self, phone_number, button_text, button_payload):
         """Process button responses from Quick Reply buttons"""
@@ -1970,6 +2080,271 @@ This feature is coming to WhatsApp soon! 🚀"""
 🌐 For advanced features, use the web portal at DriveLink.com
 
 Need more help? Contact your admin!"""
+
+    def set_registration_state(self, phone_number, state, data=None):
+        """Set registration state for a phone number"""
+        from models import SystemConfig
+        import json
+        
+        registration_key = f"registration_{phone_number}"
+        registration_data = {
+            'state': state,
+            'phone': phone_number,
+            'data': data or {},
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        try:
+            SystemConfig.set_config(registration_key, json.dumps(registration_data), 
+                                  f"Registration state for {phone_number}")
+        except Exception as e:
+            logger.error(f"Error setting registration state: {str(e)}")
+
+    def get_registration_state(self, phone_number):
+        """Get registration state for a phone number"""
+        from models import SystemConfig
+        import json
+        
+        registration_key = f"registration_{phone_number}"
+        
+        try:
+            data_str = SystemConfig.get_config(registration_key)
+            if data_str:
+                data = json.loads(data_str)
+                # Check if registration is not older than 30 minutes
+                registration_time = datetime.fromisoformat(data['timestamp'])
+                if (datetime.now() - registration_time).total_seconds() < 1800:  # 30 minutes
+                    return data
+                else:
+                    # Clear expired registration
+                    self.clear_registration_state(phone_number)
+            return None
+        except Exception as e:
+            logger.error(f"Error getting registration state: {str(e)}")
+            return None
+
+    def clear_registration_state(self, phone_number):
+        """Clear registration state for a phone number"""
+        from models import SystemConfig
+        
+        registration_key = f"registration_{phone_number}"
+        try:
+            config = SystemConfig.query.filter_by(key=registration_key).first()
+            if config:
+                db.session.delete(config)
+                db.session.commit()
+        except Exception as e:
+            logger.error(f"Error clearing registration state: {str(e)}")
+
+    def handle_registration_step(self, phone_number, message, registration_state):
+        """Handle each step of the registration process"""
+        state = registration_state['state']
+        data = registration_state.get('data', {})
+        
+        if state == 'awaiting_name':
+            # Validate name
+            name = message.strip().title()
+            if len(name) < 2 or not name.replace(' ', '').isalpha():
+                return "Please enter a valid name (letters only). Example: John Doe"
+            
+            data['name'] = name
+            self.set_registration_state(phone_number, 'awaiting_email', data)
+            
+            return f"""✅ Thanks {name}!
+
+*Step 2 of 5: Email Address*
+
+Please enter your email address:
+
+Example: john@email.com
+
+Or type *skip* if you don't have email"""
+        
+        elif state == 'awaiting_email':
+            if message.lower().strip() == 'skip':
+                data['email'] = None
+            else:
+                email = message.strip().lower()
+                if '@' not in email or '.' not in email.split('@')[1]:
+                    return "Please enter a valid email address or type *skip*"
+                data['email'] = email
+            
+            self.set_registration_state(phone_number, 'awaiting_location', data)
+            
+            return f"""✅ Email saved!
+
+*Step 3 of 5: Your Location*
+
+Which area in Harare are you located?
+
+*Available Areas:*
+• CBD
+• Avondale
+• Eastlea  
+• Mount Pleasant
+• Borrowdale
+• Waterfalls
+• Highfield
+• Glen View
+• Other areas
+
+Just type your area name:"""
+        
+        elif state == 'awaiting_location':
+            location = message.strip().title()
+            data['location'] = location
+            self.set_registration_state(phone_number, 'awaiting_license_type', data)
+            
+            return f"""✅ Location set to {location}!
+
+*Step 4 of 5: License Type*
+
+What license are you learning for?
+
+1. Class 4 (Light Motor Vehicle)
+2. Class 2 (Heavy Motor Vehicle)  
+3. Motorcycle
+4. Other
+
+Just reply with the number (1, 2, 3, or 4):"""
+        
+        elif state == 'awaiting_license_type':
+            license_types = {
+                '1': 'Class 4',
+                '2': 'Class 2', 
+                '3': 'Motorcycle',
+                '4': 'Other'
+            }
+            
+            if message.strip() not in license_types:
+                return "Please choose 1, 2, 3, or 4"
+            
+            data['license_type'] = license_types[message.strip()]
+            self.set_registration_state(phone_number, 'awaiting_confirmation', data)
+            
+            return f"""✅ License type: {license_types[message.strip()]}
+
+*Step 5 of 5: Confirm Registration*
+
+📝 *Your Details:*
+• Name: {data['name']}
+• Email: {data.get('email', 'Not provided')}
+• Location: {data['location']}
+• License: {data['license_type']}
+
+Is this correct?
+
+1. Yes, create my account
+2. No, start over
+
+Reply with 1 or 2:"""
+        
+        elif state == 'awaiting_confirmation':
+            if message.strip() == '1':
+                # Create the student account
+                return self.create_student_account(phone_number, data)
+            elif message.strip() == '2':
+                self.clear_registration_state(phone_number)
+                return self.handle_unknown_student(phone_number)
+            else:
+                return "Please reply with 1 to confirm or 2 to start over"
+        
+        return "Registration error. Please start over by typing 'register'"
+
+    def create_student_account(self, phone_number, data):
+        """Create a new student account from registration data"""
+        try:
+            from models import Student, User
+            
+            # Auto-assign instructor based on location and availability
+            available_instructor = self.find_best_instructor(data['location'], data['license_type'])
+            
+            # Create student
+            student = Student()
+            student.name = data['name']
+            student.phone = self.clean_phone_number(phone_number)
+            student.email = data.get('email')
+            student.current_location = data['location']
+            student.license_type = data['license_type']
+            student.instructor_id = available_instructor.id if available_instructor else None
+            student.account_balance = 0.00
+            student.is_active = True
+            
+            db.session.add(student)
+            db.session.commit()
+            
+            # Clear registration state
+            self.clear_registration_state(phone_number)
+            
+            # Welcome message
+            instructor_name = available_instructor.get_full_name() if available_instructor else "Not assigned yet"
+            
+            response = f"""🎉 *Welcome to DriveLink, {data['name']}!*
+
+Your account has been created successfully! ✅
+
+👤 *Your Profile:*
+• Name: {data['name']}
+• Location: {data['location']}
+• License: {data['license_type']}
+• Instructor: {instructor_name}
+
+💰 *Next Steps:*
+1. Fund your account to book lessons
+2. Type *menu* to see all options
+3. Type *help* for available commands
+
+🚗 Ready to start your driving journey!
+
+Type *menu* to get started:"""
+            
+            logger.info(f"New student account created via WhatsApp: {data['name']} ({phone_number})")
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error creating student account: {str(e)}")
+            self.clear_registration_state(phone_number)
+            return """❌ Sorry, there was an error creating your account.
+
+Please try again or contact our office:
+📞 +263 77 123 4567
+
+Type 'register' to try again."""
+
+    def find_best_instructor(self, location, license_type):
+        """Find the best instructor for a student based on location and license type"""
+        from models import User, Vehicle
+        from sqlalchemy import func
+        
+        try:
+            # First, try to find instructor with vehicles for this license class in the area
+            instructor = db.session.query(User).join(Vehicle, User.id == Vehicle.instructor_id).filter(
+                User.role == 'instructor',
+                User.active == True,
+                Vehicle.license_class == license_type,  
+                Vehicle.is_active == True,
+                User.base_location.ilike(f'%{location}%')
+            ).first()
+            
+            if instructor:
+                return instructor
+            
+            # Fallback: find instructor with least students in the area
+            instructor = db.session.query(User).outerjoin(Student, User.id == Student.instructor_id).filter(
+                User.role == 'instructor',
+                User.active == True,
+                User.base_location.ilike(f'%{location}%')
+            ).group_by(User.id).order_by(func.count(Student.id)).first()
+            
+            if instructor:
+                return instructor
+            
+            # Final fallback: any active instructor
+            return User.query.filter_by(role='instructor', active=True).first()
+            
+        except Exception as e:
+            logger.error(f"Error finding instructor: {str(e)}")
+            return User.query.filter_by(role='instructor', active=True).first()
 
 # Global bot instance - will be initialized later with app context
 whatsapp_bot = WhatsAppBot()

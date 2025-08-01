@@ -121,6 +121,22 @@ class Student(db.Model):
         lesson_price = self.get_lesson_price(duration_minutes)
         return float(self.account_balance) >= lesson_price
 
+    def can_switch_instructor(self):
+        """Check if student can switch instructor (after 5 lessons or 1 week)"""
+        # Check if student has completed at least 5 lessons
+        completed_lessons = len([l for l in self.lessons if l.status == LESSON_COMPLETED])
+        
+        if completed_lessons >= 5:
+            return True
+        
+        # Check if it's been at least 1 week since registration
+        if self.registration_date:
+            days_since_registration = (datetime.now() - self.registration_date).days
+            if days_since_registration >= 7:
+                return True
+        
+        return False
+
 class Lesson(db.Model):
     __tablename__ = 'lessons'
     id = db.Column(db.Integer, primary_key=True)
