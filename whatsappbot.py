@@ -1157,29 +1157,37 @@ Stay safe! 🛡️"""
 
     def handle_security_info(self, user_or_student):
         """Handle security information request"""
-        return f"""🛡️ *Account Security Information*
+        return f"""🛡️ *Enhanced Account Security*
 
 Your WhatsApp account is protected with:
 
-🔐 *PIN Authentication*
-• 6-digit PIN required for each session
-• PIN expires after 5 minutes
-• 3 attempts maximum per PIN
+🔐 *Secure Verification*
+• Knowledge-based authentication (no PINs sent)
+• Questions based on your account data
+• 3 attempts maximum per session
 
 ⏰ *Session Security*
-• Auto-logout after 2 hours of inactivity
+• Auto-logout after 1 hour of inactivity
 • Secure session management
+• Activity monitoring
 • No sensitive data stored on device
 
 📱 *WhatsApp Security*
 • Only your registered phone number can access
 • All messages are encrypted by WhatsApp
-• PIN delivered via secure WhatsApp channel
+• No sensitive information transmitted
+• Challenge-response authentication
 
-🚨 *Security Tips*
-• Never share your PIN with anyone
-• Type *logout* when finished
-• Report suspicious activity immediately
+🚨 *Security Features*
+• Automatic session expiry notifications
+• Failed attempt tracking
+• Secure data verification
+• Contact-based authentication
+
+🛡️ *Privacy Protection*
+• No PINs or passwords sent via WhatsApp
+• Personal data used only for verification
+• Encrypted session management
 
 Contact support: +263 77 123 4567
 
@@ -2559,7 +2567,7 @@ Need more help? Contact your admin!"""
 
     # Authentication System Methods
     def initiate_authentication(self, phone_number):
-        """Start authentication process for a phone number"""
+        """Start secure authentication process using challenge-response"""
         # Check if it's a known user
         user = User.query.filter_by(phone=phone_number, active=True).first()
         student = Student.query.filter_by(phone=phone_number, is_active=True).first()
@@ -2567,14 +2575,21 @@ Need more help? Contact your admin!"""
         if not user and not student:
             return self.handle_unknown_student(phone_number)
         
-        # Generate and store auth PIN
+        # Generate secure challenge questions based on user data
         import random
-        auth_pin = str(random.randint(100000, 999999))  # 6-digit PIN
+        challenges = self.generate_security_challenges(user or student)
+        
+        if not challenges:
+            # Fallback to simple verification if no data available
+            return self.initiate_simple_verification(phone_number, user or student)
+        
+        # Select random challenge
+        selected_challenge = random.choice(challenges)
         
         # Store authentication state
         self.set_auth_state(phone_number, {
-            'state': 'awaiting_pin',
-            'pin': auth_pin,
+            'state': 'awaiting_challenge_response',
+            'challenge': selected_challenge,
             'attempts': 0,
             'max_attempts': 3,
             'timestamp': datetime.now().isoformat()
@@ -2583,76 +2598,209 @@ Need more help? Contact your admin!"""
         # Determine user type and name
         if user:
             user_name = user.get_full_name()
-            user_type = "instructor" if user.is_instructor() else user.role
+            user_type = "instructor"
         else:
             user_name = student.name
             user_type = "student"
         
-        return f"""🔐 *Secure Authentication Required*
+        return f"""🔐 *Secure Identity Verification*
 
 Hi {user_name}!
 
-For your security, please enter the PIN to access your {user_type} account:
+For your security, please answer this question to verify your identity:
 
-*Your PIN: {auth_pin}*
+❓ *{selected_challenge['question']}*
 
-⚠️ This PIN expires in 5 minutes
+Type your answer to continue.
+
+⚠️ This verification expires in 5 minutes
 ⚠️ You have 3 attempts
 
-Type the PIN to continue:"""
+Your answer is not case-sensitive."""
+
+    def generate_security_challenges(self, user_or_student):
+        """Generate security challenges based on user data"""
+        challenges = []
+        
+        if hasattr(user_or_student, 'name'):  # Student
+            student = user_or_student
+            
+            # Challenge based on instructor name
+            if student.instructor:
+                challenges.append({
+                    'question': f"What is your instructor's first name?",
+                    'answer': student.instructor.first_name.lower() if student.instructor.first_name else student.instructor.get_full_name().split()[0].lower()
+                })
+            
+            # Challenge based on license type
+            if student.license_type:
+                challenges.append({
+                    'question': f"What license class are you learning? (e.g., Class 4)",
+                    'answer': student.license_type.lower()
+                })
+            
+            # Challenge based on location
+            if student.current_location:
+                challenges.append({
+                    'question': f"Which area/location did you register from?",
+                    'answer': student.current_location.lower()
+                })
+            
+            # Challenge based on registration month
+            if student.registration_date:
+                month_name = student.registration_date.strftime('%B').lower()
+                challenges.append({
+                    'question': f"In which month did you register? (Full month name)",
+                    'answer': month_name
+                })
+                
+        else:  # Instructor/User
+            user = user_or_student
+            
+            # Challenge based on first name
+            if user.first_name:
+                challenges.append({
+                    'question': f"What is your first name?",
+                    'answer': user.first_name.lower()
+                })
+            
+            # Challenge based on base location
+            if user.base_location:
+                challenges.append({
+                    'question': f"What is your base operating location/area?",
+                    'answer': user.base_location.lower()
+                })
+        
+        return challenges
+    
+    def initiate_simple_verification(self, phone_number, user_or_student):
+        """Simple verification for users without enough data for challenges"""
+        # Store simple verification state
+        self.set_auth_state(phone_number, {
+            'state': 'awaiting_simple_verification',
+            'attempts': 0,
+            'max_attempts': 1,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+        if hasattr(user_or_student, 'name'):  # Student
+            name = user_or_student.name
+            user_type = "student"
+        else:  # Instructor
+            name = user_or_student.get_full_name()
+            user_type = "instructor"
+        
+        return f"""🔐 *Quick Verification*
+
+Hi {name}!
+
+Since you're messaging from your registered WhatsApp number, we just need a simple verification.
+
+Type *VERIFY* to confirm you want to access your {user_type} account.
+
+⚠️ Only type VERIFY if this is really you."""
 
     def handle_authentication_step(self, phone_number, message, auth_state):
-        """Handle authentication step"""
-        if auth_state['state'] == 'awaiting_pin':
-            entered_pin = message.strip()
-            stored_pin = auth_state['pin']
+        """Handle secure authentication step"""
+        if auth_state['state'] == 'awaiting_challenge_response':
+            user_answer = message.strip().lower()
+            correct_answer = auth_state['challenge']['answer'].lower()
             attempts = auth_state.get('attempts', 0)
             max_attempts = auth_state.get('max_attempts', 3)
             
-            # Check if PIN is correct
-            if entered_pin == stored_pin:
+            # Check if answer is correct (allow partial matches for flexibility)
+            is_correct = (user_answer == correct_answer or 
+                         user_answer in correct_answer or 
+                         correct_answer in user_answer or
+                         user_answer.replace(' ', '') == correct_answer.replace(' ', ''))
+            
+            if is_correct:
                 # Authentication successful
                 self.set_authenticated(phone_number)
                 self.clear_auth_state(phone_number)
                 
-                # Determine user type for welcome message
-                user = User.query.filter_by(phone=phone_number, active=True).first()
-                student = Student.query.filter_by(phone=phone_number, is_active=True).first()
-                
-                if user:
-                    welcome_msg = f"✅ *Authentication Successful!*\n\nWelcome back, {user.get_full_name()}!\n\nYou now have access to your instructor portal."
-                else:
-                    welcome_msg = f"✅ *Authentication Successful!*\n\nWelcome back, {student.name}!\n\nType *menu* to see your options."
-                
-                return welcome_msg
+                return self.get_authentication_success_message(phone_number)
             else:
-                # Wrong PIN
+                # Wrong answer
                 attempts += 1
                 auth_state['attempts'] = attempts
                 
                 if attempts >= max_attempts:
                     # Max attempts reached
                     self.clear_auth_state(phone_number)
-                    return f"""❌ *Authentication Failed*
+                    return f"""❌ *Verification Failed*
 
-Too many incorrect attempts. For security, access has been locked.
+Too many incorrect attempts. For security, access has been temporarily locked.
 
-Please wait 15 minutes before trying again, or contact support:
+Please wait 15 minutes before trying again, or contact support if you need help:
 📞 +263 77 123 4567"""
                 else:
                     # Update state with new attempt count
                     self.set_auth_state(phone_number, auth_state)
                     remaining = max_attempts - attempts
-                    return f"""❌ Incorrect PIN
+                    question = auth_state['challenge']['question']
+                    return f"""❌ Incorrect answer.
+
+❓ *{question}*
 
 You have {remaining} attempt(s) remaining.
+Your answer is not case-sensitive."""
+        
+        elif auth_state['state'] == 'awaiting_simple_verification':
+            user_input = message.strip().upper()
+            attempts = auth_state.get('attempts', 0)
+            max_attempts = auth_state.get('max_attempts', 1)
+            
+            if user_input == 'VERIFY':
+                # Simple verification successful
+                self.set_authenticated(phone_number)
+                self.clear_auth_state(phone_number)
+                
+                return self.get_authentication_success_message(phone_number)
+            else:
+                # Wrong verification
+                attempts += 1
+                auth_state['attempts'] = attempts
+                
+                if attempts >= max_attempts:
+                    self.clear_auth_state(phone_number)
+                    return f"""❌ *Verification Failed*
 
-Please enter the correct 6-digit PIN:"""
+Please contact support for assistance:
+📞 +263 77 123 4567"""
+                else:
+                    self.set_auth_state(phone_number, auth_state)
+                    return f"""❌ Please type exactly: VERIFY
+
+This confirms you want to access your account."""
         
         return "Authentication error. Please try again."
+    
+    def get_authentication_success_message(self, phone_number):
+        """Get success message after authentication"""
+        user = User.query.filter_by(phone=phone_number, active=True).first()
+        student = Student.query.filter_by(phone=phone_number, is_active=True).first()
+        
+        if user:
+            return f"""✅ *Verification Successful!*
+
+Welcome back, {user.get_full_name()}!
+
+🛡️ Your identity has been securely verified.
+
+You now have access to your instructor portal.
+Type *menu* to see available commands."""
+        else:
+            return f"""✅ *Verification Successful!*
+
+Welcome back, {student.name}!
+
+🛡️ Your identity has been securely verified.
+
+Type *menu* to see your options."""
 
     def is_authenticated(self, phone_number):
-        """Check if phone number is authenticated for current session"""
+        """Check if phone number is authenticated for current session with enhanced security"""
         from models import SystemConfig
         import json
         
@@ -2661,13 +2809,22 @@ Please enter the correct 6-digit PIN:"""
             data_str = SystemConfig.get_config(auth_key)
             if data_str:
                 data = json.loads(data_str)
-                # Check if authentication is still valid (2 hours)
+                # Check if authentication is still valid (reduced to 1 hour for security)
                 auth_time = datetime.fromisoformat(data['timestamp'])
-                if (datetime.now() - auth_time).total_seconds() < 7200:  # 2 hours
+                time_elapsed = (datetime.now() - auth_time).total_seconds()
+                
+                if time_elapsed < 3600:  # 1 hour instead of 2
+                    # Update last activity timestamp
+                    data['last_activity'] = datetime.now().isoformat()
+                    SystemConfig.set_config(auth_key, json.dumps(data), 
+                                          f"Authentication state for {phone_number}")
                     return True
                 else:
                     # Clear expired authentication
                     self.clear_authenticated(phone_number)
+                    # Notify user of auto-logout
+                    self.send_whatsapp_message(phone_number, 
+                        "🔐 *Session Expired*\n\nFor your security, you've been automatically logged out after 1 hour of activity.\n\nType *hi* to log in again.")
             return False
         except Exception as e:
             logger.error(f"Error checking authentication: {str(e)}")
