@@ -134,7 +134,7 @@ class WhatsAppBot:
             registration_state = self.get_registration_state(phone_number)
             if registration_state:
                 return self.handle_registration_step(phone_number, message, registration_state)
-            
+
             # Unknown number - start registration
             return self.handle_unknown_student(phone_number)
 
@@ -224,7 +224,94 @@ class WhatsAppBot:
         if message.startswith('select '):
             parts = message.split()
             if len(parts) >= 2:
-                return self.process_instructor_selection(student, parts[1])
+                # Handle instructor selection from the list
+                try:
+                    instructor_num = int(parts[1])
+                except (IndexError, ValueError):
+                    return "Please use format: select [number]\n\nExample: select 1"
+
+                    
+                nearby_instructors = self.get_nearby_instructors(student)
+
+                if instructor_num < 1 or instructor_num > len(nearby_instructors):
+                    return f"Invalid instructor number. Please choose between 1 and {len(nearby_instructors)}."
+
+                selected_instructor = nearby_instructors[instructor_num - 1]
+
+                # Store the selection in session for confirmation
+                self.set_session_data(student, 'selected_instructor_id', selected_instructor.id)
+                self.set_session_data(student, 'instructor_selection_number', instructor_num)
+                
+                # Show instructor details and ask for confirmation
+                response = f"👨‍🏫 *Confirm Instructor Choice?*\n\n"
+                response += f"You selected: {selected_instructor.get_full_name()}\n"
+                response += f"Base Area: {selected_instructor.base_location}\n"
+                response += f"Experience: {selected_instructor.experience_years or 'N/A'} years\n"
+                response += f"30min lesson: ${float(selected_instructor.hourly_rate_30min or 0):.2f}\n"
+                response += f"60min lesson: ${float(selected_instructor.hourly_rate_60min or 0):.2f}\n\n"
+                response += "• Type *choose [number]* to confirm this choice\n"
+                response += "• Type *back* to see the list of instructors again\n"
+                response += "• Type *menu* for main menu"
+
+                return response
+
+        # Handle instructor choice confirmation
+        if message.startswith('choose '):
+            try:
+                instructor_num = int(message.split()[1])
+                selected_instructor_id = self.get_session_data(student, 'selected_instructor_id')
+                stored_instructor_num = self.get_session_data(student, 'instructor_selection_number')
+
+                if instructor_num != stored_instructor_num or not selected_instructor_id:
+                    return "Please select an instructor first using *select [number]*"
+
+                from models import User
+                selected_instructor = User.query.get(selected_instructor_id)
+                if not selected_instructor:
+                    return "Selected instructor not found. Please try again."
+
+                # Check if student can switch instructors
+                if student.instructor_id and not student.can_switch_instructor():
+                    completed_lessons = Lesson.query.filter(Lesson.student_id == student.id, Lesson.status == LESSON_COMPLETED).count()
+
+                    days_since_registration = (datetime.now() - student.registration_date).days if student.registration_date else 0
+
+                    return f"""❌ *Cannot Switch Instructor Yet*
+
+You can switch instructors after:
+• Completing 5 lessons (current: {completed_lessons})
+• OR after 1 week of registration (current: {days_since_registration} days)
+
+This policy ensures continuity in your learning process.
+
+Type *menu* to return to main menu."""
+
+                # Assign the instructor
+                old_instructor_name = student.instructor.get_full_name() if student.instructor else None
+                student.instructor_id = selected_instructor.id
+                db.session.commit()
+
+                # Clear session data
+                self.clear_session_data(student, 'selected_instructor_id')
+                self.clear_session_data(student, 'instructor_selection_number')
+                self.set_session_state(student, 'main_menu')
+
+                if old_instructor_name:
+                    response = f"✅ *Instructor Changed Successfully!*\n\n"
+                    response += f"Previous: {old_instructor_name}\n"
+                    response += f"New: {selected_instructor.get_full_name()}\n\n"
+                else:
+                    response = f"✅ *Instructor Assigned Successfully!*\n\n"
+                    response += f"Your instructor: {selected_instructor.get_full_name()}\n"
+                    response += f"Location: {selected_instructor.base_location}\n\n"
+
+                response += "You can now start booking lessons!\n\n"
+                response += "Type *book* to schedule your first lesson\nType *menu* for main menu"
+
+                return response
+
+            except (IndexError, ValueError):
+                return "Please use format: choose [number]\n\nExample: choose 1"
 
         # Check for timeslot booking (e.g., "book 1" or "book 5")
         if message.startswith('book '):
@@ -638,7 +725,7 @@ Choose an option below:"""
                 # - Booking closes at 3:30 PM on the day
                 now = datetime.now()
                 slot_date = current_slot.date()
-                today = now.date()
+                today = now.date()```python
                 tomorrow = today + timedelta(days=1)
 
                 # Check if slot is available based on WhatsApp bot rules
@@ -966,7 +1053,7 @@ Type the name of your area:"""
         """Handle profile management menu"""
         # Check if student can switch instructor
         can_switch_instructor = self.can_switch_instructor(student)
-        
+
         message_body = f"""👤 *Your Profile*
 
 📝 Name: {student.name}
@@ -984,10 +1071,10 @@ What would you like to update?"""
             {"id": "email", "title": "📧 Update Email"},
             {"id": "fund", "title": "💰 Fund Account"}
         ]
-        
+
         if can_switch_instructor:
             quick_replies.insert(-1, {"id": "instructor", "title": "👨‍🏫 Switch Instructor"})
-        
+
         quick_replies.append({"id": "menu", "title": "🏠 Main Menu"})
 
         return self.send_interactive_message(student.phone, message_body, quick_replies)
@@ -995,7 +1082,7 @@ What would you like to update?"""
     def can_switch_instructor(self, student):
         """Check if student can switch instructor (after 5 lessons or 1 week)"""
         from models import Lesson, LESSON_COMPLETED
-        
+
         # Check if student has completed at least 5 lessons
         completed_lessons = Lesson.query.filter_by(
 
@@ -1035,16 +1122,16 @@ Stay safe! 🚗"""
             student_id=student.id,
             status=LESSON_COMPLETED
         ).count()
-        
+
         if completed_lessons >= 5:
             return True
-        
+
         # Check if it's been at least 1 week since registration
         if student.registration_date:
             days_since_registration = (datetime.now() - student.registration_date).days
             if days_since_registration >= 7:
                 return True
-        
+
         return False
 
     def handle_instructor_switch(self, student):
@@ -1054,9 +1141,9 @@ Stay safe! 🚗"""
                 student_id=student.id,
                 status=LESSON_COMPLETED
             ).count()
-            
+
             days_since_registration = (datetime.now() - student.registration_date).days if student.registration_date else 0
-            
+
             return f"""❌ *Cannot Switch Instructor Yet*
 
 You can switch instructors after:
@@ -1066,14 +1153,14 @@ You can switch instructors after:
 This policy ensures continuity in your learning process.
 
 Type *menu* to return to main menu."""
-        
+
         # Show available instructors
         return self.handle_find_instructors(student)
 
     def handle_email_update(self, student):
         """Handle email update request"""
         self.set_session_state(student, 'awaiting_email_update')
-        
+
         return f"""📧 *Update Email Address*
 
 Current email: {student.email or "Not set"}
@@ -1090,24 +1177,24 @@ Or type *cancel* to go back"""
             if email_text.lower().strip() == 'cancel':
                 self.set_session_state(student, 'main_menu')
                 return self.handle_profile_management(student)
-            
+
             email = email_text.strip().lower()
             if '@' not in email or '.' not in email.split('@')[1]:
                 return "Please enter a valid email address or type *cancel* to go back"
-            
+
             # Update student email
             student.email = email
             db.session.commit()
-            
+
             # Clear state
             self.set_session_state(student, 'main_menu')
-            
+
             return f"""✅ *Email Updated Successfully!*
 
 Your new email: {email}
 
 Type *menu* to return to main menu."""
-            
+
         except Exception as e:
             logger.error(f"Error updating email: {str(e)}")
             return "❌ Error updating email. Please try again or contact support."
@@ -1777,7 +1864,7 @@ Type your area name again:"""
         """Handle messages from unknown phone numbers - start registration"""
         # Set registration state for this phone number
         self.set_registration_state(phone_number, 'awaiting_name')
-        
+
         return f"""👋 *Welcome to DriveLink!*
 
 I don't recognize this number, but I can help you register right now! 📱
@@ -1987,7 +2074,7 @@ Just type the number or word!"""
         """Show instructor's weekly schedule"""
         start_date = datetime.now().date()
         end_date = start_date + timedelta(days=7)
-        
+
         lessons = Lesson.query.filter(
             Lesson.instructor_id == instructor.id,
             Lesson.status == LESSON_SCHEDULED,
@@ -2000,13 +2087,13 @@ Just type the number or word!"""
 
         response = f"📅 Your Schedule (Next 7 days):\n\n"
         current_date = None
-        
+
         for lesson in lessons:
             lesson_date = lesson.scheduled_date.date()
             if lesson_date != current_date:
                 response += f"\n📆 {lesson_date.strftime('%A, %B %d')}:\n"
                 current_date = lesson_date
-            
+
             time_str = lesson.scheduled_date.strftime('%I:%M %p')
             response += f"  • {time_str} - {lesson.student.name}\n"
             response += f"    ⏱️ {lesson.duration_minutes}min | 💰 ${float(lesson.cost):.2f}\n"
@@ -2056,7 +2143,7 @@ Just type the number or word!"""
             lesson.status = LESSON_CANCELLED
             lesson.updated_at = datetime.now()
             db.session.commit()
-            
+
             # Notify student with detailed message
             if lesson.student.phone:
                 cancel_msg = f"""❌ *Lesson Cancelled*
@@ -2074,7 +2161,7 @@ Please reschedule when convenient.
 • Type *book* to schedule new lesson
 • Type *lessons* to view remaining lessons
 • Contact your instructor if needed"""
-                
+
                 self.send_whatsapp_message(lesson.student.phone, cancel_msg)
             return f"✅ Lesson {lesson_id} cancelled. Student has been notified."
 
@@ -2092,7 +2179,7 @@ Your lesson has been confirmed:
 ⏱️ Duration: {lesson.duration_minutes} minutes
 
 See you there! 🚗"""
-                
+
                 self.send_whatsapp_message(lesson.student.phone, confirm_msg)
             return f"✅ Lesson {lesson_id} confirmed. Student has been notified."
 
@@ -2100,20 +2187,20 @@ See you there! 🚗"""
             lesson.status = LESSON_COMPLETED
             lesson.completed_date = datetime.now()
             lesson.updated_at = datetime.now()
-            
+
             # Update student progress
             if lesson.student:
                 lesson.student.lessons_completed += 1
                 # Deduct lesson cost from balance
                 lesson.student.account_balance = float(lesson.student.account_balance) - float(lesson.cost)
-            
+
             db.session.commit()
-            
+
             # Notify student of completion
             if lesson.student.phone:
                 progress_percentage = lesson.student.get_progress_percentage()
                 remaining_lessons = lesson.student.total_lessons_required - lesson.student.lessons_completed
-                
+
                 complete_msg = f"""🎉 *Lesson Completed!*
 
 Great job today, {lesson.student.name}!
@@ -2129,9 +2216,9 @@ Great job today, {lesson.student.name}!
 Keep up the great work! 🚗✨
 
 Type *progress* to see detailed stats"""
-                
+
                 self.send_whatsapp_message(lesson.student.phone, complete_msg)
-            
+
             return f"✅ Lesson {lesson_id} completed. Student progress updated and notified."
 
         return "❌ Unknown action. Use: cancel, confirm, or complete"
@@ -2162,7 +2249,7 @@ This feature is coming to WhatsApp soon! 🚀"""
         """Send 24-hour lesson reminder"""
         if not lesson.student.phone:
             return False
-            
+
         message = f"""🔔 *24-Hour Lesson Reminder*
 
 Hi {lesson.student.name}!
@@ -2186,7 +2273,7 @@ See you tomorrow! 🚗"""
         """Send 2-hour lesson reminder"""
         if not lesson.student.phone:
             return False
-            
+
         message = f"""⏰ *Final Reminder - 2 Hours*
 
 
@@ -2194,7 +2281,7 @@ See you tomorrow! 🚗"""
         """Check if student has low balance and send warning"""
         balance = float(student.account_balance)
         min_lesson_cost = student.get_lesson_price(30)  # Cost of 30-min lesson
-        
+
         if balance < min_lesson_cost:
             warning_msg = f"""⚠️ *Low Balance Warning*
 
@@ -2208,7 +2295,7 @@ Your account balance is running low:
 Please top up your account to continue booking lessons.
 
 Type *fund* for funding options."""
-            
+
             self.send_whatsapp_message(student.phone, warning_msg)
             return True
         return False
@@ -2217,7 +2304,7 @@ Type *fund* for funding options."""
         """Send weekly progress report to student"""
         from models import Lesson, LESSON_COMPLETED
         from datetime import timedelta
-        
+
         # Get lessons completed in the last week
         week_ago = datetime.now() - timedelta(days=7)
         recent_lessons = Lesson.query.filter(
@@ -2225,11 +2312,11 @@ Type *fund* for funding options."""
             Lesson.status == LESSON_COMPLETED,
             Lesson.completed_date >= week_ago
         ).count()
-        
+
         if recent_lessons > 0:
             progress_percentage = student.get_progress_percentage()
             remaining = student.total_lessons_required - student.lessons_completed
-            
+
             report_msg = f"""📊 *Weekly Progress Report*
 
 Hi {student.name}!
@@ -2246,7 +2333,7 @@ Here's your week in review:
 Keep up the excellent work! 🚗
 
 Type *book* to schedule your next lesson."""
-            
+
             self.send_whatsapp_message(student.phone, report_msg)
 
 
@@ -2267,7 +2354,7 @@ Please be ready! Good luck! 🚗✨"""
         """Send lesson reminder to instructor"""
         if not lesson.instructor.phone:
             return False
-            
+
         message = f"""📅 *Lesson Reminder*
 
 You have a lesson in 2 hours:
@@ -2348,7 +2435,7 @@ Need more help? Contact your admin!"""
         """Set registration state for a phone number"""
         from models import SystemConfig
         import json
-        
+
         registration_key = f"registration_{phone_number}"
         registration_data = {
             'state': state,
@@ -2356,7 +2443,7 @@ Need more help? Contact your admin!"""
             'data': data or {},
             'timestamp': datetime.now().isoformat()
         }
-        
+
         try:
             SystemConfig.set_config(registration_key, json.dumps(registration_data), 
                                   f"Registration state for {phone_number}")
@@ -2367,9 +2454,9 @@ Need more help? Contact your admin!"""
         """Get registration state for a phone number"""
         from models import SystemConfig
         import json
-        
+
         registration_key = f"registration_{phone_number}"
-        
+
         try:
             data_str = SystemConfig.get_config(registration_key)
             if data_str:
@@ -2389,7 +2476,7 @@ Need more help? Contact your admin!"""
     def clear_registration_state(self, phone_number):
         """Clear registration state for a phone number"""
         from models import SystemConfig
-        
+
         registration_key = f"registration_{phone_number}"
         try:
             config = SystemConfig.query.filter_by(key=registration_key).first()
@@ -2403,16 +2490,16 @@ Need more help? Contact your admin!"""
         """Handle each step of the registration process"""
         state = registration_state['state']
         data = registration_state.get('data', {})
-        
+
         if state == 'awaiting_name':
             # Validate name
             name = message.strip().title()
             if len(name) < 2 or not name.replace(' ', '').isalpha():
                 return "Please enter a valid name (letters only). Example: John Doe"
-            
+
             data['name'] = name
             self.set_registration_state(phone_number, 'awaiting_email', data)
-            
+
             return f"""✅ Thanks {name}!
 
 *Step 2 of 5: Email Address*
@@ -2422,7 +2509,7 @@ Please enter your email address:
 Example: john@email.com
 
 Or type *skip* if you don't have email"""
-        
+
         elif state == 'awaiting_email':
             if message.lower().strip() == 'skip':
                 data['email'] = None
@@ -2431,9 +2518,9 @@ Or type *skip* if you don't have email"""
                 if '@' not in email or '.' not in email.split('@')[1]:
                     return "Please enter a valid email address or type *skip*"
                 data['email'] = email
-            
+
             self.set_registration_state(phone_number, 'awaiting_location', data)
-            
+
             return f"""✅ Email saved!
 
 *Step 3 of 5: Your Location*
@@ -2452,12 +2539,12 @@ Which area in Harare are you located?
 • Other areas
 
 Just type your area name:"""
-        
+
         elif state == 'awaiting_location':
             location = message.strip().title()
             data['location'] = location
             self.set_registration_state(phone_number, 'awaiting_license_type', data)
-            
+
             return f"""✅ Location set to {location}!
 
 *Step 4 of 5: License Type*
@@ -2470,7 +2557,7 @@ What license are you learning for?
 4. Other
 
 Just reply with the number (1, 2, 3, or 4):"""
-        
+
         elif state == 'awaiting_license_type':
             license_types = {
                 '1': 'Class 4',
@@ -2478,13 +2565,13 @@ Just reply with the number (1, 2, 3, or 4):"""
                 '3': 'Motorcycle',
                 '4': 'Other'
             }
-            
+
             if message.strip() not in license_types:
                 return "Please choose 1, 2, 3, or 4"
-            
+
             data['license_type'] = license_types[message.strip()]
             self.set_registration_state(phone_number, 'awaiting_confirmation', data)
-            
+
             return f"""✅ License type: {license_types[message.strip()]}
 
 *Step 5 of 5: Confirm Registration*
@@ -2501,7 +2588,7 @@ Is this correct?
 2. No, start over
 
 Reply with 1 or 2:"""
-        
+
         elif state == 'awaiting_confirmation':
             if message.strip() == '1':
                 # Create the student account
@@ -2511,17 +2598,17 @@ Reply with 1 or 2:"""
                 return self.handle_unknown_student(phone_number)
             else:
                 return "Please reply with 1 to confirm or 2 to start over"
-        
+
         return "Registration error. Please start over by typing 'register'"
 
     def create_student_account(self, phone_number, data):
         """Create a new student account from registration data"""
         try:
             from models import Student, User
-            
+
             # Auto-assign instructor based on location and availability
             available_instructor = self.find_best_instructor(data['location'], data['license_type'])
-            
+
             # Create student
             student = Student()
             student.name = data['name']
@@ -2532,16 +2619,16 @@ Reply with 1 or 2:"""
             student.instructor_id = available_instructor.id if available_instructor else None
             student.account_balance = 0.00
             student.is_active = True
-            
+
             db.session.add(student)
             db.session.commit()
-            
+
             # Clear registration state
             self.clear_registration_state(phone_number)
-            
+
             # Send welcome message with instructor notification
             instructor_name = available_instructor.get_full_name() if available_instructor else "Not assigned yet"
-            
+
             # Notify instructor about new student
             if available_instructor and available_instructor.phone:
                 instructor_msg = f"""👋 *New Student Assigned!*
@@ -2552,12 +2639,12 @@ Reply with 1 or 2:"""
 🎯 License: {data['license_type']}
 
 Welcome them and help them get started! 🚗"""
-                
+
                 try:
                     self.send_whatsapp_message(available_instructor.phone, instructor_msg)
                 except Exception as e:
                     logger.error(f"Failed to notify instructor: {str(e)}")
-            
+
             response = f"""🎉 *Welcome to DriveLink, {data['name']}!*
 
 Your account has been created successfully! ✅
@@ -2578,10 +2665,10 @@ Your account has been created successfully! ✅
 Your instructor has been notified and will contact you soon.
 
 Type *menu* to get started:"""
-            
+
             logger.info(f"New student account created via WhatsApp: {data['name']} ({phone_number})")
             return response
-            
+
         except Exception as e:
             logger.error(f"Error creating student account: {str(e)}")
             self.clear_registration_state(phone_number)
@@ -2596,7 +2683,7 @@ Type 'register' to try again."""
         """Find the best instructor for a student based on location and license type"""
         from models import User, Vehicle
         from sqlalchemy import func
-        
+
         try:
             # First, try to find instructor with vehicles for this license class in the area
             instructor = db.session.query(User).join(Vehicle, User.id == Vehicle.instructor_id).filter(
@@ -2606,26 +2693,63 @@ Type 'register' to try again."""
                 Vehicle.is_active == True,
                 User.base_location.ilike(f'%{location}%')
             ).first()
-            
+
             if instructor:
                 return instructor
-            
+
             # Fallback: find instructor with least students in the area
             instructor = db.session.query(User).outerjoin(Student, User.id == Student.instructor_id).filter(
                 User.role == 'instructor',
                 User.active == True,
                 User.base_location.ilike(f'%{location}%')
             ).group_by(User.id).order_by(func.count(Student.id)).first()
-            
+
             if instructor:
                 return instructor
-            
+
             # Final fallback: any active instructor
             return User.query.filter_by(role='instructor', active=True).first()
-            
+
         except Exception as e:
             logger.error(f"Error finding instructor: {str(e)}")
             return User.query.filter_by(role='instructor', active=True).first()
+    
+    def set_session_data(self, student, key, value):
+        """Store session data"""
+        session_id = f"whatsapp_{student.phone}_{datetime.now().strftime('%Y%m%d')}"
+        session = WhatsAppSession.query.filter_by(session_id=session_id).first()
+
+        if not session:
+            session = WhatsAppSession(
+                student_id=student.id,
+                session_id=session_id
+            )
+            db.session.add(session)
+
+        if not session.session_data:
+            session.session_data = {}
+
+        session.session_data[key] = value
+        db.session.commit()
+        
+    def get_session_data(self, student, key):
+        """Retrieve session data"""
+        session_id = f"whatsapp_{student.phone}_{datetime.now().strftime('%Y%m%d')}"
+        session = WhatsAppSession.query.filter_by(session_id=session_id).first()
+
+        if session and session.session_data and key in session.session_data:
+            return session.session_data[key]
+        else:
+            return None
+            
+    def clear_session_data(self, student, key):
+        """Clear specific session data"""
+        session_id = f"whatsapp_{student.phone}_{datetime.now().strftime('%Y%m%d')}"
+        session = WhatsAppSession.query.filter_by(session_id=session_id).first()
+
+        if session and session.session_data and key in session.session_data:
+            del session.session_data[key]
+            db.session.commit()
 
 # Global bot instance - will be initialized later with app context
 whatsapp_bot = WhatsAppBot()
