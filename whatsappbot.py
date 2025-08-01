@@ -29,7 +29,8 @@ class WhatsAppBot:
             'profile': self.handle_profile_management,
             'location': self.handle_change_location,
             'balance': self.handle_check_balance,
-            'fund': self.handle_fund_account
+            'fund': self.handle_fund_account,
+            'emergency': self.handle_emergency_contact
         }
 
         # Initialize Twilio client - will be done later with app context
@@ -800,6 +801,8 @@ Choose an option below:"""
 • progress - Your stats
 • cancel - Cancel upcoming
 • menu - Back to start
+• fund - Top up account
+• emergency - Emergency contact
 
 💡 *Pro Tips:*
 • Lessons: 6:00 AM - 4:00 PM (Mon-Sat)
@@ -807,12 +810,16 @@ Choose an option below:"""
 • Cancel at least 2 hours before lesson time
 • Tomorrow's lessons: book after 6:00 PM today
 
-📞 Need more help? Contact your instructor directly."""
+📞 *Need Help?*
+• Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}
+• Emergency: Type *emergency*
+• Office: +263 77 123 4567"""
 
         quick_replies = [
             {"id": "book", "title": "📅 Book Lesson"},
             {"id": "lessons", "title": "📋 My Lessons"},
             {"id": "progress", "title": "📊 My Progress"},
+            {"id": "emergency", "title": "🚨 Emergency"},
             {"id": "menu", "title": "🏠 Main Menu"}
         ]
 
@@ -991,6 +998,40 @@ What would you like to update?"""
         
         # Check if student has completed at least 5 lessons
         completed_lessons = Lesson.query.filter_by(
+
+
+    def handle_emergency_contact(self, student):
+        """Handle emergency contact request"""
+        message_body = f"""🚨 *Emergency Contacts*
+
+Hi {student.name},
+
+If you need immediate assistance:
+
+👨‍🏫 *Your Instructor:*
+• {student.instructor.get_full_name() if student.instructor else "Not assigned"}
+• Phone: {student.instructor.phone if student.instructor and student.instructor.phone else "Contact office"}
+
+🏢 *DriveLink Office:*
+• Phone: +263 77 123 4567
+• Emergency: +263 77 999 8888
+• Email: help@drivelink.co.zw
+
+⚠️ *For road emergencies:*
+• Police: 999
+• Medical: 994
+• AA Zimbabwe: +263 4 369 500
+
+Stay safe! 🚗"""
+
+        quick_replies = [
+            {"id": "menu", "title": "🏠 Main Menu"},
+            {"id": "help", "title": "❓ More Help"}
+        ]
+
+        return self.send_interactive_message(student.phone, message_body, quick_replies)
+
+
             student_id=student.id,
             status=LESSON_COMPLETED
         ).count()
@@ -2013,24 +2054,85 @@ Just type the number or word!"""
 
         if action == 'cancel':
             lesson.status = LESSON_CANCELLED
+            lesson.updated_at = datetime.now()
             db.session.commit()
-            # Notify student
+            
+            # Notify student with detailed message
             if lesson.student.phone:
-                cancel_msg = f"❌ Your lesson on {lesson.scheduled_date.strftime('%m/%d at %I:%M %p')} has been cancelled by your instructor. Please reschedule."
-                send_whatsapp_message(lesson.student.phone, cancel_msg)
+                cancel_msg = f"""❌ *Lesson Cancelled*
+
+Hi {lesson.student.name},
+
+Your instructor has cancelled your lesson:
+
+📅 Date: {lesson.scheduled_date.strftime('%A, %B %d')}
+🕐 Time: {lesson.scheduled_date.strftime('%I:%M %p')}
+
+Please reschedule when convenient.
+
+💬 *Quick Actions:*
+• Type *book* to schedule new lesson
+• Type *lessons* to view remaining lessons
+• Contact your instructor if needed"""
+                
+                self.send_whatsapp_message(lesson.student.phone, cancel_msg)
             return f"✅ Lesson {lesson_id} cancelled. Student has been notified."
 
         elif action == 'confirm':
-            # Add confirmation logic if needed
-            return f"✅ Lesson {lesson_id} confirmed."
+            # Send confirmation to student
+            if lesson.student.phone:
+                confirm_msg = f"""✅ *Lesson Confirmed*
+
+Hi {lesson.student.name}!
+
+Your lesson has been confirmed:
+
+📅 Date: {lesson.scheduled_date.strftime('%A, %B %d')}
+🕐 Time: {lesson.scheduled_date.strftime('%I:%M %p')}
+⏱️ Duration: {lesson.duration_minutes} minutes
+
+See you there! 🚗"""
+                
+                self.send_whatsapp_message(lesson.student.phone, confirm_msg)
+            return f"✅ Lesson {lesson_id} confirmed. Student has been notified."
 
         elif action == 'complete':
             lesson.status = LESSON_COMPLETED
-            db.session.commit()
+            lesson.completed_date = datetime.now()
+            lesson.updated_at = datetime.now()
+            
             # Update student progress
-            lesson.student.total_lessons_completed += 1
+            if lesson.student:
+                lesson.student.lessons_completed += 1
+                # Deduct lesson cost from balance
+                lesson.student.account_balance = float(lesson.student.account_balance) - float(lesson.cost)
+            
             db.session.commit()
-            return f"✅ Lesson {lesson_id} marked as completed. Student progress updated."
+            
+            # Notify student of completion
+            if lesson.student.phone:
+                progress_percentage = lesson.student.get_progress_percentage()
+                remaining_lessons = lesson.student.total_lessons_required - lesson.student.lessons_completed
+                
+                complete_msg = f"""🎉 *Lesson Completed!*
+
+Great job today, {lesson.student.name}!
+
+📊 *Your Progress:*
+• Completed: {lesson.student.lessons_completed}/{lesson.student.total_lessons_required} lessons
+• Progress: {progress_percentage:.1f}%
+• Remaining: {remaining_lessons} lessons
+
+💰 Cost: ${float(lesson.cost):.2f} deducted
+💳 New Balance: ${float(lesson.student.account_balance):.2f}
+
+Keep up the great work! 🚗✨
+
+Type *progress* to see detailed stats"""
+                
+                self.send_whatsapp_message(lesson.student.phone, complete_msg)
+            
+            return f"✅ Lesson {lesson_id} completed. Student progress updated and notified."
 
         return "❌ Unknown action. Use: cancel, confirm, or complete"
 
@@ -2054,6 +2156,167 @@ This feature is coming to WhatsApp soon! 🚀"""
             Lesson.status == LESSON_SCHEDULED,
             Lesson.scheduled_date >= datetime.combine(today, datetime.min.time()),
             Lesson.scheduled_date < datetime.combine(today + timedelta(days=1), datetime.min.time())
+
+
+    def send_lesson_reminder_24h(self, lesson):
+        """Send 24-hour lesson reminder"""
+        if not lesson.student.phone:
+            return False
+            
+        message = f"""🔔 *24-Hour Lesson Reminder*
+
+Hi {lesson.student.name}!
+
+Don't forget your driving lesson tomorrow:
+
+📅 Date: {lesson.scheduled_date.strftime('%A, %B %d')}
+🕐 Time: {lesson.scheduled_date.strftime('%I:%M %p')}
+⏱️ Duration: {lesson.duration_minutes} minutes
+👨‍🏫 Instructor: {lesson.instructor.get_full_name()}
+
+💡 *Quick Commands:*
+• Type *lessons* to view all lessons
+• Type *cancel {lesson.id}* to cancel (if needed)
+
+See you tomorrow! 🚗"""
+
+        return self.send_whatsapp_message(lesson.student.phone, message)
+
+    def send_lesson_reminder_2h(self, lesson):
+        """Send 2-hour lesson reminder"""
+        if not lesson.student.phone:
+            return False
+            
+        message = f"""⏰ *Final Reminder - 2 Hours*
+
+
+    def check_and_warn_low_balance(self, student):
+        """Check if student has low balance and send warning"""
+        balance = float(student.account_balance)
+        min_lesson_cost = student.get_lesson_price(30)  # Cost of 30-min lesson
+        
+        if balance < min_lesson_cost:
+            warning_msg = f"""⚠️ *Low Balance Warning*
+
+Hi {student.name},
+
+Your account balance is running low:
+
+💰 Current Balance: ${balance:.2f}
+💡 Minimum for 30-min lesson: ${min_lesson_cost:.2f}
+
+Please top up your account to continue booking lessons.
+
+Type *fund* for funding options."""
+            
+            self.send_whatsapp_message(student.phone, warning_msg)
+            return True
+        return False
+
+    def send_weekly_progress_report(self, student):
+        """Send weekly progress report to student"""
+        from models import Lesson, LESSON_COMPLETED
+        from datetime import timedelta
+        
+        # Get lessons completed in the last week
+        week_ago = datetime.now() - timedelta(days=7)
+        recent_lessons = Lesson.query.filter(
+            Lesson.student_id == student.id,
+            Lesson.status == LESSON_COMPLETED,
+            Lesson.completed_date >= week_ago
+        ).count()
+        
+        if recent_lessons > 0:
+            progress_percentage = student.get_progress_percentage()
+            remaining = student.total_lessons_required - student.lessons_completed
+            
+            report_msg = f"""📊 *Weekly Progress Report*
+
+Hi {student.name}!
+
+Here's your week in review:
+
+🎯 *This Week:*
+• Lessons completed: {recent_lessons}
+• Total progress: {progress_percentage:.1f}%
+• Lessons remaining: {remaining}
+
+💰 Current balance: ${float(student.account_balance):.2f}
+
+Keep up the excellent work! 🚗
+
+Type *book* to schedule your next lesson."""
+            
+            self.send_whatsapp_message(student.phone, report_msg)
+
+
+
+Hi {lesson.student.name}!
+
+Your driving lesson starts in 2 hours:
+
+🕐 Time: {lesson.scheduled_date.strftime('%I:%M %p')}
+👨‍🏫 Instructor: {lesson.instructor.get_full_name()}
+📍 Location: {lesson.location or 'Will be confirmed by instructor'}
+
+Please be ready! Good luck! 🚗✨"""
+
+        return self.send_whatsapp_message(lesson.student.phone, message)
+
+    def send_instructor_lesson_reminder(self, lesson):
+        """Send lesson reminder to instructor"""
+        if not lesson.instructor.phone:
+            return False
+            
+        message = f"""📅 *Lesson Reminder*
+
+You have a lesson in 2 hours:
+
+👤 Student: {lesson.student.name}
+📞 Phone: {lesson.student.phone}
+🕐 Time: {lesson.scheduled_date.strftime('%I:%M %p')}
+⏱️ Duration: {lesson.duration_minutes} minutes
+📍 Location: {lesson.location or 'TBD'}
+
+💡 Commands:
+• *complete {lesson.id}* after lesson
+• *cancel {lesson.id}* if needed"""
+
+        return self.send_whatsapp_message(lesson.instructor.phone, message)
+
+    def send_whatsapp_message(self, phone_number, message):
+        """Enhanced WhatsApp message sending with better error handling"""
+        try:
+            if not self.twilio_client:
+                logger.warning(f"Twilio not configured. Mock sending to {phone_number}: {message}")
+                return False
+
+            if not self.twilio_phone:
+                logger.error("Twilio WhatsApp number not configured")
+                return False
+
+            # Clean phone number format
+            clean_phone = self.clean_phone_number(phone_number)
+
+            # Prepare message parameters
+            from_number = f'whatsapp:{self.twilio_phone}' if not self.twilio_phone.startswith('whatsapp:') else self.twilio_phone
+            to_number = f'whatsapp:{clean_phone}'
+
+            # Send message via Twilio
+            message_instance = self.twilio_client.messages.create(
+                body=message,
+                from_=from_number,
+                to=to_number
+            )
+
+            logger.info(f"WhatsApp message sent successfully to {clean_phone}, SID: {message_instance.sid}")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to send WhatsApp message to {phone_number}: {str(e)}")
+            return False
+
+
         ).count()
 
     def instructor_help(self, instructor):
@@ -2276,8 +2539,24 @@ Reply with 1 or 2:"""
             # Clear registration state
             self.clear_registration_state(phone_number)
             
-            # Welcome message
+            # Send welcome message with instructor notification
             instructor_name = available_instructor.get_full_name() if available_instructor else "Not assigned yet"
+            
+            # Notify instructor about new student
+            if available_instructor and available_instructor.phone:
+                instructor_msg = f"""👋 *New Student Assigned!*
+
+📝 Name: {data['name']}
+📞 Phone: {student.phone}
+📍 Location: {data['location']}
+🎯 License: {data['license_type']}
+
+Welcome them and help them get started! 🚗"""
+                
+                try:
+                    self.send_whatsapp_message(available_instructor.phone, instructor_msg)
+                except Exception as e:
+                    logger.error(f"Failed to notify instructor: {str(e)}")
             
             response = f"""🎉 *Welcome to DriveLink, {data['name']}!*
 
@@ -2295,6 +2574,8 @@ Your account has been created successfully! ✅
 3. Type *help* for available commands
 
 🚗 Ready to start your driving journey!
+
+Your instructor has been notified and will contact you soon.
 
 Type *menu* to get started:"""
             

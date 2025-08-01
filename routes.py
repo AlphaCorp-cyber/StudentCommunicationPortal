@@ -797,6 +797,93 @@ def complete_lesson(lesson_id):
         flash('Access denied.', 'error')
         return redirect(url_for('lessons'))
     
+
+
+@app.route('/api/send-lesson-reminders')
+@require_role('admin')
+def send_lesson_reminders():
+    """Send automated lesson reminders"""
+    from whatsappbot import whatsapp_bot
+    from datetime import timedelta
+    
+    try:
+        # Initialize bot
+        whatsapp_bot.initialize_twilio()
+        
+        current_time = datetime.now()
+        
+        # 24-hour reminders
+        tomorrow_start = current_time + timedelta(hours=24)
+        tomorrow_end = tomorrow_start + timedelta(hours=1)
+        
+        lessons_24h = Lesson.query.filter(
+            Lesson.status == LESSON_SCHEDULED,
+            Lesson.scheduled_date >= tomorrow_start,
+            Lesson.scheduled_date <= tomorrow_end
+        ).all()
+        
+        # 2-hour reminders
+        soon_start = current_time + timedelta(hours=2)
+        soon_end = soon_start + timedelta(minutes=30)
+        
+        lessons_2h = Lesson.query.filter(
+            Lesson.status == LESSON_SCHEDULED,
+            Lesson.scheduled_date >= soon_start,
+            Lesson.scheduled_date <= soon_end
+        ).all()
+        
+        sent_count = 0
+        
+        # Send 24-hour reminders
+        for lesson in lessons_24h:
+            if whatsapp_bot.send_lesson_reminder_24h(lesson):
+                sent_count += 1
+        
+        # Send 2-hour reminders (student and instructor)
+        for lesson in lessons_2h:
+            if whatsapp_bot.send_lesson_reminder_2h(lesson):
+                sent_count += 1
+            if whatsapp_bot.send_instructor_lesson_reminder(lesson):
+                sent_count += 1
+        
+        return jsonify({
+            'success': True,
+            'message': f'Sent {sent_count} reminders',
+            'lessons_24h': len(lessons_24h),
+            'lessons_2h': len(lessons_2h)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error sending reminders: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/check-low-balances')
+@require_role('admin')
+def check_low_balances():
+    """Check and warn students with low balances"""
+    from whatsappbot import whatsapp_bot
+    
+    try:
+        whatsapp_bot.initialize_twilio()
+        
+        students = Student.query.filter_by(is_active=True).all()
+        warned_count = 0
+        
+        for student in students:
+            if whatsapp_bot.check_and_warn_low_balance(student):
+                warned_count += 1
+        
+        return jsonify({
+            'success': True,
+            'message': f'Warned {warned_count} students about low balance',
+            'total_students': len(students)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking balances: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
     try:
         rating_value = None
         if request.form.get('rating') and request.form.get('rating').strip():
