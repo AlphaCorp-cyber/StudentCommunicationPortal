@@ -1,8 +1,8 @@
-# myInstructor 2.0
+# DriveLink
 
 ## Overview
 
-myInstructor 2.0 is a modern driving school management platform that combines WhatsApp for student interactions with a comprehensive web portal for instructors, admins, and super admins. The system is designed to simplify student onboarding, lesson bookings, instructor management, and progress tracking.
+DriveLink is a modern driving school management platform that combines WhatsApp for student interactions with a comprehensive web portal for instructors, admins, and super admins. The system is designed to simplify student onboarding, lesson bookings, instructor management, and progress tracking.
 
 ## System Architecture
 
@@ -144,6 +144,7 @@ The application now uses a .env file for easy configuration management:
 
 ## Changelog
 
+- August 1, 2025: Complete rebranding to DriveLink - updated all templates, JavaScript files, email addresses, and documentation to use consistent DriveLink branding throughout the system
 - July 31, 2025: Added instructor WhatsApp functionality - instructors can now use the same WhatsApp bot with dedicated features like viewing students, managing lessons, and checking schedules
 - July 31, 2025: Successfully migrated from Replit Agent to Replit environment with PostgreSQL database setup, fixed JavaScript errors, and restored DriveLink branding
 - July 16, 2025: Simplified to reliable numbered text system (1, 2, 3) instead of Quick Reply buttons due to WhatsApp Business approval requirements

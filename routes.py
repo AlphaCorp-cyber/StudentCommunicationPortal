@@ -1262,8 +1262,8 @@ def create_whatsapp_template():
         
         # Create a test template
         template_sid = bot.create_quick_reply_template(
-            template_name="myinstructor_menu",
-            body_text="Welcome to myInstructor! How can I help you today?",
+            template_name="drivelink_menu",
+            body_text="Welcome to DriveLink! How can I help you today?",
             button_texts=["View Lessons", "Book Lesson", "Check Progress"]
         )
         

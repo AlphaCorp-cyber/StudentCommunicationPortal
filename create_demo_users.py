@@ -14,7 +14,7 @@ def create_demo_users():
         users = [
             {
                 'username': 'instructor',
-                'email': 'instructor@myinstructor.com',
+                'email': 'instructor@drivelink.com',
                 'password': 'password123',
                 'first_name': 'John',
                 'last_name': 'Instructor',
@@ -22,7 +22,7 @@ def create_demo_users():
             },
             {
                 'username': 'admin',
-                'email': 'admin@myinstructor.com',
+                'email': 'admin@drivelink.com',
                 'password': 'password123',
                 'first_name': 'Jane',
                 'last_name': 'Admin',
@@ -30,7 +30,7 @@ def create_demo_users():
             },
             {
                 'username': 'superadmin',
-                'email': 'superadmin@myinstructor.com',
+                'email': 'superadmin@drivelink.com',
                 'password': 'password123',
                 'first_name': 'Super',
                 'last_name': 'Admin',

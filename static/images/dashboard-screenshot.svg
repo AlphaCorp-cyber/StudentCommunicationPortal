@@ -4,7 +4,7 @@
   
   <!-- Header/Navigation -->
   <rect x="0" y="0" width="800" height="60" rx="15" fill="#2d3748"/>
-  <text x="20" y="35" fill="#ffffff" font-size="18" font-weight="bold" font-family="Arial, sans-serif">myInstructor 2.0</text>
+  <text x="20" y="35" fill="#ffffff" font-size="18" font-weight="bold" font-family="Arial, sans-serif">DriveLink</text>
   <circle cx="750" cy="30" r="15" fill="#4a5568"/>
   <text x="744" y="35" fill="#ffffff" font-size="12" font-family="Arial, sans-serif">A</text>
   

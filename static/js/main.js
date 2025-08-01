@@ -1,4 +1,4 @@
-/* myInstructor 2.0 Main JavaScript */
+/* DriveLink Main JavaScript */
 
 // Initialize application when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -22,7 +22,7 @@ function initializeApp() {
     // Initialize notification system
     initializeNotifications();
     
-    console.log('myInstructor 2.0 initialized successfully');
+    console.log('DriveLink initialized successfully');
 }
 
 // Initialize Bootstrap tooltips
@@ -480,7 +480,7 @@ function clearSavedFormData(formId) {
 }
 
 // Export utilities for global access
-window.myInstructorUtils = utils;
+window.driveLinkUtils = utils;
 window.showToast = utils.showToast;
 window.confirmAction = utils.confirmAction;
 window.copyToClipboard = utils.copyToClipboard;

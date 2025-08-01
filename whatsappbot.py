@@ -394,7 +394,7 @@ Type *menu* to return to main menu."""
         """Handle greeting messages with interactive buttons"""
         message_body = f"""Hello {student.name}! 👋
 
-Welcome to myInstructor 2.0 WhatsApp Bot!
+Welcome to DriveLink WhatsApp Bot!
 
 👨‍🏫 Your instructor: {student.instructor.get_full_name() if student.instructor else "Not assigned"}
 
