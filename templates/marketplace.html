@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Find Driving Instructors - DriveLink{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Hero Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="bg-primary text-white rounded p-4 text-center">
+                <h1 class="mb-3">Find Your Perfect Driving Instructor</h1>
+                <p class="lead">Connect with verified driving instructors in your area</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Find Instructors</h5>
+                </div>
+                <div class="card-body">
+                    <form id="instructor-search">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label for="location">Location</label>
+                                <input type="text" class="form-control" id="location" placeholder="Enter your area">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="license-type">License Type</label>
+                                <select class="form-control" id="license-type">
+                                    <option value="Class 4">Class 4</option>
+                                    <option value="Class 2">Class 2</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="max-price">Max Price/Hour</label>
+                                <input type="number" class="form-control" id="max-price" placeholder="50">
+                            </div>
+                            <div class="col-md-2">
+                                <label for="radius">Radius (km)</label>
+                                <select class="form-control" id="radius">
+                                    <option value="5">5 km</option>
+                                    <option value="10" selected>10 km</option>
+                                    <option value="20">20 km</option>
+                                    <option value="50">50 km</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label>&nbsp;</label>
+                                <button type="submit" class="btn btn-primary btn-block">
+                                    <i data-feather="search"></i> Search
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructors Grid -->
+    <div class="row" id="instructors-grid">
+        {% for instructor in instructors %}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="mr-3">
+                            {% if instructor.profile_image_url %}
+                            <img src="{{ instructor.profile_image_url }}" class="rounded-circle" width="60" height="60" alt="{{ instructor.get_full_name() }}">
+                            {% else %}
+                            <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                                <span class="text-white font-weight-bold">{{ instructor.get_full_name()[0] }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <h5 class="mb-1">{{ instructor.get_full_name() }}</h5>
+                            <div class="mb-1">
+                                {% if instructor.average_rating > 0 %}
+                                <span class="text-warning">
+                                    {% for i in range(5) %}
+                                        {% if i < instructor.average_rating %}⭐{% else %}☆{% endif %}
+                                    {% endfor %}
+                                </span>
+                                <small class="text-muted">({{ "%.1f"|format(instructor.average_rating) }})</small>
+                                {% else %}
+                                <small class="text-muted">New instructor</small>
+                                {% endif %}
+                            </div>
+                            <small class="text-muted">{{ instructor.base_location or 'Location not specified' }}</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        {% if instructor.bio %}
+                        <p class="text-muted small">{{ instructor.bio[:100] }}{% if instructor.bio|length > 100 %}...{% endif %}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="row text-center mb-3">
+                        <div class="col">
+                            <small class="text-muted">Experience</small>
+                            <div class="font-weight-bold">{{ instructor.experience_years or 0 }} years</div>
+                        </div>
+                        <div class="col">
+                            <small class="text-muted">Students</small>
+                            <div class="font-weight-bold">{{ instructor.student_count }}</div>
+                        </div>
+                        <div class="col">
+                            <small class="text-muted">Reviews</small>
+                            <div class="font-weight-bold">{{ instructor.reviews_count }}</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="font-weight-bold">30 min lesson:</span>
+                            <span class="text-success">${{ "%.0f"|format(instructor.hourly_rate_30min or 25) }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="font-weight-bold">60 min lesson:</span>
+                            <span class="text-success">${{ "%.0f"|format(instructor.hourly_rate_60min or 40) }}</span>
+                        </div>
+                    </div>
+
+                    {% if instructor.can_accept_students %}
+                    <div class="mb-2">
+                        <span class="badge badge-success">
+                            <i data-feather="check" style="width: 12px; height: 12px;"></i>
+                            Accepting Students
+                        </span>
+                    </div>
+                    {% else %}
+                    <div class="mb-2">
+                        <span class="badge badge-secondary">
+                            <i data-feather="x" style="width: 12px; height: 12px;"></i>
+                            Fully Booked
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="card-footer">
+                    <div class="row">
+                        <div class="col">
+                            <a href="{{ url_for('subscription.instructor_profile', instructor_id=instructor.id) }}" 
+                               class="btn btn-outline-primary btn-sm btn-block">
+                                <i data-feather="user"></i> View Profile
+                            </a>
+                        </div>
+                        <div class="col">
+                            {% if instructor.can_accept_students %}
+                            <button class="btn btn-primary btn-sm btn-block book-lesson-btn" 
+                                    data-instructor-id="{{ instructor.id }}"
+                                    data-instructor-name="{{ instructor.get_full_name() }}">
+                                <i data-feather="calendar"></i> Book Lesson
+                            </button>
+                            {% else %}
+                            <button class="btn btn-secondary btn-sm btn-block" disabled>
+                                <i data-feather="x"></i> Unavailable
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not instructors %}
+    <div class="row">
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i data-feather="search" class="text-muted mb-3" style="width: 64px; height: 64px;"></i>
+                <h4 class="text-muted">No instructors found</h4>
+                <p class="text-muted">Try adjusting your search criteria or check back later for new instructors.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Booking Modal -->
+<div class="modal fade" id="bookingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Book a Lesson</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="booking-form">
+                    <input type="hidden" id="selected-instructor-id">
+                    
+                    <div class="mb-3">
+                        <strong>Instructor:</strong> 
+                        <span id="selected-instructor-name"></span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="lesson-date">Preferred Date</label>
+                        <input type="date" class="form-control" id="lesson-date" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="lesson-time">Preferred Time</label>
+                        <input type="time" class="form-control" id="lesson-time" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="lesson-duration">Duration</label>
+                        <select class="form-control" id="lesson-duration" required>
+                            <option value="30">30 minutes</option>
+                            <option value="60">60 minutes</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="pickup-location">Pickup Location</label>
+                        <input type="text" class="form-control" id="pickup-location" 
+                               placeholder="Enter pickup address" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="special-notes">Special Requirements (Optional)</label>
+                        <textarea class="form-control" id="special-notes" rows="3" 
+                                  placeholder="Any special requests or notes"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirm-booking">
+                    <i data-feather="calendar"></i> Book Lesson
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+feather.replace();
+
+// Book lesson functionality
+document.querySelectorAll('.book-lesson-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const instructorId = this.dataset.instructorId;
+        const instructorName = this.dataset.instructorName;
+        
+        document.getElementById('selected-instructor-id').value = instructorId;
+        document.getElementById('selected-instructor-name').textContent = instructorName;
+        
+        // Set minimum date to tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        document.getElementById('lesson-date').min = tomorrow.toISOString().split('T')[0];
+        
+        $('#bookingModal').modal('show');
+    });
+});
+
+// Handle booking confirmation
+document.getElementById('confirm-booking').addEventListener('click', function() {
+    const formData = {
+        instructor_id: document.getElementById('selected-instructor-id').value,
+        date: document.getElementById('lesson-date').value,
+        time: document.getElementById('lesson-time').value,
+        duration: document.getElementById('lesson-duration').value,
+        location: document.getElementById('pickup-location').value,
+        notes: document.getElementById('special-notes').value,
+        lesson_type: document.getElementById('license-type').value
+    };
+    
+    fetch('/subscription/marketplace/book', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Booking request sent successfully! The instructor will contact you soon.');
+            $('#bookingModal').modal('hide');
+        } else {
+            alert('Booking failed: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while booking the lesson.');
+    });
+});
+
+// Search functionality
+document.getElementById('instructor-search').addEventListener('submit', function(e) {
+    e.preventDefault();
+    // This would typically make an AJAX request to filter instructors
+    alert('Search functionality would filter instructors based on criteria');
+});
+</script>
+{% endblock %}

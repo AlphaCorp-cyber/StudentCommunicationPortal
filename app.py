@@ -56,6 +56,15 @@ def init_app_with_routes():
         # Import routes after app is set up
         import routes  # noqa: F401
         import auth  # noqa: F401
+        
+        # Register subscription blueprint
+        from subscription_routes import subscription_bp
+        app.register_blueprint(subscription_bp)
+        
+        # Register onboarding blueprint
+        from onboarding_routes import onboarding_bp
+        app.register_blueprint(onboarding_bp)
+        
         logging.info("DriveLink initialized successfully")
         return True
     except Exception as e:

@@ -4,7 +4,7 @@ from flask_login import current_user, login_user, logout_user
 from sqlalchemy import or_, and_
 
 from app import app, db
-from models import User, Student, Lesson, WhatsAppSession, SystemConfig, Vehicle, Payment, LessonPricing, LESSON_SCHEDULED, LESSON_COMPLETED, LESSON_CANCELLED, ROLE_INSTRUCTOR, ROLE_ADMIN, ROLE_SUPER_ADMIN
+from models import User, Student, Lesson, WhatsAppSession, SystemConfig, Vehicle, Payment, LessonPricing, LESSON_SCHEDULED, LESSON_COMPLETED, LESSON_CANCELLED, ROLE_INSTRUCTOR, ROLE_ADMIN, ROLE_SUPER_ADMIN, InstructorSubscription, SubscriptionPlan, SUBSCRIPTION_ACTIVE
 from auth import require_login, require_role
 # WhatsApp functionality will be imported when needed
 

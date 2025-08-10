@@ -2,7 +2,7 @@
 
 ## Overview
 
-DriveLink is a modern driving school management platform that combines WhatsApp for student interactions with a comprehensive web portal for instructors, admins, and super admins. The system is designed to simplify student onboarding, lesson bookings, instructor management, and progress tracking.
+DriveLink is an "Uber for Driving Instructors" marketplace platform that connects students with verified driving instructors through a subscription-based model. The platform combines WhatsApp integration for seamless communication with a comprehensive web portal for instructors to manage their driving instruction business. Instructors pay monthly subscription fees to access the platform and earn commission-based revenue from lessons.
 
 ## System Architecture
 
@@ -144,6 +144,15 @@ The application now uses a .env file for easy configuration management:
 
 ## Changelog
 
+- August 10, 2025: **MAJOR TRANSFORMATION**: Complete platform overhaul into "Uber for Driving Instructors" marketplace model:
+  - Implemented subscription-based revenue model with three tiers (Basic $29/month, Premium $49/month, Pro $99/month)
+  - Added comprehensive instructor onboarding system with license verification and profile setup
+  - Created student marketplace for finding and booking instructors by location and ratings
+  - Integrated Stripe payment processing for subscription billing and commission handling
+  - Built commission-based earnings system with real-time analytics and reporting
+  - Added subscription management dashboard for instructors with earnings tracking
+  - Created public marketplace interface for students to discover instructors
+  - Transformed landing page to showcase marketplace benefits and subscription plans
 - August 1, 2025: Complete rebranding to DriveLink - updated all templates, JavaScript files, email addresses, and documentation to use consistent DriveLink branding throughout the system
 - July 31, 2025: Added instructor WhatsApp functionality - instructors can now use the same WhatsApp bot with dedicated features like viewing students, managing lessons, and checking schedules
 - July 31, 2025: Successfully migrated from Replit Agent to Replit environment with PostgreSQL database setup, fixed JavaScript errors, and restored DriveLink branding

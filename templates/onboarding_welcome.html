@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to DriveLink! - DriveLink{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Welcome Header -->
+            <div class="text-center mb-5">
+                <div class="mb-4">
+                    <i data-feather="check-circle" class="text-success" style="width: 64px; height: 64px;"></i>
+                </div>
+                <h1 class="display-4 mb-3">Welcome to DriveLink!</h1>
+                <p class="lead text-muted">Congratulations, {{ current_user.get_full_name() }}! Your instructor account is now active.</p>
+            </div>
+
+            <!-- Getting Started Guide -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i data-feather="compass"></i> Getting Started</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <div class="bg-primary rounded-circle p-2 text-white">
+                                        <i data-feather="smartphone" style="width: 16px; height: 16px;"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 ml-3">
+                                    <h6>WhatsApp Integration</h6>
+                                    <p class="text-muted small">Students can now contact you directly via WhatsApp at {{ current_user.phone }}. Make sure your WhatsApp is active!</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-4">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <div class="bg-success rounded-circle p-2 text-white">
+                                        <i data-feather="users" style="width: 16px; height: 16px;"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 ml-3">
+                                    <h6>Student Assignments</h6>
+                                    <p class="text-muted small">Admins can now assign students to you, and students can find you on the marketplace.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-4">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <div class="bg-info rounded-circle p-2 text-white">
+                                        <i data-feather="calendar" style="width: 16px; height: 16px;"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 ml-3">
+                                    <h6>Lesson Management</h6>
+                                    <p class="text-muted small">Use your dashboard to manage lessons, track student progress, and view your earnings.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-4">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <div class="bg-warning rounded-circle p-2 text-white">
+                                        <i data-feather="dollar-sign" style="width: 16px; height: 16px;"></i>
+                                    </div>
+                                </div>
+                                <div class="flex-grow-1 ml-3">
+                                    <h6>Earnings & Commission</h6>
+                                    <p class="text-muted small">Track your earnings and commission in real-time. Payments are processed weekly.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Plan Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i data-feather="credit-card"></i> Your Subscription</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h6>{{ current_user.subscription_plan.title() }} Plan</h6>
+                            <p class="text-muted mb-0">
+                                Commission Rate: {{ "%.0f"|format(current_user.get_commission_rate() * 100) }}% •
+                                {% if current_user.subscription_plan == 'basic' %}
+                                Up to 10 students
+                                {% elif current_user.subscription_plan == 'premium' %}
+                                Up to 25 students • Priority Support • Analytics
+                                {% else %}
+                                Unlimited students • VIP Support • Full Analytics
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-md-right">
+                            <a href="{{ url_for('subscription.subscription_dashboard') }}" class="btn btn-outline-primary">
+                                View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i data-feather="zap"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-block">
+                                <i data-feather="layout-dashboard"></i>
+                                Go to Dashboard
+                            </a>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <a href="{{ url_for('students') }}" class="btn btn-outline-primary btn-block">
+                                <i data-feather="users"></i>
+                                View Students
+                            </a>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <a href="{{ url_for('subscription.subscription_dashboard') }}" class="btn btn-outline-primary btn-block">
+                                <i data-feather="bar-chart-2"></i>
+                                View Earnings
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WhatsApp Commands Help -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i data-feather="help-circle"></i> WhatsApp Commands for Instructors</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Student Management</h6>
+                            <ul class="list-unstyled">
+                                <li><code>students</code> - View your assigned students</li>
+                                <li><code>today</code> - View today's lessons</li>
+                                <li><code>schedule</code> - View upcoming lessons</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Lesson Management</h6>
+                            <ul class="list-unstyled">
+                                <li><code>confirm [lesson_id]</code> - Confirm a lesson</li>
+                                <li><code>complete [lesson_id]</code> - Mark lesson as completed</li>
+                                <li><code>cancel [lesson_id]</code> - Cancel a lesson</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <small><i data-feather="info"></i> Students can message you directly on WhatsApp to book lessons or ask questions!</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Support -->
+            <div class="text-center">
+                <h6>Need Help?</h6>
+                <p class="text-muted">
+                    Contact our support team at 
+                    <a href="mailto:support@drivelink.com">support@drivelink.com</a>
+                    or through the help section in your dashboard.
+                </p>
+                
+                <a href="{{ url_for('dashboard') }}" class="btn btn-success btn-lg mt-3">
+                    <i data-feather="arrow-right"></i>
+                    Start Teaching
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+feather.replace();
+</script>
+{% endblock %}

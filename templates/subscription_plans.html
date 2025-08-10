@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Subscription Plans - DriveLink{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-0">Choose Your Plan</h2>
+                    <p class="text-muted">Select the perfect plan for your driving instruction business</p>
+                </div>
+            </div>
+
+            <!-- Pricing Cards -->
+            <div class="row">
+                {% for plan in plans %}
+                <div class="col-lg-4 col-md-6 mb-4">
+                    <div class="card h-100 {% if plan.code == 'premium' %}border-primary{% endif %}">
+                        {% if plan.code == 'premium' %}
+                        <div class="card-header bg-primary text-white text-center">
+                            <i data-feather="star"></i> Most Popular
+                        </div>
+                        {% endif %}
+                        
+                        <div class="card-body text-center">
+                            <h3 class="card-title">{{ plan.name }}</h3>
+                            <div class="mb-3">
+                                <span class="h2 text-primary">${{ "%.0f"|format(plan.monthly_price) }}</span>
+                                <span class="text-muted">/month</span>
+                            </div>
+                            
+                            {% if plan.yearly_price %}
+                            <div class="mb-3">
+                                <small class="text-muted">
+                                    Or ${{ "%.0f"|format(plan.yearly_price) }}/year 
+                                    <span class="badge badge-success">Save 17%</span>
+                                </small>
+                            </div>
+                            {% endif %}
+                            
+                            <p class="text-muted">{{ plan.description }}</p>
+                            
+                            <!-- Features List -->
+                            <ul class="list-unstyled mb-4">
+                                {% if plan.features %}
+                                    {% set features = plan.features|from_json %}
+                                    {% for feature in features %}
+                                    <li class="mb-2">
+                                        <i data-feather="check" class="text-success" style="width: 16px; height: 16px;"></i>
+                                        {{ feature }}
+                                    </li>
+                                    {% endfor %}
+                                {% endif %}
+                                
+                                {% if plan.student_limit %}
+                                <li class="mb-2">
+                                    <i data-feather="users" class="text-info" style="width: 16px; height: 16px;"></i>
+                                    Up to {{ plan.student_limit }} students
+                                </li>
+                                {% else %}
+                                <li class="mb-2">
+                                    <i data-feather="infinity" class="text-info" style="width: 16px; height: 16px;"></i>
+                                    Unlimited students
+                                </li>
+                                {% endif %}
+                                
+                                <li class="mb-2">
+                                    <i data-feather="percent" class="text-warning" style="width: 16px; height: 16px;"></i>
+                                    {{ "%.0f"|format(plan.commission_rate * 100) }}% commission rate
+                                </li>
+                                
+                                {% if plan.priority_support %}
+                                <li class="mb-2">
+                                    <i data-feather="headphones" class="text-primary" style="width: 16px; height: 16px;"></i>
+                                    Priority Support
+                                </li>
+                                {% endif %}
+                                
+                                {% if plan.analytics_access %}
+                                <li class="mb-2">
+                                    <i data-feather="bar-chart-2" class="text-success" style="width: 16px; height: 16px;"></i>
+                                    Advanced Analytics
+                                </li>
+                                {% endif %}
+                                
+                                {% if plan.custom_branding %}
+                                <li class="mb-2">
+                                    <i data-feather="edit-3" class="text-info" style="width: 16px; height: 16px;"></i>
+                                    Custom Branding
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        
+                        <div class="card-footer text-center">
+                            {% if current_user.is_authenticated and current_user.is_instructor() %}
+                                {% if current_user.subscription_plan == plan.code %}
+                                <button class="btn btn-outline-success btn-block" disabled>
+                                    <i data-feather="check"></i> Current Plan
+                                </button>
+                                {% else %}
+                                <a href="{{ url_for('subscription.upgrade_subscription') }}?plan={{ plan.code }}" 
+                                   class="btn {% if plan.code == 'premium' %}btn-primary{% else %}btn-outline-primary{% endif %} btn-block">
+                                    {% if current_user.subscription_plan %}Upgrade{% else %}Get Started{% endif %}
+                                </a>
+                                {% endif %}
+                            {% else %}
+                            <a href="{{ url_for('auth.login') }}" class="btn {% if plan.code == 'premium' %}btn-primary{% else %}btn-outline-primary{% endif %} btn-block">
+                                Get Started
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- FAQ Section -->
+            <div class="row mt-5">
+                <div class="col-12">
+                    <h3 class="text-center mb-4">Frequently Asked Questions</h3>
+                    
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="mb-4">
+                                <h5>What happens if I exceed my student limit?</h5>
+                                <p class="text-muted">You'll need to upgrade to a higher plan to accept new students. Existing students are not affected.</p>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <h5>Can I change plans anytime?</h5>
+                                <p class="text-muted">Yes! You can upgrade or downgrade your plan at any time. Changes take effect on your next billing cycle.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-6">
+                            <div class="mb-4">
+                                <h5>How does commission work?</h5>
+                                <p class="text-muted">We take a small percentage from each completed lesson. Lower-tier plans have higher rates.</p>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <h5>Do I need to provide my own vehicle?</h5>
+                                <p class="text-muted">Most instructors use their own vehicles, but this can vary by location and student preference.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+feather.replace();
+</script>
+{% endblock %}

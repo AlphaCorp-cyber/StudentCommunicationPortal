@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block title %}Instructor Onboarding - DriveLink{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Progress Steps -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="step {% if step >= 1 %}active{% endif %}">
+                                <div class="step-icon">1</div>
+                                <div class="step-title">Personal Info</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="step {% if step >= 2 %}active{% endif %}">
+                                <div class="step-icon">2</div>
+                                <div class="step-title">Licenses & Certification</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="step {% if step >= 3 %}active{% endif %}">
+                                <div class="step-icon">3</div>
+                                <div class="step-title">Vehicle & Service Areas</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="step {% if step >= 4 %}active{% endif %}">
+                                <div class="step-icon">4</div>
+                                <div class="step-title">Subscription Plan</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step Content -->
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        {% if step == 1 %}
+                        <!-- Step 1: Personal Information -->
+                        <h4 class="mb-4">Personal Information</h4>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="first_name">First Name</label>
+                                    <input type="text" class="form-control" id="first_name" name="first_name" 
+                                           value="{{ current_user.first_name or '' }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="last_name">Last Name</label>
+                                    <input type="text" class="form-control" id="last_name" name="last_name" 
+                                           value="{{ current_user.last_name or '' }}" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="phone">Phone Number (WhatsApp)</label>
+                                    <input type="tel" class="form-control" id="phone" name="phone" 
+                                           value="{{ current_user.phone or '' }}" 
+                                           placeholder="+263712345678" required>
+                                    <small class="form-text text-muted">This will be used for WhatsApp communication with students</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="email">Email Address</label>
+                                    <input type="email" class="form-control" id="email" name="email" 
+                                           value="{{ current_user.email }}" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="bio">Professional Bio</label>
+                            <textarea class="form-control" id="bio" name="bio" rows="4" 
+                                      placeholder="Tell potential students about your experience, teaching style, and qualifications...">{{ current_user.bio or '' }}</textarea>
+                            <small class="form-text text-muted">This will be displayed on your instructor profile</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="experience_years">Years of Teaching Experience</label>
+                            <select class="form-control" id="experience_years" name="experience_years" required>
+                                <option value="">Select experience level</option>
+                                <option value="0" {% if current_user.experience_years == 0 %}selected{% endif %}>New instructor (0 years)</option>
+                                <option value="1" {% if current_user.experience_years == 1 %}selected{% endif %}>1 year</option>
+                                <option value="2" {% if current_user.experience_years == 2 %}selected{% endif %}>2 years</option>
+                                <option value="3" {% if current_user.experience_years == 3 %}selected{% endif %}>3 years</option>
+                                <option value="5" {% if current_user.experience_years == 5 %}selected{% endif %}>5 years</option>
+                                <option value="10" {% if current_user.experience_years == 10 %}selected{% endif %}>10+ years</option>
+                                <option value="15" {% if current_user.experience_years == 15 %}selected{% endif %}>15+ years</option>
+                            </select>
+                        </div>
+
+                        {% elif step == 2 %}
+                        <!-- Step 2: Licenses & Certification -->
+                        <h4 class="mb-4">Licenses & Certification</h4>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="license_number">Driving Instructor License Number</label>
+                                    <input type="text" class="form-control" id="license_number" name="license_number" 
+                                           value="{{ current_user.license_number or '' }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="license_expiry">License Expiry Date</label>
+                                    <input type="date" class="form-control" id="license_expiry" name="license_expiry" 
+                                           value="{{ current_user.license_expiry or '' }}" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="license_document">Upload License Document</label>
+                            <input type="file" class="form-control-file" id="license_document" name="license_document" 
+                                   accept=".pdf,.jpg,.jpeg,.png">
+                            <small class="form-text text-muted">Upload a clear photo or scan of your driving instructor license</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="additional_certifications">Additional Certifications</label>
+                            <textarea class="form-control" id="additional_certifications" name="additional_certifications" rows="3" 
+                                      placeholder="List any additional driving certifications, first aid certificates, or relevant qualifications..."></textarea>
+                        </div>
+
+                        {% elif step == 3 %}
+                        <!-- Step 3: Vehicle & Service Areas -->
+                        <h4 class="mb-4">Vehicle & Service Areas</h4>
+                        
+                        <div class="form-group">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="vehicle_owned" name="vehicle_owned" 
+                                       {% if current_user.vehicle_owned %}checked{% endif %}>
+                                <label class="form-check-label" for="vehicle_owned">
+                                    I own a vehicle suitable for driving lessons
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="base_location">Base Location</label>
+                                    <input type="text" class="form-control" id="base_location" name="base_location" 
+                                           value="{{ current_user.base_location or '' }}" 
+                                           placeholder="e.g., Harare CBD, Eastlea, Avondale" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="service_radius">Service Radius (km)</label>
+                                    <select class="form-control" id="service_radius" name="service_radius" required>
+                                        <option value="5">5 km</option>
+                                        <option value="10" selected>10 km</option>
+                                        <option value="15">15 km</option>
+                                        <option value="20">20 km</option>
+                                        <option value="30">30 km</option>
+                                        <option value="50">50 km</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="service_areas">Service Areas</label>
+                            <input type="text" class="form-control" id="service_areas" name="service_areas" 
+                                   value="{{ current_user.service_areas or '' }}" 
+                                   placeholder="e.g., Harare, Chitungwiza, Norton, Ruwa">
+                            <small class="form-text text-muted">List areas where you're willing to teach (comma-separated)</small>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="hourly_rate_30min">30-Minute Lesson Rate (USD)</label>
+                                    <input type="number" class="form-control" id="hourly_rate_30min" name="hourly_rate_30min" 
+                                           value="{{ current_user.hourly_rate_30min or 25 }}" min="10" max="100" step="5" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="hourly_rate_60min">60-Minute Lesson Rate (USD)</label>
+                                    <input type="number" class="form-control" id="hourly_rate_60min" name="hourly_rate_60min" 
+                                           value="{{ current_user.hourly_rate_60min or 40 }}" min="20" max="150" step="5" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% elif step == 4 %}
+                        <!-- Step 4: Subscription Plan -->
+                        <h4 class="mb-4">Choose Your Subscription Plan</h4>
+                        
+                        <div class="row">
+                            {% for plan in plans %}
+                            <div class="col-lg-4 mb-3">
+                                <div class="card subscription-option {% if plan.code == 'premium' %}border-primary{% endif %}">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title">{{ plan.name }}</h5>
+                                        <div class="price mb-3">
+                                            <span class="h3 text-primary">${{ "%.0f"|format(plan.monthly_price) }}</span>
+                                            <span class="text-muted">/month</span>
+                                        </div>
+                                        
+                                        <ul class="list-unstyled mb-4">
+                                            {% if plan.student_limit %}
+                                            <li>Up to {{ plan.student_limit }} students</li>
+                                            {% else %}
+                                            <li>Unlimited students</li>
+                                            {% endif %}
+                                            <li>{{ "%.0f"|format(plan.commission_rate * 100) }}% commission rate</li>
+                                            {% if plan.priority_support %}
+                                            <li>Priority support</li>
+                                            {% endif %}
+                                            {% if plan.analytics_access %}
+                                            <li>Advanced analytics</li>
+                                            {% endif %}
+                                        </ul>
+                                        
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="subscription_plan" 
+                                                   id="plan_{{ plan.code }}" value="{{ plan.code }}" 
+                                                   {% if plan.code == 'basic' %}checked{% endif %} required>
+                                            <label class="form-check-label" for="plan_{{ plan.code }}">
+                                                Select {{ plan.name }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h6><i data-feather="info"></i> Getting Started</h6>
+                            <p class="mb-0">You can start with any plan and upgrade anytime. Your first month will be prorated based on your joining date.</p>
+                        </div>
+
+                        {% endif %}
+                        
+                        <!-- Navigation Buttons -->
+                        <div class="d-flex justify-content-between mt-4">
+                            {% if step > 1 %}
+                            <a href="{{ url_for('instructor_onboarding', step=step-1) }}" class="btn btn-outline-secondary">
+                                <i data-feather="arrow-left"></i> Previous
+                            </a>
+                            {% else %}
+                            <div></div>
+                            {% endif %}
+                            
+                            {% if step < 4 %}
+                            <button type="submit" class="btn btn-primary">
+                                Next <i data-feather="arrow-right"></i>
+                            </button>
+                            {% else %}
+                            <button type="submit" class="btn btn-success">
+                                <i data-feather="check"></i> Complete Registration
+                            </button>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.step {
+    margin-bottom: 20px;
+}
+
+.step-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #e9ecef;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px;
+    font-weight: bold;
+}
+
+.step.active .step-icon {
+    background-color: #007bff;
+    color: white;
+}
+
+.step-title {
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.step.active .step-title {
+    color: #007bff;
+    font-weight: bold;
+}
+
+.subscription-option {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.subscription-option:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.subscription-option input[type="radio"]:checked + label {
+    color: #007bff;
+    font-weight: bold;
+}
+</style>
+
+<script>
+feather.replace();
+
+// Make subscription cards clickable
+document.querySelectorAll('.subscription-option').forEach(card => {
+    card.addEventListener('click', function() {
+        const radio = this.querySelector('input[type="radio"]');
+        if (radio) {
+            radio.checked = true;
+        }
+    });
+});
+</script>
+{% endblock %}
