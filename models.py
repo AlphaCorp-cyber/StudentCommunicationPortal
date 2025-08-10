@@ -127,7 +127,10 @@ class Student(db.Model):
     def can_switch_instructor(self):
         """Check if student can switch instructor (after 5 lessons or 1 week)"""
         # Check if student has completed at least 5 lessons
-        completed_lessons = len([l for l in self.lessons if l.status == LESSON_COMPLETED])
+        completed_lessons = 0
+        for lesson in self.lessons:
+            if lesson.status == LESSON_COMPLETED:
+                completed_lessons += 1
         
         if completed_lessons >= 5:
             return True
@@ -181,19 +184,21 @@ class Lesson(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 
     def mark_completed(self, notes=None, feedback=None, rating=None):
+        from app import db
         self.status = LESSON_COMPLETED
         self.completed_date = datetime.now()
         self.notes = notes
         self.feedback = feedback
         self.rating = rating
         
-        # Deduct lesson cost from student's balance
-        if self.student and self.cost:
-            self.student.account_balance = float(self.student.account_balance) - float(self.cost)
-        
-        # Update student's completed lessons count
-        if self.student:
-            self.student.lessons_completed += 1
+        # Get the student object explicitly
+        student = Student.query.get(self.student_id)
+        if student and self.cost:
+            # Deduct lesson cost from student's balance
+            student.account_balance = float(student.account_balance) - float(self.cost)
+            # Update student's completed lessons count
+            student.lessons_completed += 1
+            db.session.commit()
 
 class WhatsAppSession(db.Model):
     __tablename__ = 'whatsapp_sessions'
@@ -280,6 +285,7 @@ class SystemConfig(db.Model):
             config.description = description
             config.updated_at = datetime.now()
         else:
+            from app import db
             config = SystemConfig(key=key, value=value, description=description)
             db.session.add(config)
         db.session.commit()
