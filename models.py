@@ -128,7 +128,7 @@ class Student(db.Model):
         """Check if student can switch instructor (after 5 lessons or 1 week)"""
         # Check if student has completed at least 5 lessons
         completed_lessons = 0
-        for lesson in self.lessons:
+        for lesson in Lesson.query.filter_by(student_id=self.id).all():
             if lesson.status == LESSON_COMPLETED:
                 completed_lessons += 1
         
@@ -285,7 +285,9 @@ class SystemConfig(db.Model):
             config.description = description
             config.updated_at = datetime.now()
         else:
-            from app import db
-            config = SystemConfig(key=key, value=value, description=description)
+            config = SystemConfig()
+            config.key = key
+            config.value = value
+            config.description = description
             db.session.add(config)
         db.session.commit()

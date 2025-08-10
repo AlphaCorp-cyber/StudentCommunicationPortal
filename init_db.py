@@ -35,18 +35,16 @@ def init_database():
             # Add default lesson pricing if it doesn't exist
             if not LessonPricing.query.first():
                 logger.info("Adding default lesson pricing...")
-                class4_pricing = LessonPricing(
-                    license_class='Class 4',
-                    price_per_30min=15.00,
-                    price_per_60min=25.00
-                )
+                class4_pricing = LessonPricing()
+                class4_pricing.license_class = 'Class 4'
+                class4_pricing.price_per_30min = 15.00
+                class4_pricing.price_per_60min = 25.00
                 db.session.add(class4_pricing)
                 
-                class2_pricing = LessonPricing(
-                    license_class='Class 2',
-                    price_per_30min=20.00,
-                    price_per_60min=35.00
-                )
+                class2_pricing = LessonPricing()
+                class2_pricing.license_class = 'Class 2'
+                class2_pricing.price_per_30min = 20.00
+                class2_pricing.price_per_60min = 35.00
                 db.session.add(class2_pricing)
                 
                 db.session.commit()
