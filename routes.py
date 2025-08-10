@@ -4,7 +4,7 @@ from flask_login import current_user, login_user, logout_user
 from sqlalchemy import or_, and_
 
 from app import app, db
-from models import User, Student, Lesson, WhatsAppSession, SystemConfig, Vehicle, Payment, LessonPricing, LESSON_SCHEDULED, LESSON_COMPLETED, LESSON_CANCELLED, ROLE_INSTRUCTOR, ROLE_ADMIN, ROLE_SUPER_ADMIN, InstructorSubscription, SubscriptionPlan, SUBSCRIPTION_ACTIVE
+from models import User, Student, Lesson, WhatsAppSession, SystemConfig, Vehicle, Payment, LessonPricing, LESSON_SCHEDULED, LESSON_COMPLETED, LESSON_CANCELLED, ROLE_STUDENT, ROLE_INSTRUCTOR, ROLE_ADMIN, ROLE_SUPER_ADMIN, InstructorSubscription, SubscriptionPlan, SUBSCRIPTION_ACTIVE
 from auth import require_login, require_role
 # WhatsApp functionality will be imported when needed
 
@@ -101,7 +101,12 @@ def dashboard():
         return redirect(url_for('super_admin_dashboard'))
     elif current_user.is_admin():
         return redirect(url_for('admin_dashboard'))
+    elif current_user.is_instructor():
+        return redirect(url_for('instructor_dashboard'))
+    elif current_user.is_student():
+        return redirect(url_for('student_pin_dashboard'))
     else:
+        # Fallback for any unhandled roles
         return redirect(url_for('instructor_dashboard'))
 
 @app.route('/instructor')
@@ -149,6 +154,52 @@ def instructor_dashboard():
                          upcoming_lessons=upcoming_lessons,
                          recent_lessons=recent_lessons,
                          stats=stats)
+
+@app.route('/student')
+@require_login
+def student_dashboard():
+    """Student dashboard showing progress and lessons"""
+    if not current_user.is_student() and not current_user.is_admin() and not current_user.is_super_admin():
+        flash('Access denied. Student privileges required.', 'error')
+        return redirect(url_for('index'))
+    
+    # For students, find their Student record by phone number or email
+    if current_user.is_student():
+        student = Student.query.filter(
+            or_(
+                Student.email == current_user.email,
+                Student.phone == current_user.phone
+            )
+        ).first()
+        
+        if not student:
+            flash('Student profile not found. Please contact admin to set up your profile.', 'error')
+            return redirect(url_for('index'))
+    else:
+        # For admin/super_admin viewing a specific student (can be extended later)
+        student = Student.query.first()  # Placeholder - in real app would get from URL parameter
+    
+    # Get student's upcoming lessons
+    upcoming_lessons = Lesson.query.filter(
+        and_(
+            Lesson.student_id == student.id,
+            Lesson.status == LESSON_SCHEDULED,
+            Lesson.scheduled_date >= datetime.now()
+        )
+    ).order_by(Lesson.scheduled_date).limit(10).all()
+    
+    # Get student's recent completed lessons
+    recent_lessons = Lesson.query.filter(
+        and_(
+            Lesson.student_id == student.id,
+            Lesson.status == LESSON_COMPLETED
+        )
+    ).order_by(Lesson.completed_date.desc()).limit(5).all()
+    
+    return render_template('student_dashboard.html', 
+                         student=student,
+                         upcoming_lessons=upcoming_lessons,
+                         recent_lessons=recent_lessons)
 
 @app.route('/admin')
 @require_role('admin')
@@ -1396,7 +1447,7 @@ def student_login():
                 session.permanent = True
             
             flash(f'Welcome back, {student.name}!', 'success')
-            return redirect(url_for('student_dashboard'))
+            return redirect(url_for('student_pin_dashboard'))
         else:
             flash('Invalid phone number or PIN.', 'error')
     
@@ -1449,7 +1500,7 @@ def student_register():
     return render_template('student_register.html')
 
 @app.route('/student-dashboard')
-def student_dashboard():
+def student_pin_dashboard():
     """Student dashboard"""
     if not session.get('student_logged_in') or not session.get('student_id'):
         flash('Please log in to access your dashboard.', 'error')
@@ -1557,24 +1608,24 @@ def cancel_student_lesson(lesson_id):
     
     if not lesson:
         flash('Lesson not found.', 'error')
-        return redirect(url_for('student_dashboard'))
+        return redirect(url_for('student_pin_dashboard'))
     
     if lesson.status != LESSON_SCHEDULED:
         flash('Only scheduled lessons can be cancelled.', 'error')
-        return redirect(url_for('student_dashboard'))
+        return redirect(url_for('student_pin_dashboard'))
     
     # Check if cancellation is allowed (at least 2 hours before)
     time_until_lesson = lesson.scheduled_date - datetime.now()
     if time_until_lesson.total_seconds() < 7200:  # 2 hours
         flash('Cannot cancel lessons less than 2 hours before the scheduled time.', 'error')
-        return redirect(url_for('student_dashboard'))
+        return redirect(url_for('student_pin_dashboard'))
     
     lesson.status = LESSON_CANCELLED
     lesson.updated_at = datetime.now()
     db.session.commit()
     
     flash('Lesson cancelled successfully.', 'success')
-    return redirect(url_for('student_dashboard'))
+    return redirect(url_for('student_pin_dashboard'))
 
 @app.errorhandler(403)
 def forbidden(error):

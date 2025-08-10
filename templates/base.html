@@ -139,14 +139,31 @@ Adding student navigation links to the base template based on session status for
             <div class="collapse navbar-collapse" id="navbarNav">
                 {% if current_user.is_authenticated %}
                 <ul class="navbar-nav me-auto">
+                    <!-- Common dashboard link for all roles -->
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('dashboard') }}">
                             <i data-feather="home" class="me-1"></i>Dashboard
                         </a>
                     </li>
+
+                    <!-- Student specific navigation -->
+                    {% if current_user.is_student() %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('lessons') }}">
+                            <i data-feather="calendar" class="me-1"></i>My Lessons
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('marketplace') }}">
+                            <i data-feather="search" class="me-1"></i>Find Instructors
+                        </a>
+                    </li>
+
+                    <!-- Instructor specific navigation -->
+                    {% elif current_user.is_instructor() %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('students') }}">
-                            <i data-feather="users" class="me-1"></i>Students
+                            <i data-feather="users" class="me-1"></i>My Students
                         </a>
                     </li>
                     <li class="nav-item">
@@ -154,17 +171,60 @@ Adding student navigation links to the base template based on session status for
                             <i data-feather="calendar" class="me-1"></i>Lessons
                         </a>
                     </li>
-                    {% if current_user.is_instructor() %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('subscription.subscription_dashboard') }}">
                             <i data-feather="credit-card" class="me-1"></i>Subscription
                         </a>
                     </li>
-                    {% endif %}
-                    {% if current_user.is_admin() or current_user.is_super_admin() %}
+
+                    <!-- Admin specific navigation -->
+                    {% elif current_user.is_admin() %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('students') }}">
+                            <i data-feather="users" class="me-1"></i>All Students
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('lessons') }}">
+                            <i data-feather="calendar" class="me-1"></i>All Lessons
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('whatsapp_bot') }}">
                             <i data-feather="message-circle" class="me-1"></i>WhatsApp
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('marketplace') }}">
+                            <i data-feather="globe" class="me-1"></i>Marketplace
+                        </a>
+                    </li>
+
+                    <!-- Super Admin specific navigation -->
+                    {% elif current_user.is_super_admin() %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('students') }}">
+                            <i data-feather="users" class="me-1"></i>All Students
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('lessons') }}">
+                            <i data-feather="calendar" class="me-1"></i>All Lessons
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('whatsapp_bot') }}">
+                            <i data-feather="message-circle" class="me-1"></i>WhatsApp
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('marketplace') }}">
+                            <i data-feather="globe" class="me-1"></i>Marketplace
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('super_admin_dashboard') }}">
+                            <i data-feather="settings" class="me-1"></i>System
                         </a>
                     </li>
                     {% endif %}
