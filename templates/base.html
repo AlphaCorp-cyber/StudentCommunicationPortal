@@ -189,7 +189,9 @@ Adding student navigation links to the base template based on session status for
                             <span class="badge badge-role ms-2">
                                 {% if current_user.is_super_admin() %}Super Admin
                                 {% elif current_user.is_admin() %}Admin
-                                {% else %}Instructor{% endif %}
+                                {% elif current_user.is_instructor() %}Instructor
+                                {% elif current_user.is_student() %}Student
+                                {% else %}User{% endif %}
                             </span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">

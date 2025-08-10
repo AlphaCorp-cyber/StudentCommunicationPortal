@@ -4,6 +4,7 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # User roles
+ROLE_STUDENT = 'student'
 ROLE_INSTRUCTOR = 'instructor'
 ROLE_ADMIN = 'admin'
 ROLE_SUPER_ADMIN = 'super_admin'
@@ -95,6 +96,9 @@ class User(UserMixin, db.Model):
         if self.first_name and self.last_name:
             return f"{self.first_name} {self.last_name}"
         return self.username
+
+    def is_student(self):
+        return self.role == ROLE_STUDENT
 
     def is_instructor(self):
         return self.role == ROLE_INSTRUCTOR
