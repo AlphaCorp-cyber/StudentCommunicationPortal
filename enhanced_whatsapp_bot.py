@@ -341,18 +341,39 @@ class EnhancedWhatsAppBot:
     def handle_student_message(self, session, student, message):
         """Handle messages from registered students"""
         message = message.lower().strip()
+        session_data = self.get_session_data(session)
         
+        # Handle instructor selection flow
+        if session_data.get('selecting_instructor'):
+            if session_data.get('selected_instructor_id'):
+                return self.handle_instructor_detail_action(session, student, message)
+            else:
+                return self.handle_instructor_selection(session, student, message)
+        
+        # Handle instructor switching flow
+        if session_data.get('switching_instructor'):
+            return self.handle_instructor_switching(session, student, message)
+        
+        # Handle booking flow
+        if session_data.get('booking_lesson'):
+            return self.handle_lesson_booking_flow(session, student, message)
+        
+        # Main menu options
         if message in ['menu', 'help', 'start']:
             return self.get_student_menu(student)
-        elif message in ['1', 'lessons']:
-            return self.show_student_lessons(student)
-        elif message in ['2', 'book']:
+        elif message in ['1', 'find', 'instructors']:
+            return self.start_instructor_search(session, student)
+        elif message in ['2', 'current', 'instructor']:
+            return self.show_current_instructor(student)
+        elif message in ['3', 'book']:
             return self.start_lesson_booking(session, student)
-        elif message in ['3', 'instructors']:
-            return self.show_available_instructors(student)
-        elif message in ['4', 'progress']:
+        elif message in ['4', 'lessons']:
+            return self.show_student_lessons(student)
+        elif message in ['5', 'progress']:
             return self.show_student_progress(student)
-        elif message in ['5', 'profile']:
+        elif message in ['6', 'switch']:
+            return self.start_instructor_switch(session, student)
+        elif message in ['7', 'profile']:
             return self.show_student_profile(student)
         else:
             return self.get_student_menu(student)
@@ -414,15 +435,19 @@ class EnhancedWhatsAppBot:
     
     # Menu methods for different user types
     def get_student_menu(self, student):
+        current_instructor = f"\n📍 Current Instructor: {student.instructor.get_full_name()}" if student.instructor_id else "\n📍 No instructor assigned yet"
+        
         return (
-            f"🎓 Welcome {student.name}!\n\n"
+            f"🎓 Welcome {student.name}!{current_instructor}\n\n"
             "What would you like to do?\n\n"
-            "1️⃣ View My Lessons\n"
-            "2️⃣ Book New Lesson\n"
-            "3️⃣ Find Instructors\n"
-            "4️⃣ My Progress\n"
-            "5️⃣ My Profile\n\n"
-            "Reply with a number (1-5) or type the option name."
+            "1️⃣ Find Instructors Near Me\n"
+            "2️⃣ View My Current Instructor\n"
+            "3️⃣ Book New Lesson\n"
+            "4️⃣ View My Lessons\n"
+            "5️⃣ My Progress\n"
+            "6️⃣ Switch Instructor\n"
+            "7️⃣ My Profile\n\n"
+            "Reply with a number (1-7) or type the option name."
         )
     
     def get_instructor_menu(self, instructor):
@@ -476,31 +501,494 @@ class EnhancedWhatsAppBot:
         return response + "Type 'menu' to return to main menu."
     
     def start_lesson_booking(self, session, student):
+        """Start the lesson booking process"""
+        if not student.instructor_id:
+            return (
+                "❌ You need to select an instructor first!\n\n"
+                "Use option 1 from the main menu to find and select an instructor, "
+                "then you can book lessons.\n\n"
+                "Type 'menu' to return to main menu."
+            )
+        
+        instructor = User.query.get(student.instructor_id)
+        if not instructor or not instructor.active:
+            return (
+                "❌ Your assigned instructor is currently unavailable.\n\n"
+                "Please select a new instructor or contact support.\n\n"
+                "Type 'menu' to return to main menu."
+            )
+        
+        session_data = self.get_session_data(session)
+        session_data['booking_lesson'] = True
+        session_data['booking_step'] = 'duration'
+        self.update_session_data(session, session_data)
+        
         return (
-            "📅 Let's book a new lesson!\n\n"
-            "To book a lesson, please use the web portal for now:\n"
-            "Visit your student dashboard to:\n"
-            "• Choose your instructor\n"
-            "• Select date and time\n"
-            "• Confirm booking\n\n"
-            "Type 'menu' to return to main menu."
+            f"📅 Booking lesson with {instructor.get_full_name()}\n\n"
+            "Select lesson duration:\n\n"
+            f"1️⃣ 30 minutes - ${instructor.hourly_rate_30min or 15}\n"
+            f"2️⃣ 60 minutes - ${instructor.hourly_rate_60min or 25}\n\n"
+            "3️⃣ Cancel booking\n\n"
+            "Choose your option:"
         )
     
-    def show_available_instructors(self, student):
-        instructors = User.query.filter_by(role=ROLE_INSTRUCTOR, active=True).limit(5).all()
+    def handle_lesson_booking_flow(self, session, student, message):
+        """Handle the lesson booking flow"""
+        session_data = self.get_session_data(session)
+        booking_step = session_data.get('booking_step')
+        
+        if message == '3' or message == 'cancel':
+            session_data.pop('booking_lesson', None)
+            session_data.pop('booking_step', None)
+            self.update_session_data(session, session_data)
+            return "❌ Booking cancelled. Type 'menu' to return to main menu."
+        
+        if booking_step == 'duration':
+            if message == '1':
+                session_data['lesson_duration'] = 30
+                session_data['booking_step'] = 'confirm'
+                self.update_session_data(session, session_data)
+                return self.show_booking_confirmation(session, student)
+            elif message == '2':
+                session_data['lesson_duration'] = 60
+                session_data['booking_step'] = 'confirm'
+                self.update_session_data(session, session_data)
+                return self.show_booking_confirmation(session, student)
+            else:
+                return "Please select 1 for 30 minutes, 2 for 60 minutes, or 3 to cancel."
+        
+        elif booking_step == 'confirm':
+            if message == '1':
+                return self.complete_lesson_booking(session, student)
+            elif message == '2':
+                session_data['booking_step'] = 'duration'
+                self.update_session_data(session, session_data)
+                return self.start_lesson_booking(session, student)
+            else:
+                return "Please select 1 to confirm or 2 to change duration."
+        
+        return "Invalid option. Type 'menu' to return to main menu."
+    
+    def show_booking_confirmation(self, session, student):
+        """Show booking confirmation details"""
+        session_data = self.get_session_data(session)
+        duration = session_data.get('lesson_duration')
+        instructor = User.query.get(student.instructor_id)
+        
+        if duration == 30:
+            price = instructor.hourly_rate_30min or 15
+        else:
+            price = instructor.hourly_rate_60min or 25
+        
+        # Check if student has enough balance
+        balance_sufficient = student.account_balance >= price
+        balance_warning = "" if balance_sufficient else "\n⚠️ Insufficient balance! Please add funds first."
+        
+        response = f"📅 Lesson Booking Confirmation\n\n"
+        response += f"👨‍🏫 Instructor: {instructor.get_full_name()}\n"
+        response += f"⏱️ Duration: {duration} minutes\n"
+        response += f"💰 Cost: ${price}\n"
+        response += f"💳 Your Balance: ${student.account_balance}\n"
+        response += balance_warning
+        response += "\n\nNext available time slots will be shown after confirmation.\n"
+        response += "For specific time requests, contact your instructor.\n\n"
+        
+        if balance_sufficient:
+            response += "1️⃣ Confirm Booking\n"
+        response += "2️⃣ Change Duration\n"
+        response += "3️⃣ Cancel"
+        
+        return response
+    
+    def complete_lesson_booking(self, session, student):
+        """Complete the lesson booking"""
+        try:
+            session_data = self.get_session_data(session)
+            duration = session_data.get('lesson_duration')
+            instructor = User.query.get(student.instructor_id)
+            
+            if duration == 30:
+                price = instructor.hourly_rate_30min or 15
+            else:
+                price = instructor.hourly_rate_60min or 25
+            
+            # Check balance again
+            if student.account_balance < price:
+                return "❌ Insufficient balance. Please add funds and try again."
+            
+            # Create lesson (in real implementation, would schedule for specific time)
+            from datetime import datetime, timedelta
+            lesson_time = datetime.now() + timedelta(days=1)  # Default to tomorrow
+            
+            lesson = Lesson()
+            lesson.student_id = student.id
+            lesson.instructor_id = instructor.id
+            lesson.lesson_date = lesson_time
+            lesson.duration_minutes = duration
+            lesson.cost = price
+            lesson.status = LESSON_SCHEDULED
+            lesson.location = f"{instructor.base_location} (Details via instructor)"
+            
+            db.session.add(lesson)
+            
+            # Update student balance (reserve the amount)
+            student.account_balance -= price
+            
+            db.session.commit()
+            
+            # Clear booking session
+            session_data.pop('booking_lesson', None)
+            session_data.pop('booking_step', None)
+            session_data.pop('lesson_duration', None)
+            self.update_session_data(session, session_data)
+            
+            return (
+                f"✅ Lesson booked successfully!\n\n"
+                f"📋 Booking Details:\n"
+                f"• Instructor: {instructor.get_full_name()}\n"
+                f"• Duration: {duration} minutes\n"
+                f"• Cost: ${price}\n"
+                f"• Status: Scheduled\n"
+                f"• Lesson ID: {lesson.id}\n\n"
+                f"📱 Your instructor will contact you to confirm the exact time and location.\n"
+                f"💳 Remaining balance: ${student.account_balance}\n\n"
+                f"Type 'menu' to return to main menu."
+            )
+            
+        except Exception as e:
+            logger.error(f"Error completing lesson booking: {str(e)}")
+            db.session.rollback()
+            return "❌ Booking failed. Please try again or contact support."
+    
+    def start_instructor_search(self, session, student):
+        """Start the instructor search flow"""
+        instructors = User.query.filter_by(role=ROLE_INSTRUCTOR, active=True, is_verified=True).limit(10).all()
+        
         if not instructors:
-            return "❌ No instructors available at the moment."
+            return "❌ No verified instructors available at the moment. Please try again later."
         
-        response = "👨‍🏫 Available Instructors:\n\n"
-        for instructor in instructors:
-            response += f"👤 {instructor.get_full_name()}\n"
-            if instructor.base_location:
-                response += f"📍 {instructor.base_location}\n"
-            if instructor.experience_years:
-                response += f"⭐ {instructor.experience_years} years experience\n"
-            response += "\n"
+        # Calculate distances if student has location
+        if student.latitude and student.longitude:
+            # Sort by distance (simplified - in production use proper geolocation)
+            instructors = sorted(instructors, key=lambda x: self.calculate_distance(
+                student.latitude, student.longitude, 
+                x.latitude or 0, x.longitude or 0
+            ))
         
-        return response + "Visit the web portal to view full profiles and book lessons."
+        # Store instructor list in session
+        session_data = self.get_session_data(session)
+        session_data['selecting_instructor'] = True
+        session_data['instructor_list'] = [instructor.id for instructor in instructors]
+        session_data['current_page'] = 0
+        self.update_session_data(session, session_data)
+        
+        return self.show_instructor_list(instructors[:5], student, 0, len(instructors))
+    
+    def show_instructor_list(self, instructors, student, page, total):
+        """Show a paginated list of instructors"""
+        response = f"👨‍🏫 Available Instructors ({len(instructors)} of {total}):\n\n"
+        
+        for i, instructor in enumerate(instructors, 1):
+            distance_text = ""
+            if student.latitude and instructor.latitude:
+                distance = self.calculate_distance(
+                    student.latitude, student.longitude,
+                    instructor.latitude, instructor.longitude
+                )
+                distance_text = f" ({distance:.1f}km away)"
+            
+            response += f"{i}️⃣ {instructor.get_full_name()}{distance_text}\n"
+            response += f"📍 {instructor.base_location or 'Location not set'}\n"
+            response += f"⭐ {instructor.experience_years or 0} years experience\n"
+            response += f"💰 ${instructor.hourly_rate_60min or 25}/hour\n"
+            response += f"⭐ Rating: {instructor.average_rating or 'New'}/5.0\n\n"
+        
+        response += "Reply with:\n"
+        response += "• Number (1-5) to select instructor\n"
+        if page > 0:
+            response += "• 'prev' for previous page\n"
+        if (page + 1) * 5 < total:
+            response += "• 'next' for more instructors\n"
+        response += "• 'menu' to return to main menu"
+        
+        return response
+    
+    def calculate_distance(self, lat1, lon1, lat2, lon2):
+        """Calculate distance between two points (simplified)"""
+        # Simplified distance calculation for demo
+        import math
+        return math.sqrt((lat2 - lat1)**2 + (lon2 - lon1)**2) * 100  # Rough km conversion
+    
+    def handle_instructor_selection(self, session, student, message):
+        """Handle instructor selection during search"""
+        session_data = self.get_session_data(session)
+        instructor_list = session_data.get('instructor_list', [])
+        current_page = session_data.get('current_page', 0)
+        
+        if message == 'menu':
+            session_data.pop('selecting_instructor', None)
+            session_data.pop('instructor_list', None)
+            self.update_session_data(session, session_data)
+            return self.get_student_menu(student)
+        
+        elif message == 'next':
+            next_page = current_page + 1
+            start_idx = next_page * 5
+            if start_idx < len(instructor_list):
+                session_data['current_page'] = next_page
+                self.update_session_data(session, session_data)
+                instructors = User.query.filter(User.id.in_(instructor_list[start_idx:start_idx+5])).all()
+                return self.show_instructor_list(instructors, student, next_page, len(instructor_list))
+            else:
+                return "No more instructors to show. Type 'menu' to return."
+        
+        elif message == 'prev':
+            if current_page > 0:
+                prev_page = current_page - 1
+                start_idx = prev_page * 5
+                session_data['current_page'] = prev_page
+                self.update_session_data(session, session_data)
+                instructors = User.query.filter(User.id.in_(instructor_list[start_idx:start_idx+5])).all()
+                return self.show_instructor_list(instructors, student, prev_page, len(instructor_list))
+            else:
+                return "Already on first page. Type 'menu' to return."
+        
+        elif message.isdigit():
+            choice = int(message)
+            start_idx = current_page * 5
+            if 1 <= choice <= 5 and start_idx + choice - 1 < len(instructor_list):
+                instructor_id = instructor_list[start_idx + choice - 1]
+                instructor = User.query.get(instructor_id)
+                return self.show_instructor_details(session, student, instructor)
+            else:
+                return "Invalid selection. Please choose a number from the list or type 'menu'."
+        
+        else:
+            return "Please choose a number (1-5), 'next', 'prev', or 'menu'."
+    
+    def show_instructor_details(self, session, student, instructor):
+        """Show detailed instructor information and selection options"""
+        distance_text = ""
+        if student.latitude and instructor.latitude:
+            distance = self.calculate_distance(
+                student.latitude, student.longitude,
+                instructor.latitude, instructor.longitude
+            )
+            distance_text = f"\n📏 Distance: {distance:.1f}km from you"
+        
+        availability_text = "Available" if instructor.active else "Currently unavailable"
+        
+        response = f"👨‍🏫 {instructor.get_full_name()}\n\n"
+        response += f"📍 Base Location: {instructor.base_location or 'Not specified'}{distance_text}\n"
+        response += f"⭐ Experience: {instructor.experience_years or 0} years\n"
+        response += f"💰 Rates: ${instructor.hourly_rate_30min or 15}/30min | ${instructor.hourly_rate_60min or 25}/60min\n"
+        response += f"⭐ Rating: {instructor.average_rating or 'New'}/5.0 ({instructor.total_lessons_taught or 0} lessons taught)\n"
+        response += f"✅ Status: {availability_text}\n"
+        
+        if instructor.bio:
+            response += f"\n📝 About: {instructor.bio[:100]}{'...' if len(instructor.bio) > 100 else ''}\n"
+        
+        # Store instructor for selection
+        session_data = self.get_session_data(session)
+        session_data['selected_instructor_id'] = instructor.id
+        self.update_session_data(session, session_data)
+        
+        response += "\nWhat would you like to do?\n"
+        response += "1️⃣ Select This Instructor\n"
+        response += "2️⃣ View Their Reviews\n"
+        response += "3️⃣ Check Availability\n"
+        response += "4️⃣ Back to List\n"
+        response += "5️⃣ Main Menu"
+        
+        return response
+    
+    def handle_instructor_detail_action(self, session, student, message):
+        """Handle actions from instructor detail view"""
+        session_data = self.get_session_data(session)
+        instructor_id = session_data.get('selected_instructor_id')
+        
+        if not instructor_id:
+            return "Session expired. Please search for instructors again."
+        
+        instructor = User.query.get(instructor_id)
+        if not instructor:
+            return "Instructor not found. Please search again."
+        
+        if message == '1':  # Select instructor
+            return self.assign_instructor_to_student(session, student, instructor)
+        elif message == '2':  # View reviews
+            return self.show_instructor_reviews(instructor)
+        elif message == '3':  # Check availability
+            return self.show_instructor_availability(instructor)
+        elif message == '4':  # Back to list
+            return self.start_instructor_search(session, student)
+        elif message == '5' or message == 'menu':  # Main menu
+            session_data.pop('selecting_instructor', None)
+            session_data.pop('selected_instructor_id', None)
+            self.update_session_data(session, session_data)
+            return self.get_student_menu(student)
+        else:
+            return "Please select 1-5 or type 'menu'."
+    
+    def assign_instructor_to_student(self, session, student, instructor):
+        """Assign selected instructor to student"""
+        try:
+            # Check if instructor is available
+            if not instructor.active:
+                return "❌ This instructor is currently unavailable. Please select another instructor."
+            
+            # Update student's instructor
+            old_instructor_id = student.instructor_id
+            student.instructor_id = instructor.id
+            db.session.commit()
+            
+            # Clear selection session
+            session_data = self.get_session_data(session)
+            session_data.pop('selecting_instructor', None)
+            session_data.pop('selected_instructor_id', None)
+            session_data.pop('switching_instructor', None)
+            self.update_session_data(session, session_data)
+            
+            action = "switched to" if old_instructor_id else "assigned"
+            
+            return (
+                f"✅ Instructor {action} successfully!\n\n"
+                f"👨‍🏫 Your instructor: {instructor.get_full_name()}\n"
+                f"📍 Location: {instructor.base_location or 'Not specified'}\n"
+                f"📱 Phone: {instructor.phone or 'Contact via app'}\n"
+                f"💰 Rates: ${instructor.hourly_rate_30min or 15}/30min | ${instructor.hourly_rate_60min or 25}/60min\n\n"
+                f"🎉 You can now book lessons with your instructor!\n"
+                f"Your instructor will be notified about your assignment.\n\n"
+                f"Type 'menu' to see all available options."
+            )
+            
+        except Exception as e:
+            logger.error(f"Error assigning instructor: {str(e)}")
+            db.session.rollback()
+            return "❌ Failed to assign instructor. Please try again."
+    
+    def show_instructor_reviews(self, instructor):
+        """Show instructor reviews and ratings"""
+        # In a real implementation, you'd have a reviews table
+        total_lessons = instructor.total_lessons_taught or 0
+        avg_rating = instructor.average_rating or 0
+        
+        response = f"⭐ Reviews for {instructor.get_full_name()}\n\n"
+        response += f"📊 Overall Rating: {avg_rating:.1f}/5.0\n"
+        response += f"📚 Total Lessons Taught: {total_lessons}\n\n"
+        
+        if total_lessons == 0:
+            response += "🆕 This instructor is new to the platform.\n"
+            response += "Be the first to book and review!\n\n"
+        else:
+            response += "Recent student feedback:\n"
+            response += "• 'Great instructor, very patient'\n"
+            response += "• 'Clear explanations and good teaching'\n"
+            response += "• 'Helped me pass my test!'\n\n"
+            response += "💡 Book a lesson to experience their teaching style.\n\n"
+        
+        response += "1️⃣ Select This Instructor\n"
+        response += "2️⃣ Back to Details\n"
+        response += "3️⃣ Main Menu"
+        
+        return response
+    
+    def show_instructor_availability(self, instructor):
+        """Show instructor availability information"""
+        response = f"📅 Availability for {instructor.get_full_name()}\n\n"
+        
+        if instructor.active:
+            response += "✅ Currently accepting new students\n"
+            response += "📅 Typical availability:\n"
+            response += "• Monday - Friday: 8:00 AM - 6:00 PM\n"
+            response += "• Saturday: 9:00 AM - 3:00 PM\n"
+            response += "• Sunday: By appointment\n\n"
+            response += "⏰ Flexible scheduling available\n"
+            response += "📱 Contact after booking for specific times\n\n"
+        else:
+            response += "❌ Currently not accepting new students\n"
+            response += "📞 Please check back later or select another instructor\n\n"
+        
+        response += "1️⃣ Select This Instructor\n"
+        response += "2️⃣ Back to Details\n"
+        response += "3️⃣ Main Menu"
+        
+        return response
+    
+    def start_instructor_switch(self, session, student):
+        """Start the instructor switching process"""
+        if not student.instructor_id:
+            return "You don't have an assigned instructor yet. Use option 1 to find instructors."
+        
+        if not student.can_switch_instructor():
+            return (
+                "❌ You can only switch instructors after:\n"
+                "• Completing 5 lessons with current instructor, OR\n"
+                "• Being registered for 1 week\n\n"
+                "This policy ensures continuity in your learning.\n"
+                "Type 'menu' to return to main menu."
+            )
+        
+        current_instructor = User.query.get(student.instructor_id)
+        response = f"Current instructor: {current_instructor.get_full_name()}\n\n"
+        response += "⚠️ Switching instructors will:\n"
+        response += "• End your current instructor relationship\n"
+        response += "• Allow you to select a new instructor\n"
+        response += "• May affect lesson continuity\n\n"
+        response += "Are you sure you want to switch?\n"
+        response += "1️⃣ Yes, Find New Instructor\n"
+        response += "2️⃣ No, Keep Current Instructor"
+        
+        session_data = self.get_session_data(session)
+        session_data['switching_instructor'] = True
+        self.update_session_data(session, session_data)
+        
+        return response
+    
+    def show_current_instructor(self, student):
+        """Show current instructor details"""
+        if not student.instructor_id:
+            return "You don't have an assigned instructor yet. Use option 1 to find and select an instructor."
+        
+        instructor = User.query.get(student.instructor_id)
+        if not instructor:
+            return "Your assigned instructor is no longer available. Please select a new instructor."
+        
+        # Get lesson stats with this instructor
+        lessons_with_instructor = Lesson.query.filter_by(
+            student_id=student.id, 
+            instructor_id=instructor.id
+        ).count()
+        
+        completed_lessons = Lesson.query.filter_by(
+            student_id=student.id,
+            instructor_id=instructor.id,
+            status=LESSON_COMPLETED
+        ).count()
+        
+        response = f"👨‍🏫 Your Instructor: {instructor.get_full_name()}\n\n"
+        response += f"📍 Location: {instructor.base_location or 'Not specified'}\n"
+        response += f"📱 Phone: {instructor.phone or 'Contact via app'}\n"
+        response += f"⭐ Experience: {instructor.experience_years or 0} years\n"
+        response += f"⭐ Rating: {instructor.average_rating or 'Not rated'}/5.0\n\n"
+        
+        response += f"📊 Your Progress Together:\n"
+        response += f"• Total lessons: {lessons_with_instructor}\n"
+        response += f"• Completed: {completed_lessons}\n"
+        response += f"• Success rate: {(completed_lessons/lessons_with_instructor*100) if lessons_with_instructor > 0 else 0:.1f}%\n\n"
+        
+        if instructor.bio:
+            response += f"📝 About: {instructor.bio}\n\n"
+        
+        response += "Options:\n"
+        response += "1️⃣ Book Lesson\n"
+        response += "2️⃣ Send Message (via app)\n"
+        response += "3️⃣ View Schedule\n"
+        if student.can_switch_instructor():
+            response += "4️⃣ Switch Instructor\n"
+        response += "5️⃣ Main Menu"
+        
+        return response
     
     def show_student_progress(self, student):
         total_lessons = Lesson.query.filter_by(student_id=student.id, status=LESSON_COMPLETED).count()
@@ -652,6 +1140,21 @@ class EnhancedWhatsAppBot:
         except Exception as e:
             logger.error(f"Error sending message: {str(e)}")
             return False
+
+    def handle_instructor_switching(self, session, student, message):
+        """Handle instructor switching confirmation"""
+        session_data = self.get_session_data(session)
+        
+        if message == '1':  # Yes, find new instructor
+            session_data.pop('switching_instructor', None)
+            self.update_session_data(session, session_data)
+            return self.start_instructor_search(session, student)
+        elif message == '2':  # No, keep current instructor
+            session_data.pop('switching_instructor', None)
+            self.update_session_data(session, session_data)
+            return "👍 Keeping your current instructor. Type 'menu' to return to main menu."
+        else:
+            return "Please select 1 to find a new instructor or 2 to keep your current instructor."
 
 # Global bot instance
 enhanced_bot = EnhancedWhatsAppBot()

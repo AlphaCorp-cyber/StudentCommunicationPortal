@@ -580,3 +580,39 @@ class MarketplaceBooking(db.Model):
     student = db.relationship('Student', backref='marketplace_bookings')
     assigned_instructor = db.relationship('User', backref='marketplace_assignments')
     lesson = db.relationship('Lesson', backref='marketplace_booking')
+
+# Add methods to User model for enhanced functionality
+def can_switch_instructor_method(self):
+    """Check if student can switch instructors based on business rules"""
+    if self.role != 'student':
+        return False
+    
+    # Allow switching if no instructor assigned
+    if not hasattr(self, 'instructor_id') or not self.instructor_id:
+        return True
+    
+    # Allow switching after 5 completed lessons with current instructor
+    from datetime import datetime, timedelta
+    
+    try:
+        completed_lessons = Lesson.query.filter_by(
+            student_id=self.id,
+            instructor_id=self.instructor_id,
+            status='completed'
+        ).count()
+        
+        if completed_lessons >= 5:
+            return True
+        
+        # Allow switching after 1 week of registration
+        one_week_ago = datetime.now() - timedelta(days=7)
+        if hasattr(self, 'date_joined') and self.date_joined and self.date_joined <= one_week_ago:
+            return True
+    except:
+        # If there's any error, allow switching to prevent blocking users
+        return True
+    
+    return False
+
+# Attach method to User class
+User.can_switch_instructor = can_switch_instructor_method
