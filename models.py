@@ -284,13 +284,20 @@ class Lesson(db.Model):
     vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicles.id'), nullable=True)
     
     # Lesson details
-    lesson_date = db.Column(db.DateTime, nullable=False)  # Changed from scheduled_date for consistency
+    lesson_date = db.Column(db.DateTime, nullable=False)
     duration_minutes = db.Column(db.Integer, default=60)
     lesson_type = db.Column(db.String(50), default='practical')  # practical, theory, test
     location = db.Column(db.String(200), nullable=True)
+    pickup_location = db.Column(db.String(200), nullable=True)
+    pickup_latitude = db.Column(db.Float, nullable=True)
+    pickup_longitude = db.Column(db.Float, nullable=True)
     
     # Financial tracking
     cost = db.Column(db.Numeric(10, 2), nullable=False, default=0.00)
+    base_price = db.Column(db.Numeric(10, 2), nullable=True)
+    surge_multiplier = db.Column(db.Float, default=1.0)
+    discount_applied = db.Column(db.Numeric(10, 2), default=0.00)
+    promo_code = db.Column(db.String(20), nullable=True)
     
     # Status and tracking
     status = db.Column(db.String(20), default=LESSON_SCHEDULED)
@@ -299,8 +306,23 @@ class Lesson(db.Model):
     feedback = db.Column(db.Text, nullable=True)
     rating = db.Column(db.Integer, nullable=True)  # 1-5 scale
     
+    # Enhanced features
+    is_recurring = db.Column(db.Boolean, default=False)
+    recurring_pattern = db.Column(db.String(20), nullable=True)  # weekly, biweekly, monthly
+    parent_lesson_id = db.Column(db.Integer, db.ForeignKey('lessons.id'), nullable=True)
+    emergency_contact_notified = db.Column(db.Boolean, default=False)
+    lesson_tracking_active = db.Column(db.Boolean, default=False)
+    
+    # Progress tracking
+    skills_practiced = db.Column(db.Text, nullable=True)  # JSON list of skills
+    progress_photos = db.Column(db.Text, nullable=True)  # JSON list of photo URLs
+    instructor_assessment = db.Column(db.Text, nullable=True)
+    
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    # Relationships
+    recurring_lessons = db.relationship('Lesson', backref=db.backref('parent_lesson', remote_side=[id]), lazy=True)
 
     def mark_completed(self, notes=None, feedback=None, rating=None):
         from app import db
@@ -616,3 +638,310 @@ def can_switch_instructor_method(self):
 
 # Attach method to User class
 User.can_switch_instructor = can_switch_instructor_method
+
+# Enhanced Review and Rating System
+class Review(db.Model):
+    __tablename__ = 'reviews'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    lesson_id = db.Column(db.Integer, db.ForeignKey('lessons.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    instructor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Overall rating
+    overall_rating = db.Column(db.Integer, nullable=False)  # 1-5 scale
+    
+    # Detailed ratings
+    patience_rating = db.Column(db.Integer, nullable=True)
+    teaching_style_rating = db.Column(db.Integer, nullable=True)
+    punctuality_rating = db.Column(db.Integer, nullable=True)
+    vehicle_condition_rating = db.Column(db.Integer, nullable=True)
+    communication_rating = db.Column(db.Integer, nullable=True)
+    
+    # Text feedback
+    review_text = db.Column(db.Text, nullable=True)
+    instructor_response = db.Column(db.Text, nullable=True)
+    instructor_response_date = db.Column(db.DateTime, nullable=True)
+    
+    # Progress documentation
+    progress_photos = db.Column(db.Text, nullable=True)  # JSON list of photo URLs
+    skills_learned = db.Column(db.Text, nullable=True)  # JSON list
+    
+    # Verification
+    is_verified = db.Column(db.Boolean, default=False)
+    helpful_votes = db.Column(db.Integer, default=0)
+    
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    # Relationships
+    lesson = db.relationship('Lesson', backref='reviews')
+    student = db.relationship('Student', foreign_keys=[student_id], backref='given_reviews')
+    instructor = db.relationship('User', foreign_keys=[instructor_id], backref='received_reviews')
+
+# Dynamic Pricing System
+class PricingRule(db.Model):
+    __tablename__ = 'pricing_rules'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    rule_name = db.Column(db.String(100), nullable=False)
+    rule_type = db.Column(db.String(20), nullable=False)  # surge, discount, base
+    
+    # Conditions
+    day_of_week = db.Column(db.String(20), nullable=True)  # monday, tuesday, etc.
+    start_time = db.Column(db.Time, nullable=True)
+    end_time = db.Column(db.Time, nullable=True)
+    min_distance_km = db.Column(db.Float, nullable=True)
+    max_distance_km = db.Column(db.Float, nullable=True)
+    location_area = db.Column(db.String(100), nullable=True)
+    
+    # Pricing modifiers
+    multiplier = db.Column(db.Float, default=1.0)
+    fixed_amount = db.Column(db.Numeric(10, 2), default=0.00)
+    
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+# Promo Codes and Discounts
+class PromoCode(db.Model):
+    __tablename__ = 'promo_codes'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    code = db.Column(db.String(20), unique=True, nullable=False)
+    description = db.Column(db.String(200), nullable=True)
+    
+    # Discount details
+    discount_type = db.Column(db.String(20), nullable=False)  # percentage, fixed_amount
+    discount_value = db.Column(db.Numeric(10, 2), nullable=False)
+    max_discount = db.Column(db.Numeric(10, 2), nullable=True)
+    
+    # Usage limits
+    max_uses = db.Column(db.Integer, nullable=True)
+    current_uses = db.Column(db.Integer, default=0)
+    max_uses_per_user = db.Column(db.Integer, default=1)
+    
+    # Validity
+    valid_from = db.Column(db.DateTime, nullable=False)
+    valid_until = db.Column(db.DateTime, nullable=False)
+    
+    # Conditions
+    min_lesson_cost = db.Column(db.Numeric(10, 2), nullable=True)
+    applicable_lesson_types = db.Column(db.String(200), nullable=True)  # JSON
+    first_time_users_only = db.Column(db.Boolean, default=False)
+    
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+
+# Real-time Location Tracking
+class LocationTracker(db.Model):
+    __tablename__ = 'location_tracker'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    lesson_id = db.Column(db.Integer, db.ForeignKey('lessons.id'), nullable=False)
+    instructor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    
+    # Current location
+    latitude = db.Column(db.Float, nullable=False)
+    longitude = db.Column(db.Float, nullable=False)
+    accuracy = db.Column(db.Float, nullable=True)
+    
+    # Tracking status
+    tracking_status = db.Column(db.String(20), default='active')  # active, paused, ended
+    speed = db.Column(db.Float, nullable=True)  # km/h
+    heading = db.Column(db.Float, nullable=True)  # degrees
+    
+    # Safety features
+    emergency_triggered = db.Column(db.Boolean, default=False)
+    panic_button_pressed = db.Column(db.Boolean, default=False)
+    emergency_contacts_notified = db.Column(db.Boolean, default=False)
+    
+    timestamp = db.Column(db.DateTime, default=datetime.now)
+    
+    # Relationships
+    lesson = db.relationship('Lesson', backref='location_tracking')
+    instructor = db.relationship('User', foreign_keys=[instructor_id])
+    student = db.relationship('Student', foreign_keys=[student_id])
+
+# Progress Tracking and Gamification
+class StudentProgress(db.Model):
+    __tablename__ = 'student_progress'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    
+    # Skill assessments
+    parallel_parking_score = db.Column(db.Integer, default=0)  # 0-100
+    highway_driving_score = db.Column(db.Integer, default=0)
+    city_driving_score = db.Column(db.Integer, default=0)
+    reverse_parking_score = db.Column(db.Integer, default=0)
+    emergency_braking_score = db.Column(db.Integer, default=0)
+    
+    # Overall progress
+    total_lessons_completed = db.Column(db.Integer, default=0)
+    total_hours_driven = db.Column(db.Float, default=0.0)
+    test_readiness_score = db.Column(db.Integer, default=0)  # 0-100
+    
+    # Achievements and badges
+    badges_earned = db.Column(db.Text, nullable=True)  # JSON list
+    milestones_reached = db.Column(db.Text, nullable=True)  # JSON list
+    
+    # Test preparation
+    theory_test_score = db.Column(db.Integer, nullable=True)
+    practical_test_scheduled = db.Column(db.Date, nullable=True)
+    test_center_preference = db.Column(db.String(100), nullable=True)
+    
+    last_updated = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    # Relationships
+    student = db.relationship('Student', backref='progress_tracking')
+
+# Safety and Verification
+class SafetyIncident(db.Model):
+    __tablename__ = 'safety_incidents'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    lesson_id = db.Column(db.Integer, db.ForeignKey('lessons.id'), nullable=True)
+    instructor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    
+    incident_type = db.Column(db.String(50), nullable=False)  # emergency, accident, panic_button
+    description = db.Column(db.Text, nullable=False)
+    severity = db.Column(db.String(20), default='low')  # low, medium, high, critical
+    
+    # Location
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    address = db.Column(db.String(300), nullable=True)
+    
+    # Response
+    emergency_services_called = db.Column(db.Boolean, default=False)
+    emergency_contacts_notified = db.Column(db.Boolean, default=False)
+    resolved = db.Column(db.Boolean, default=False)
+    resolution_notes = db.Column(db.Text, nullable=True)
+    
+    reported_at = db.Column(db.DateTime, default=datetime.now)
+    resolved_at = db.Column(db.DateTime, nullable=True)
+    
+    # Relationships
+    lesson = db.relationship('Lesson', backref='safety_incidents')
+    instructor = db.relationship('User', foreign_keys=[instructor_id])
+    student = db.relationship('Student', foreign_keys=[student_id])
+
+# Advanced Communication System
+class CommunicationLog(db.Model):
+    __tablename__ = 'communication_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    sender_type = db.Column(db.String(20), nullable=False)  # student, instructor, system
+    sender_id = db.Column(db.Integer, nullable=True)
+    recipient_type = db.Column(db.String(20), nullable=False)
+    recipient_id = db.Column(db.Integer, nullable=True)
+    
+    message_type = db.Column(db.String(30), nullable=False)  # text, voice, lesson_recap, reminder
+    message_content = db.Column(db.Text, nullable=False)
+    media_url = db.Column(db.String(500), nullable=True)  # for voice messages or photos
+    
+    # Context
+    lesson_id = db.Column(db.Integer, db.ForeignKey('lessons.id'), nullable=True)
+    related_booking_id = db.Column(db.Integer, nullable=True)
+    
+    # Status
+    is_read = db.Column(db.Boolean, default=False)
+    read_at = db.Column(db.DateTime, nullable=True)
+    delivery_status = db.Column(db.String(20), default='sent')  # sent, delivered, failed
+    
+    sent_at = db.Column(db.DateTime, default=datetime.now)
+    
+    # Relationships
+    lesson = db.relationship('Lesson', backref='communications')
+
+# Instructor Availability Management
+class InstructorAvailability(db.Model):
+    __tablename__ = 'instructor_availability'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    instructor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Time slots
+    day_of_week = db.Column(db.Integer, nullable=False)  # 0=Monday, 6=Sunday
+    start_time = db.Column(db.Time, nullable=False)
+    end_time = db.Column(db.Time, nullable=False)
+    
+    # Availability status
+    is_available = db.Column(db.Boolean, default=True)
+    max_lessons_per_slot = db.Column(db.Integer, default=1)
+    
+    # Special dates
+    specific_date = db.Column(db.Date, nullable=True)  # For one-off availability changes
+    is_recurring = db.Column(db.Boolean, default=True)
+    
+    # Pricing overrides
+    custom_rate_30min = db.Column(db.Numeric(10, 2), nullable=True)
+    custom_rate_60min = db.Column(db.Numeric(10, 2), nullable=True)
+    
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    # Relationships
+    instructor = db.relationship('User', backref='availability_slots')
+
+# Loyalty Program
+class LoyaltyProgram(db.Model):
+    __tablename__ = 'loyalty_program'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    
+    # Points system
+    total_points = db.Column(db.Integer, default=0)
+    points_used = db.Column(db.Integer, default=0)
+    available_points = db.Column(db.Integer, default=0)
+    
+    # Tier system
+    current_tier = db.Column(db.String(20), default='Bronze')  # Bronze, Silver, Gold, Platinum
+    tier_benefits = db.Column(db.Text, nullable=True)  # JSON
+    
+    # Referral system
+    referral_code = db.Column(db.String(20), unique=True, nullable=True)
+    referred_by = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=True)
+    referrals_made = db.Column(db.Integer, default=0)
+    
+    last_updated = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    # Relationships
+    student = db.relationship('Student', foreign_keys=[student_id], backref='loyalty_profile')
+    referrer = db.relationship('Student', foreign_keys=[referred_by], backref='referred_students')
+
+# Smart Matching Algorithm Data
+class MatchingPreferences(db.Model):
+    __tablename__ = 'matching_preferences'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    
+    # Instructor preferences
+    preferred_gender = db.Column(db.String(10), nullable=True)  # male, female, no_preference
+    preferred_age_range = db.Column(db.String(20), nullable=True)  # 25-35, 35-45, etc.
+    preferred_experience_years = db.Column(db.Integer, nullable=True)
+    max_distance_km = db.Column(db.Float, default=10.0)
+    
+    # Learning preferences
+    learning_style = db.Column(db.String(30), nullable=True)  # patient, strict, encouraging
+    lesson_pace = db.Column(db.String(20), nullable=True)  # slow, normal, fast
+    special_requirements = db.Column(db.Text, nullable=True)  # JSON
+    
+    # Scheduling preferences
+    preferred_days = db.Column(db.String(50), nullable=True)  # JSON array
+    preferred_times = db.Column(db.String(50), nullable=True)  # JSON array
+    flexible_scheduling = db.Column(db.Boolean, default=True)
+    
+    # Communication preferences
+    communication_style = db.Column(db.String(20), default='whatsapp')
+    reminder_frequency = db.Column(db.String(20), default='24_hours')
+    
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    # Relationships
+    student = db.relationship('Student', backref='matching_preferences')

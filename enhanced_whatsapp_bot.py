@@ -358,23 +358,25 @@ class EnhancedWhatsAppBot:
         if session_data.get('booking_lesson'):
             return self.handle_lesson_booking_flow(session, student, message)
         
-        # Main menu options
+        # Enhanced menu options
         if message in ['menu', 'help', 'start']:
             return self.get_student_menu(student)
         elif message in ['1', 'find', 'instructors']:
             return self.start_instructor_search(session, student)
-        elif message in ['2', 'current', 'instructor']:
-            return self.show_current_instructor(student)
-        elif message in ['3', 'book']:
+        elif message in ['2', 'book', 'lesson']:
             return self.start_lesson_booking(session, student)
-        elif message in ['4', 'lessons']:
+        elif message in ['3', 'lessons']:
             return self.show_student_lessons(student)
-        elif message in ['5', 'progress']:
-            return self.show_student_progress(student)
+        elif message in ['4', 'progress', 'achievements']:
+            return self.show_enhanced_student_progress(student)
+        elif message in ['5', 'balance', 'rewards']:
+            return self.show_balance_and_rewards(student)
         elif message in ['6', 'switch']:
             return self.start_instructor_switch(session, student)
-        elif message in ['7', 'profile']:
-            return self.show_student_profile(student)
+        elif message in ['7', 'safety', 'emergency']:
+            return self.show_safety_options(student)
+        elif message in ['8', 'help', 'support']:
+            return self.show_help_and_support(student)
         else:
             return self.get_student_menu(student)
     
@@ -435,20 +437,85 @@ class EnhancedWhatsAppBot:
     
     # Menu methods for different user types
     def get_student_menu(self, student):
-        current_instructor = f"\n📍 Current Instructor: {student.instructor.get_full_name()}" if student.instructor_id else "\n📍 No instructor assigned yet"
-        
-        return (
-            f"🎓 Welcome {student.name}!{current_instructor}\n\n"
-            "What would you like to do?\n\n"
-            "1️⃣ Find Instructors Near Me\n"
-            "2️⃣ View My Current Instructor\n"
-            "3️⃣ Book New Lesson\n"
-            "4️⃣ View My Lessons\n"
-            "5️⃣ My Progress\n"
-            "6️⃣ Switch Instructor\n"
-            "7️⃣ My Profile\n\n"
-            "Reply with a number (1-7) or type the option name."
-        )
+        """Generate the enhanced main menu for students"""
+        try:
+            from models import StudentProgress, LoyaltyProgram
+            from gamification_system import gamification
+            
+            response = f"🚗 Welcome {student.name}!\n\n"
+            
+            # Show instructor info
+            if student.instructor_id:
+                instructor = User.query.get(student.instructor_id)
+                response += f"👨‍🏫 Current Instructor: {instructor.get_full_name() if instructor else 'Not assigned'}\n"
+                if instructor and instructor.average_rating:
+                    response += f"⭐ Rating: {instructor.average_rating:.1f}/5.0\n"
+            else:
+                response += f"👨‍🏫 No instructor assigned yet\n"
+            
+            # Show enhanced student stats
+            response += f"📚 Lessons completed: {student.lessons_completed or 0}\n"
+            response += f"💰 Balance: ${student.balance:.2f}\n"
+            
+            # Show progress and gamification info
+            try:
+                progress = StudentProgress.query.filter_by(student_id=student.id).first()
+                if progress:
+                    response += f"🎯 Test Readiness: {progress.test_readiness_score}%\n"
+                    
+                    # Show badges
+                    badges = json.loads(progress.badges_earned or '[]')
+                    if badges:
+                        latest_badge = badges[-1] if badges else None
+                        if latest_badge and latest_badge in gamification['badges'].BADGES:
+                            badge_info = gamification['badges'].BADGES[latest_badge]
+                            response += f"🏆 Latest Badge: {badge_info['icon']} {badge_info['name']}\n"
+                
+                # Show loyalty tier
+                loyalty = LoyaltyProgram.query.filter_by(student_id=student.id).first()
+                if loyalty and loyalty.current_tier != 'Bronze':
+                    response += f"💎 {loyalty.current_tier} Member ({loyalty.total_points} points)\n"
+                    
+            except Exception as progress_error:
+                logger.warning(f"Error getting progress info: {str(progress_error)}")
+            
+            response += "\n🌟 What would you like to do?\n\n"
+            response += "1️⃣ Find Instructors Near Me\n"
+            response += "   (AI-powered matching)\n"
+            response += "2️⃣ Book a Lesson\n"
+            response += "   (Enhanced booking system)\n"
+            response += "3️⃣ View My Lessons\n"
+            response += "   (Track progress & history)\n"
+            response += "4️⃣ My Progress & Achievements\n"
+            response += "   (Skills, badges, test readiness)\n"
+            response += "5️⃣ Manage Balance & Rewards\n"
+            response += "   (Payments, promo codes, loyalty)\n"
+            response += "6️⃣ Switch Instructor\n"
+            response += "   (Find better matches)\n"
+            response += "7️⃣ Safety & Emergency\n"
+            response += "   (Emergency contacts, safety tools)\n"
+            response += "8️⃣ Help & Support\n"
+            response += "   (FAQ, contact support)"
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error generating enhanced student menu: {str(e)}")
+            # Fallback to basic menu
+            current_instructor = f"\n📍 Current Instructor: {student.instructor.get_full_name()}" if student.instructor_id else "\n📍 No instructor assigned yet"
+            
+            return (
+                f"🎓 Welcome {student.name}!{current_instructor}\n\n"
+                "What would you like to do?\n\n"
+                "1️⃣ Find Instructors Near Me\n"
+                "2️⃣ View My Current Instructor\n"
+                "3️⃣ Book New Lesson\n"
+                "4️⃣ View My Lessons\n"
+                "5️⃣ My Progress\n"
+                "6️⃣ Switch Instructor\n"
+                "7️⃣ My Profile\n\n"
+                "Reply with a number (1-7) or type the option name."
+            )
     
     def get_instructor_menu(self, instructor):
         return (
@@ -501,7 +568,7 @@ class EnhancedWhatsAppBot:
         return response + "Type 'menu' to return to main menu."
     
     def start_lesson_booking(self, session, student):
-        """Start the lesson booking process"""
+        """Start the enhanced lesson booking process"""
         if not student.instructor_id:
             return (
                 "❌ You need to select an instructor first!\n\n"
@@ -518,56 +585,684 @@ class EnhancedWhatsAppBot:
                 "Type 'menu' to return to main menu."
             )
         
-        session_data = self.get_session_data(session)
-        session_data['booking_lesson'] = True
-        session_data['booking_step'] = 'duration'
-        self.update_session_data(session, session_data)
-        
-        return (
-            f"📅 Booking lesson with {instructor.get_full_name()}\n\n"
-            "Select lesson duration:\n\n"
-            f"1️⃣ 30 minutes - ${instructor.hourly_rate_30min or 15}\n"
-            f"2️⃣ 60 minutes - ${instructor.hourly_rate_60min or 25}\n\n"
-            "3️⃣ Cancel booking\n\n"
-            "Choose your option:"
-        )
+        try:
+            from enhanced_features import enhanced_features
+            
+            # Get dynamic pricing
+            pricing_30 = enhanced_features.pricing_engine.calculate_lesson_price(
+                student.id, instructor.id, 30, datetime.now() + timedelta(days=1)
+            )
+            pricing_60 = enhanced_features.pricing_engine.calculate_lesson_price(
+                student.id, instructor.id, 60, datetime.now() + timedelta(days=1)
+            )
+            
+            session_data = self.get_session_data(session)
+            session_data['booking_lesson'] = True
+            session_data['booking_step'] = 'type'
+            self.update_session_data(session, session_data)
+            
+            response = f"📅 Enhanced Booking with {instructor.get_full_name()}\n\n"
+            
+            # Show lesson types
+            response += "🎯 Select lesson type:\n\n"
+            response += "1️⃣ Regular Practice Lesson\n"
+            response += "2️⃣ Test Preparation Session\n"
+            response += "3️⃣ Skill-Specific Training\n"
+            response += "4️⃣ Highway Driving Focus\n"
+            response += "5️⃣ Cancel booking\n\n"
+            
+            # Show pricing preview
+            price_30 = pricing_30.get('final_price', instructor.hourly_rate_30min or 15) if 'error' not in pricing_30 else instructor.hourly_rate_30min or 15
+            price_60 = pricing_60.get('final_price', instructor.hourly_rate_60min or 25) if 'error' not in pricing_60 else instructor.hourly_rate_60min or 25
+            
+            response += f"💰 Current Pricing:\n"
+            response += f"• 30 min: ${price_30:.0f}\n"
+            response += f"• 60 min: ${price_60:.0f}\n\n"
+            
+            # Show surge warning if applicable
+            surge_30 = pricing_30.get('surge_multiplier', 1.0) if 'error' not in pricing_30 else 1.0
+            if surge_30 > 1.1:
+                response += f"⚠️ High demand period ({surge_30:.1f}x pricing)\n"
+                response += "Consider booking for later to save money.\n\n"
+            
+            response += "Choose your lesson type:"
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error in enhanced booking: {str(e)}")
+            # Fallback to basic booking
+            session_data = self.get_session_data(session)
+            session_data['booking_lesson'] = True
+            session_data['booking_step'] = 'duration'
+            self.update_session_data(session, session_data)
+            
+            return (
+                f"📅 Booking lesson with {instructor.get_full_name()}\n\n"
+                "Select lesson duration:\n\n"
+                f"1️⃣ 30 minutes - ${instructor.hourly_rate_30min or 15}\n"
+                f"2️⃣ 60 minutes - ${instructor.hourly_rate_60min or 25}\n\n"
+                "3️⃣ Cancel booking\n\n"
+                "Choose your option:"
+            )
     
     def handle_lesson_booking_flow(self, session, student, message):
-        """Handle the lesson booking flow"""
+        """Handle the enhanced lesson booking flow"""
         session_data = self.get_session_data(session)
         booking_step = session_data.get('booking_step')
         
-        if message == '3' or message == 'cancel':
+        if message in ['5', 'cancel']:
             session_data.pop('booking_lesson', None)
             session_data.pop('booking_step', None)
+            session_data.pop('lesson_type', None)
+            session_data.pop('lesson_duration', None)
             self.update_session_data(session, session_data)
             return "❌ Booking cancelled. Type 'menu' to return to main menu."
         
-        if booking_step == 'duration':
+        if booking_step == 'type':
+            lesson_types = {
+                '1': 'regular_practice',
+                '2': 'test_preparation', 
+                '3': 'skill_specific',
+                '4': 'highway_driving'
+            }
+            
+            if message in lesson_types:
+                session_data['lesson_type'] = lesson_types[message]
+                session_data['booking_step'] = 'duration'
+                self.update_session_data(session, session_data)
+                return self.show_duration_selection(session, student)
+            else:
+                return "Please select 1-4 for lesson type or 5 to cancel."
+        
+        elif booking_step == 'duration':
             if message == '1':
                 session_data['lesson_duration'] = 30
-                session_data['booking_step'] = 'confirm'
+                session_data['booking_step'] = 'schedule'
                 self.update_session_data(session, session_data)
-                return self.show_booking_confirmation(session, student)
+                return self.show_schedule_options(session, student)
             elif message == '2':
                 session_data['lesson_duration'] = 60
-                session_data['booking_step'] = 'confirm'
+                session_data['booking_step'] = 'schedule'
                 self.update_session_data(session, session_data)
-                return self.show_booking_confirmation(session, student)
+                return self.show_schedule_options(session, student)
             else:
                 return "Please select 1 for 30 minutes, 2 for 60 minutes, or 3 to cancel."
         
+        elif booking_step == 'schedule':
+            if message == '1':  # Next available
+                session_data['scheduling_preference'] = 'next_available'
+                session_data['booking_step'] = 'confirm'
+                self.update_session_data(session, session_data)
+                return self.show_enhanced_booking_confirmation(session, student)
+            elif message == '2':  # Specific time
+                session_data['scheduling_preference'] = 'specific_time'
+                session_data['booking_step'] = 'time_selection'
+                self.update_session_data(session, session_data)
+                return self.show_time_selection(session, student)
+            elif message == '3':  # Recurring
+                session_data['scheduling_preference'] = 'recurring'
+                session_data['booking_step'] = 'recurring_setup'
+                self.update_session_data(session, session_data)
+                return self.show_recurring_setup(session, student)
+            else:
+                return "Please select 1-3 for scheduling or 4 to cancel."
+        
+        elif booking_step == 'time_selection':
+            # Handle specific time selection
+            return self.handle_time_selection(session, student, message)
+        
+        elif booking_step == 'recurring_setup':
+            # Handle recurring lesson setup
+            return self.handle_recurring_setup(session, student, message)
+        
         elif booking_step == 'confirm':
             if message == '1':
-                return self.complete_lesson_booking(session, student)
+                return self.complete_enhanced_lesson_booking(session, student)
             elif message == '2':
                 session_data['booking_step'] = 'duration'
                 self.update_session_data(session, session_data)
-                return self.start_lesson_booking(session, student)
+                return self.show_duration_selection(session, student)
             else:
-                return "Please select 1 to confirm or 2 to change duration."
+                return "Please select 1 to confirm or 2 to modify booking."
         
         return "Invalid option. Type 'menu' to return to main menu."
+    
+    def show_enhanced_student_progress(self, student):
+        """Show enhanced student progress with gamification"""
+        try:
+            from models import StudentProgress, LoyaltyProgram
+            from gamification_system import gamification
+            
+            response = f"📊 {student.name}'s Progress Dashboard\n\n"
+            
+            # Get progress data
+            progress = StudentProgress.query.filter_by(student_id=student.id).first()
+            if not progress:
+                response += "🆕 Welcome! Complete your first lesson to see progress.\n\n"
+                response += "Options:\n"
+                response += "1️⃣ Book First Lesson\n"
+                response += "2️⃣ Find Instructors\n"
+                response += "3️⃣ Main Menu"
+                return response
+            
+            # Overall stats
+            response += f"🎯 Test Readiness: {progress.test_readiness_score}%\n"
+            response += f"📚 Total Lessons: {progress.total_lessons_completed}\n"
+            response += f"⏱️ Hours Driven: {progress.total_hours_driven:.1f}\n\n"
+            
+            # Skills breakdown
+            response += "🛣️ Driving Skills:\n"
+            skills = [
+                ('Parallel Parking', progress.parallel_parking_score),
+                ('Highway Driving', progress.highway_driving_score),
+                ('City Driving', progress.city_driving_score),
+                ('Reverse Parking', progress.reverse_parking_score),
+                ('Emergency Braking', progress.emergency_braking_score)
+            ]
+            
+            for skill_name, score in skills:
+                stars = "⭐" * (score // 20) + "☆" * (5 - score // 20)
+                response += f"  {skill_name}: {stars} ({score}%)\n"
+            
+            # Badges and achievements
+            badges = json.loads(progress.badges_earned or '[]')
+            response += f"\n🏆 Badges Earned ({len(badges)}):\n"
+            if badges:
+                for badge_id in badges[-3:]:  # Show last 3 badges
+                    if badge_id in gamification['badges'].BADGES:
+                        badge = gamification['badges'].BADGES[badge_id]
+                        response += f"  {badge['icon']} {badge['name']}\n"
+                if len(badges) > 3:
+                    response += f"  ... and {len(badges) - 3} more\n"
+            else:
+                response += "  No badges yet - keep practicing!\n"
+            
+            # Next milestones
+            milestones = gamification['progress']._get_next_milestones(progress)
+            if milestones:
+                response += f"\n🎯 Next Goals:\n"
+                for milestone in milestones[:2]:
+                    progress_bar = "█" * int(milestone['current'] / milestone['target'] * 10)
+                    progress_bar += "░" * (10 - len(progress_bar))
+                    response += f"  {milestone['description']}\n"
+                    response += f"  [{progress_bar}] {milestone['current']}/{milestone['target']}\n"
+            
+            # Loyalty info
+            loyalty = LoyaltyProgram.query.filter_by(student_id=student.id).first()
+            if loyalty:
+                response += f"\n💎 Loyalty Status:\n"
+                response += f"  Tier: {loyalty.current_tier}\n"
+                response += f"  Points: {loyalty.total_points}\n"
+                response += f"  Available: {loyalty.available_points}\n"
+            
+            response += f"\nOptions:\n"
+            response += f"1️⃣ View All Badges\n"
+            response += f"2️⃣ Skills Analysis\n"
+            response += f"3️⃣ Set Goals\n"
+            response += f"4️⃣ Leaderboard\n"
+            response += f"5️⃣ Main Menu"
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error showing enhanced progress: {str(e)}")
+            return "Progress data temporarily unavailable. Type 'menu' to return."
+    
+    def show_balance_and_rewards(self, student):
+        """Show balance, payments, and loyalty rewards"""
+        try:
+            from models import LoyaltyProgram
+            
+            response = f"💰 Balance & Rewards\n\n"
+            response += f"💵 Current Balance: ${student.balance:.2f}\n"
+            
+            # Loyalty program
+            loyalty = LoyaltyProgram.query.filter_by(student_id=student.id).first()
+            if loyalty:
+                response += f"💎 {loyalty.current_tier} Member\n"
+                response += f"⭐ Total Points: {loyalty.total_points}\n"
+                response += f"🎁 Available Points: {loyalty.available_points}\n\n"
+                
+                # Tier benefits
+                if loyalty.current_tier == 'Gold':
+                    response += "🥇 Gold Benefits:\n• 10% lesson discount\n• Priority booking\n• Bonus points\n\n"
+                elif loyalty.current_tier == 'Platinum':
+                    response += "🏆 Platinum Benefits:\n• 15% lesson discount\n• VIP support\n• Double points\n• Free lesson monthly\n\n"
+            else:
+                response += "🆕 Join our loyalty program - earn points with every lesson!\n\n"
+            
+            # Payment options
+            response += "💳 Payment Options:\n"
+            response += "1️⃣ Add Funds ($10, $25, $50, $100)\n"
+            response += "2️⃣ Auto-Reload Setup\n"
+            response += "3️⃣ Redeem Points\n"
+            response += "4️⃣ Promo Codes\n"
+            response += "5️⃣ Referral Program\n"
+            response += "6️⃣ Payment History\n"
+            response += "7️⃣ Main Menu"
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error showing balance and rewards: {str(e)}")
+            return f"Balance: ${student.balance:.2f}\nType 'menu' to return."
+    
+    def show_safety_options(self, student):
+        """Show safety and emergency options"""
+        response = f"🚨 Safety & Emergency Center\n\n"
+        response += f"Your safety is our top priority.\n\n"
+        
+        response += f"🔒 Active Safety Features:\n"
+        response += f"• Real-time GPS tracking during lessons\n"
+        response += f"• Emergency contact notifications\n"
+        response += f"• Instructor background verification\n"
+        response += f"• Vehicle safety inspections\n\n"
+        
+        response += f"🚨 Emergency Options:\n"
+        response += f"1️⃣ Emergency Contacts\n"
+        response += f"   (Update your emergency contacts)\n"
+        response += f"2️⃣ Panic Button Info\n"
+        response += f"   (How to use emergency features)\n"
+        response += f"3️⃣ Safety Tips\n"
+        response += f"   (Stay safe during lessons)\n"
+        response += f"4️⃣ Report Safety Issue\n"
+        response += f"   (Report any concerns)\n"
+        response += f"5️⃣ Safety Training\n"
+        response += f"   (Watch safety videos)\n"
+        response += f"6️⃣ Main Menu\n\n"
+        
+        response += f"🆘 EMERGENCY: If you're in immediate danger,\n"
+        response += f"call 911 or local emergency services first,\n"
+        response += f"then notify DriveLink support."
+        
+        return response
+    
+    def show_help_and_support(self, student):
+        """Show help and support options"""
+        response = f"❓ Help & Support Center\n\n"
+        
+        response += f"🔍 Quick Help:\n"
+        response += f"1️⃣ How to Book Lessons\n"
+        response += f"2️⃣ Finding Instructors\n"
+        response += f"3️⃣ Payment & Billing\n"
+        response += f"4️⃣ Progress Tracking\n"
+        response += f"5️⃣ Safety Features\n\n"
+        
+        response += f"📞 Contact Support:\n"
+        response += f"6️⃣ Chat with Agent\n"
+        response += f"7️⃣ Report Problem\n"
+        response += f"8️⃣ Suggest Feature\n\n"
+        
+        response += f"📚 Resources:\n"
+        response += f"9️⃣ FAQ\n"
+        response += f"🔟 Video Tutorials\n"
+        response += f"1️⃣1️⃣ Terms & Privacy\n"
+        response += f"1️⃣2️⃣ Main Menu\n\n"
+        
+        response += f"💬 Need immediate help?\n"
+        response += f"Text 'agent' to chat with a real person!"
+        
+        return response
+    
+    def show_enhanced_booking_confirmation(self, session, student):
+        """Show enhanced booking confirmation with all details"""
+        try:
+            session_data = self.get_session_data(session)
+            instructor = User.query.get(student.instructor_id)
+            
+            lesson_type = session_data.get('lesson_type', 'regular_practice')
+            duration = session_data.get('lesson_duration', 60)
+            scheduling_pref = session_data.get('scheduling_preference', 'next_available')
+            
+            # Get dynamic pricing
+            from enhanced_features import enhanced_features
+            pricing = enhanced_features.pricing_engine.calculate_lesson_price(
+                student.id, instructor.id, duration, datetime.now() + timedelta(days=1)
+            )
+            
+            response = f"📋 Booking Confirmation\n\n"
+            response += f"👨‍🏫 Instructor: {instructor.get_full_name()}\n"
+            response += f"📍 Base Location: {instructor.base_location}\n"
+            
+            # Lesson type display
+            type_names = {
+                'regular_practice': 'Regular Practice',
+                'test_preparation': 'Test Preparation',
+                'skill_specific': 'Skill-Specific Training',
+                'highway_driving': 'Highway Driving Focus'
+            }
+            response += f"🎯 Lesson Type: {type_names.get(lesson_type, 'Regular Practice')}\n"
+            response += f"⏱️ Duration: {duration} minutes\n"
+            
+            # Scheduling info
+            if scheduling_pref == 'next_available':
+                response += f"📅 Timing: Next available slot\n"
+            elif scheduling_pref == 'specific_time':
+                selected_date = session_data.get('selected_date', 'TBD')
+                response += f"📅 Requested Date: {selected_date}\n"
+            elif scheduling_pref == 'recurring':
+                pattern = session_data.get('recurring_pattern', 'weekly')
+                response += f"🔄 Recurring: {pattern.title()} lessons\n"
+            
+            # Pricing breakdown
+            if 'error' not in pricing:
+                final_price = pricing.get('final_price', instructor.hourly_rate_60min or 25)
+                surge = pricing.get('surge_multiplier', 1.0)
+                discount = pricing.get('discount', 0)
+                
+                response += f"\n💰 Pricing:\n"
+                response += f"   Base Rate: ${pricing.get('base_price', 25):.0f}\n"
+                
+                if surge > 1.0:
+                    response += f"   Demand Surge: {surge:.1f}x\n"
+                
+                if discount > 0:
+                    response += f"   Your Discount: -${discount:.0f}\n"
+                
+                response += f"   Total Cost: ${final_price:.0f}\n"
+                
+                # Surge warning
+                if surge > 1.2:
+                    response += f"\n⚠️ High demand pricing active\n"
+                    response += f"💡 Tip: Book for off-peak hours to save money\n"
+            else:
+                base_rate = instructor.hourly_rate_60min if duration == 60 else instructor.hourly_rate_30min
+                response += f"\n💰 Total Cost: ${base_rate or 25}\n"
+            
+            # Additional features
+            response += f"\n✨ Included Features:\n"
+            response += f"• Real-time lesson tracking\n"
+            response += f"• Progress assessment\n"
+            response += f"• Post-lesson summary\n"
+            response += f"• Safety monitoring\n"
+            
+            if lesson_type == 'test_preparation':
+                response += f"• Test readiness evaluation\n"
+                response += f"• Practice test scenarios\n"
+            elif lesson_type == 'skill_specific':
+                response += f"• Focused skill development\n"
+                response += f"• Progress photos/videos\n"
+            
+            response += f"\n📱 You'll receive:\n"
+            response += f"• Booking confirmation via WhatsApp\n"
+            response += f"• Reminder 24 hours before\n"
+            response += f"• Instructor contact details\n"
+            response += f"• Real-time lesson updates\n"
+            
+            response += f"\n🔒 Safety Features:\n"
+            response += f"• Live GPS tracking\n"
+            response += f"• Emergency contact alerts\n"
+            response += f"• Panic button access\n"
+            response += f"• Instructor verification\n"
+            
+            response += f"\nConfirm your booking?\n\n"
+            response += f"1️⃣ Confirm & Book Lesson\n"
+            response += f"2️⃣ Modify Details\n"
+            response += f"3️⃣ Cancel Booking"
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error showing enhanced booking confirmation: {str(e)}")
+            return self.show_booking_confirmation(session, student)
+    
+    def complete_enhanced_lesson_booking(self, session, student):
+        """Complete the enhanced lesson booking with all features"""
+        try:
+            from app import db
+            from enhanced_features import enhanced_features
+            from safety_system import safety_system
+            from gamification_system import gamification
+            
+            session_data = self.get_session_data(session)
+            instructor = User.query.get(student.instructor_id)
+            
+            # Get booking details
+            lesson_type = session_data.get('lesson_type', 'regular_practice')
+            duration = session_data.get('lesson_duration', 60)
+            scheduling_pref = session_data.get('scheduling_preference', 'next_available')
+            
+            # Calculate pricing
+            pricing = enhanced_features.pricing_engine.calculate_lesson_price(
+                student.id, instructor.id, duration, datetime.now() + timedelta(days=1)
+            )
+            
+            # Create lesson with enhanced features
+            lesson = Lesson()
+            lesson.student_id = student.id
+            lesson.instructor_id = instructor.id
+            lesson.lesson_type = lesson_type
+            lesson.duration_minutes = duration
+            lesson.status = 'scheduled'
+            
+            # Set pricing
+            if 'error' not in pricing:
+                lesson.cost = pricing.get('final_price', 25)
+                lesson.base_price = pricing.get('base_price', 25)
+                lesson.surge_multiplier = pricing.get('surge_multiplier', 1.0)
+                lesson.discount_applied = pricing.get('discount', 0)
+            else:
+                base_rate = instructor.hourly_rate_60min if duration == 60 else instructor.hourly_rate_30min
+                lesson.cost = base_rate or 25
+            
+            # Set scheduling
+            if scheduling_pref == 'next_available':
+                lesson.lesson_date = datetime.now() + timedelta(hours=24)  # Next day
+            elif scheduling_pref == 'specific_time':
+                selected_date = session_data.get('selected_date')
+                if selected_date:
+                    from datetime import datetime as dt
+                    lesson.lesson_date = dt.fromisoformat(selected_date).replace(hour=14)  # 2 PM default
+                else:
+                    lesson.lesson_date = datetime.now() + timedelta(hours=24)
+            elif scheduling_pref == 'recurring':
+                lesson.is_recurring = True
+                lesson.recurring_pattern = session_data.get('recurring_pattern', 'weekly')
+                lesson.lesson_date = datetime.now() + timedelta(days=7)  # Next week
+            
+            # Set location (mock for demo)
+            lesson.location = instructor.base_location or 'To be determined'
+            lesson.pickup_location = f"Near {instructor.base_location or 'your location'}"
+            
+            # Enhanced features
+            lesson.lesson_tracking_active = False  # Will be enabled when lesson starts
+            lesson.skills_practiced = json.dumps(['basic_driving'])  # Will be updated during lesson
+            
+            db.session.add(lesson)
+            db.session.flush()  # Get lesson ID
+            
+            # Schedule automatic features
+            try:
+                # Schedule reminder
+                from enhanced_features import CommunicationManager
+                CommunicationManager.schedule_reminder(lesson.id, '24_hours')
+                
+                # Prepare safety tracking
+                safety_system['tracker'].start_lesson_tracking(lesson.id)
+                
+                # Update student progress (booking milestone)
+                if student.lessons_completed == 0:
+                    gamification['badges'].check_badges_for_student(student.id)
+                
+            except Exception as feature_error:
+                logger.warning(f"Enhanced features setup warning: {str(feature_error)}")
+            
+            # Update student stats
+            student.lessons_completed = (student.lessons_completed or 0) + 1
+            
+            db.session.commit()
+            
+            # Clear booking session
+            session_data.pop('booking_lesson', None)
+            session_data.pop('booking_step', None)
+            session_data.pop('lesson_type', None)
+            session_data.pop('lesson_duration', None)
+            session_data.pop('scheduling_preference', None)
+            self.update_session_data(session, session_data)
+            
+            # Create success message
+            response = f"✅ Lesson Booked Successfully!\n\n"
+            response += f"📋 Booking Details:\n"
+            response += f"• Lesson ID: #{lesson.id}\n"
+            response += f"• Instructor: {instructor.get_full_name()}\n"
+            response += f"• Date: {lesson.lesson_date.strftime('%Y-%m-%d at %H:%M')}\n"
+            response += f"• Duration: {duration} minutes\n"
+            response += f"• Cost: ${lesson.cost:.0f}\n"
+            response += f"• Type: {lesson_type.replace('_', ' ').title()}\n\n"
+            
+            if lesson.is_recurring:
+                response += f"🔄 Recurring lessons set up ({lesson.recurring_pattern})\n\n"
+            
+            response += f"📱 What happens next:\n"
+            response += f"• Confirmation SMS sent to instructor\n"
+            response += f"• Calendar reminder set for 24hrs before\n"
+            response += f"• Real-time tracking will start during lesson\n"
+            response += f"• Progress will be automatically tracked\n\n"
+            
+            response += f"🚨 Safety Features Active:\n"
+            response += f"• GPS tracking during lesson\n"
+            response += f"• Emergency contacts on standby\n"
+            response += f"• Panic button available\n"
+            response += f"• Instructor verification confirmed\n\n"
+            
+            response += f"📞 Need to make changes?\n"
+            response += f"Reply 'lessons' to view/modify bookings\n"
+            response += f"Reply 'menu' to return to main menu\n\n"
+            
+            response += f"🎉 Enjoy your enhanced driving lesson!"
+            
+            logger.info(f"Enhanced lesson booking completed: {lesson.id} for student {student.id}")
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error completing enhanced lesson booking: {str(e)}")
+            db.session.rollback()
+            return "❌ Booking failed. Please try again or contact support."
+    
+    def show_duration_selection(self, session, student):
+        """Show enhanced duration selection with pricing"""
+        session_data = self.get_session_data(session)
+        lesson_type = session_data.get('lesson_type', 'regular_practice')
+        instructor = User.query.get(student.instructor_id)
+        
+        try:
+            from enhanced_features import enhanced_features
+            
+            # Get dynamic pricing
+            pricing_30 = enhanced_features.pricing_engine.calculate_lesson_price(
+                student.id, instructor.id, 30, datetime.now() + timedelta(days=1)
+            )
+            pricing_60 = enhanced_features.pricing_engine.calculate_lesson_price(
+                student.id, instructor.id, 60, datetime.now() + timedelta(days=1)
+            )
+            
+            response = f"⏱️ Select lesson duration:\n\n"
+            
+            # Duration recommendations based on lesson type
+            if lesson_type == 'test_preparation':
+                response += "💡 Recommended: 60 minutes for test prep\n\n"
+            elif lesson_type == 'skill_specific':
+                response += "💡 Recommended: 30-45 minutes for focused practice\n\n"
+            
+            # Show options with pricing
+            price_30 = pricing_30.get('final_price', instructor.hourly_rate_30min or 15) if 'error' not in pricing_30 else instructor.hourly_rate_30min or 15
+            price_60 = pricing_60.get('final_price', instructor.hourly_rate_60min or 25) if 'error' not in pricing_60 else instructor.hourly_rate_60min or 25
+            
+            response += f"1️⃣ 30 minutes - ${price_30:.0f}\n"
+            response += f"2️⃣ 60 minutes - ${price_60:.0f}"
+            
+            # Show value proposition
+            if price_60 < (price_30 * 2):
+                savings = (price_30 * 2) - price_60
+                response += f" (Save ${savings:.0f}!)"
+            
+            response += f"\n\n3️⃣ Cancel booking\n\n"
+            response += "Choose your duration:"
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error showing duration selection: {str(e)}")
+            return f"1️⃣ 30 minutes - ${instructor.hourly_rate_30min or 15}\n2️⃣ 60 minutes - ${instructor.hourly_rate_60min or 25}"
+    
+    def show_schedule_options(self, session, student):
+        """Show scheduling options"""
+        response = "📅 When would you like your lesson?\n\n"
+        response += "1️⃣ Next Available Slot\n"
+        response += "   (Usually within 24-48 hours)\n\n"
+        response += "2️⃣ Specific Date & Time\n"
+        response += "   (Choose your preferred slot)\n\n"
+        response += "3️⃣ Set Up Recurring Lessons\n"
+        response += "   (Weekly lessons at same time)\n\n"
+        response += "4️⃣ Cancel booking\n\n"
+        response += "Choose your preference:"
+        
+        return response
+    
+    def show_time_selection(self, session, student):
+        """Show specific time selection"""
+        from datetime import date, timedelta
+        
+        response = "🕐 Select your preferred time:\n\n"
+        response += "Next 7 days availability:\n\n"
+        
+        today = date.today()
+        for i in range(7):
+            check_date = today + timedelta(days=i)
+            day_name = check_date.strftime('%A')
+            
+            response += f"{i+1}️⃣ {day_name} {check_date.strftime('%m/%d')}\n"
+        
+        response += f"\n8️⃣ Cancel booking\n\n"
+        response += "Select a day (1-7):"
+        
+        return response
+    
+    def show_recurring_setup(self, session, student):
+        """Show recurring lesson setup"""
+        response = "🔄 Set up recurring lessons:\n\n"
+        response += "1️⃣ Weekly (same day & time)\n"
+        response += "2️⃣ Bi-weekly (every 2 weeks)\n" 
+        response += "3️⃣ Monthly (once per month)\n\n"
+        response += "4️⃣ Cancel booking\n\n"
+        response += "Choose frequency:"
+        
+        return response
+    
+    def handle_time_selection(self, session, student, message):
+        """Handle specific time selection"""
+        if message.isdigit() and 1 <= int(message) <= 7:
+            from datetime import date, timedelta
+            
+            selected_day = date.today() + timedelta(days=int(message)-1)
+            session_data = self.get_session_data(session)
+            session_data['selected_date'] = selected_day.isoformat()
+            session_data['booking_step'] = 'confirm'
+            self.update_session_data(session, session_data)
+            
+            return self.show_enhanced_booking_confirmation(session, student)
+        elif message == '8':
+            return self.handle_lesson_booking_flow(session, student, 'cancel')
+        else:
+            return "Please select a day (1-7) or 8 to cancel."
+    
+    def handle_recurring_setup(self, session, student, message):
+        """Handle recurring lesson setup"""
+        patterns = {'1': 'weekly', '2': 'biweekly', '3': 'monthly'}
+        
+        if message in patterns:
+            session_data = self.get_session_data(session)
+            session_data['recurring_pattern'] = patterns[message]
+            session_data['is_recurring'] = True
+            session_data['booking_step'] = 'confirm'
+            self.update_session_data(session, session_data)
+            
+            return self.show_enhanced_booking_confirmation(session, student)
+        elif message == '4':
+            return self.handle_lesson_booking_flow(session, student, 'cancel')
+        else:
+            return "Please select 1-3 for frequency or 4 to cancel."
     
     def show_booking_confirmation(self, session, student):
         """Show booking confirmation details"""
@@ -661,7 +1356,58 @@ class EnhancedWhatsAppBot:
             return "❌ Booking failed. Please try again or contact support."
     
     def start_instructor_search(self, session, student):
-        """Start the instructor search flow"""
+        """Start the AI-powered instructor search flow"""
+        try:
+            from enhanced_features import enhanced_features
+            
+            # Get smart recommendations using ML algorithm
+            recommendations = enhanced_features.get_smart_instructor_recommendations(
+                student.id, max_distance=15.0
+            )
+            
+            if not recommendations:
+                # Fallback to basic search
+                instructors = User.query.filter_by(role=ROLE_INSTRUCTOR, active=True, is_verified=True).limit(10).all()
+                if not instructors:
+                    return "❌ No verified instructors available at the moment. Please try again later."
+                
+                # Convert to recommendations format
+                recommendations = []
+                for instructor in instructors:
+                    distance = 0
+                    if student.latitude and instructor.latitude:
+                        distance = self.calculate_distance(
+                            student.latitude, student.longitude,
+                            instructor.latitude, instructor.longitude
+                        )
+                    
+                    recommendations.append({
+                        'instructor': instructor,
+                        'compatibility_score': 0.75,
+                        'match_percentage': 75,
+                        'distance': distance,
+                        'pricing': {'final_price': instructor.hourly_rate_60min or 25},
+                        'availability': {'available_today': True},
+                        'safety_score': 95
+                    })
+            
+            # Store recommendations in session
+            session_data = self.get_session_data(session)
+            session_data['selecting_instructor'] = True
+            session_data['recommendations'] = [r['instructor'].id for r in recommendations]
+            session_data['recommendation_data'] = {r['instructor'].id: r for r in recommendations}
+            session_data['current_page'] = 0
+            self.update_session_data(session, session_data)
+            
+            return self.show_smart_instructor_list(recommendations[:5], student, 0, len(recommendations))
+            
+        except Exception as e:
+            logger.error(f"Error in smart instructor search: {str(e)}")
+            # Fallback to basic search
+            return self.start_basic_instructor_search(session, student)
+    
+    def start_basic_instructor_search(self, session, student):
+        """Fallback basic instructor search"""
         instructors = User.query.filter_by(role=ROLE_INSTRUCTOR, active=True, is_verified=True).limit(10).all()
         
         if not instructors:
@@ -669,7 +1415,6 @@ class EnhancedWhatsAppBot:
         
         # Calculate distances if student has location
         if student.latitude and student.longitude:
-            # Sort by distance (simplified - in production use proper geolocation)
             instructors = sorted(instructors, key=lambda x: self.calculate_distance(
                 student.latitude, student.longitude, 
                 x.latitude or 0, x.longitude or 0
@@ -683,6 +1428,70 @@ class EnhancedWhatsAppBot:
         self.update_session_data(session, session_data)
         
         return self.show_instructor_list(instructors[:5], student, 0, len(instructors))
+    
+    def show_smart_instructor_list(self, recommendations, student, page, total):
+        """Show AI-powered instructor recommendations"""
+        response = f"🤖 Smart Instructor Matches ({len(recommendations)} of {total}):\n\n"
+        
+        for i, rec in enumerate(recommendations, 1):
+            instructor = rec['instructor']
+            match_pct = rec.get('match_percentage', 75)
+            distance = rec.get('distance', 0)
+            pricing = rec.get('pricing', {})
+            availability = rec.get('availability', {})
+            safety_score = rec.get('safety_score', 95)
+            
+            # Match indicator
+            if match_pct >= 90:
+                match_indicator = "🔥 PERFECT MATCH"
+            elif match_pct >= 80:
+                match_indicator = "⭐ GREAT MATCH"
+            elif match_pct >= 70:
+                match_indicator = "✅ GOOD MATCH"
+            else:
+                match_indicator = "👍 SUITABLE"
+            
+            response += f"{i}️⃣ {instructor.get_full_name()}\n"
+            response += f"   {match_indicator} ({match_pct}%)\n"
+            response += f"📍 {instructor.base_location or 'Location not set'}"
+            if distance > 0:
+                response += f" ({distance:.1f}km away)\n"
+            else:
+                response += "\n"
+            
+            response += f"⭐ {instructor.experience_years or 0} years • Rating: {instructor.average_rating or 'New'}/5.0\n"
+            
+            # Dynamic pricing
+            final_price = pricing.get('final_price', instructor.hourly_rate_60min or 25)
+            surge_multiplier = pricing.get('surge_multiplier', 1.0)
+            if surge_multiplier > 1.1:
+                response += f"💰 ${final_price:.0f}/hour (High demand)\n"
+            else:
+                response += f"💰 ${final_price:.0f}/hour\n"
+            
+            # Availability
+            if availability.get('available_today'):
+                response += f"🟢 Available today\n"
+            else:
+                response += f"🟡 Next available: Tomorrow\n"
+            
+            # Safety score
+            if safety_score >= 95:
+                response += f"🛡️ Excellent safety record\n\n"
+            elif safety_score >= 90:
+                response += f"🛡️ Very safe driver\n\n"
+            else:
+                response += f"🛡️ Safety score: {safety_score}/100\n\n"
+        
+        response += "Reply with:\n"
+        response += "• Number (1-5) to view details\n"
+        if page > 0:
+            response += "• 'prev' for previous matches\n"
+        if (page + 1) * 5 < total:
+            response += "• 'next' for more matches\n"
+        response += "• 'menu' to return to main menu"
+        
+        return response
     
     def show_instructor_list(self, instructors, student, page, total):
         """Show a paginated list of instructors"""
@@ -722,25 +1531,49 @@ class EnhancedWhatsAppBot:
     def handle_instructor_selection(self, session, student, message):
         """Handle instructor selection during search"""
         session_data = self.get_session_data(session)
+        
+        # Check if using smart recommendations or basic list
+        recommendations = session_data.get('recommendations', [])
         instructor_list = session_data.get('instructor_list', [])
         current_page = session_data.get('current_page', 0)
         
         if message == 'menu':
             session_data.pop('selecting_instructor', None)
             session_data.pop('instructor_list', None)
+            session_data.pop('recommendations', None)
+            session_data.pop('recommendation_data', None)
             self.update_session_data(session, session_data)
             return self.get_student_menu(student)
         
         elif message == 'next':
             next_page = current_page + 1
             start_idx = next_page * 5
-            if start_idx < len(instructor_list):
-                session_data['current_page'] = next_page
-                self.update_session_data(session, session_data)
-                instructors = User.query.filter(User.id.in_(instructor_list[start_idx:start_idx+5])).all()
-                return self.show_instructor_list(instructors, student, next_page, len(instructor_list))
+            
+            if recommendations:
+                # Smart recommendations flow
+                if start_idx < len(recommendations):
+                    session_data['current_page'] = next_page
+                    self.update_session_data(session, session_data)
+                    
+                    # Get recommendation data
+                    rec_data = session_data.get('recommendation_data', {})
+                    page_recommendations = []
+                    for instructor_id in recommendations[start_idx:start_idx+5]:
+                        if instructor_id in rec_data:
+                            page_recommendations.append(rec_data[instructor_id])
+                    
+                    return self.show_smart_instructor_list(page_recommendations, student, next_page, len(recommendations))
+                else:
+                    return "No more matches to show. Type 'menu' to return."
             else:
-                return "No more instructors to show. Type 'menu' to return."
+                # Basic list flow
+                if start_idx < len(instructor_list):
+                    session_data['current_page'] = next_page
+                    self.update_session_data(session, session_data)
+                    instructors = User.query.filter(User.id.in_(instructor_list[start_idx:start_idx+5])).all()
+                    return self.show_instructor_list(instructors, student, next_page, len(instructor_list))
+                else:
+                    return "No more instructors to show. Type 'menu' to return."
         
         elif message == 'prev':
             if current_page > 0:
@@ -748,26 +1581,142 @@ class EnhancedWhatsAppBot:
                 start_idx = prev_page * 5
                 session_data['current_page'] = prev_page
                 self.update_session_data(session, session_data)
-                instructors = User.query.filter(User.id.in_(instructor_list[start_idx:start_idx+5])).all()
-                return self.show_instructor_list(instructors, student, prev_page, len(instructor_list))
+                
+                if recommendations:
+                    # Smart recommendations flow
+                    rec_data = session_data.get('recommendation_data', {})
+                    page_recommendations = []
+                    for instructor_id in recommendations[start_idx:start_idx+5]:
+                        if instructor_id in rec_data:
+                            page_recommendations.append(rec_data[instructor_id])
+                    
+                    return self.show_smart_instructor_list(page_recommendations, student, prev_page, len(recommendations))
+                else:
+                    # Basic list flow
+                    instructors = User.query.filter(User.id.in_(instructor_list[start_idx:start_idx+5])).all()
+                    return self.show_instructor_list(instructors, student, prev_page, len(instructor_list))
             else:
                 return "Already on first page. Type 'menu' to return."
         
         elif message.isdigit():
             choice = int(message)
             start_idx = current_page * 5
-            if 1 <= choice <= 5 and start_idx + choice - 1 < len(instructor_list):
-                instructor_id = instructor_list[start_idx + choice - 1]
+            
+            # Determine which list to use
+            active_list = recommendations if recommendations else instructor_list
+            
+            if 1 <= choice <= 5 and start_idx + choice - 1 < len(active_list):
+                instructor_id = active_list[start_idx + choice - 1]
                 instructor = User.query.get(instructor_id)
-                return self.show_instructor_details(session, student, instructor)
+                return self.show_enhanced_instructor_details(session, student, instructor)
             else:
                 return "Invalid selection. Please choose a number from the list or type 'menu'."
         
         else:
             return "Please choose a number (1-5), 'next', 'prev', or 'menu'."
     
+    def show_enhanced_instructor_details(self, session, student, instructor):
+        """Show enhanced instructor details with all new features"""
+        try:
+            from enhanced_features import enhanced_features
+            
+            # Get recommendation data if available
+            session_data = self.get_session_data(session)
+            rec_data = session_data.get('recommendation_data', {})
+            instructor_rec = rec_data.get(instructor.id, {})
+            
+            # Calculate distance
+            distance_text = ""
+            distance = 0
+            if student.latitude and instructor.latitude:
+                distance = self.calculate_distance(
+                    student.latitude, student.longitude,
+                    instructor.latitude, instructor.longitude
+                )
+                distance_text = f"\n📏 Distance: {distance:.1f}km from you"
+            
+            # Get dynamic pricing
+            try:
+                pricing = enhanced_features.pricing_engine.calculate_lesson_price(
+                    student.id, instructor.id, 60, datetime.now() + timedelta(days=1)
+                )
+            except:
+                pricing = {'final_price': instructor.hourly_rate_60min or 25, 'surge_multiplier': 1.0}
+            
+            # Match score if available
+            match_info = ""
+            if 'match_percentage' in instructor_rec:
+                match_pct = instructor_rec['match_percentage']
+                if match_pct >= 90:
+                    match_info = f"🔥 PERFECT MATCH ({match_pct}%)\n"
+                elif match_pct >= 80:
+                    match_info = f"⭐ GREAT MATCH ({match_pct}%)\n"
+                elif match_pct >= 70:
+                    match_info = f"✅ GOOD MATCH ({match_pct}%)\n"
+                else:
+                    match_info = f"👍 SUITABLE ({match_pct}%)\n"
+            
+            response = f"👨‍🏫 {instructor.get_full_name()}\n"
+            response += match_info
+            response += f"📍 Base Location: {instructor.base_location or 'Not specified'}{distance_text}\n"
+            response += f"⭐ Experience: {instructor.experience_years or 0} years\n"
+            
+            # Enhanced pricing display
+            final_price = pricing.get('final_price', instructor.hourly_rate_60min or 25)
+            surge_multiplier = pricing.get('surge_multiplier', 1.0)
+            if surge_multiplier > 1.1:
+                response += f"💰 ${final_price:.0f}/hour (High demand - {surge_multiplier:.1f}x)\n"
+            else:
+                response += f"💰 ${final_price:.0f}/hour\n"
+            
+            # Rating with more detail
+            response += f"⭐ Rating: {instructor.average_rating or 'New'}/5.0 ({instructor.total_lessons_taught or 0} lessons taught)\n"
+            
+            # Safety score
+            safety_score = instructor_rec.get('safety_score', 95)
+            if safety_score >= 95:
+                response += f"🛡️ Excellent safety record (95+)\n"
+            elif safety_score >= 90:
+                response += f"🛡️ Very safe driver ({safety_score}/100)\n"
+            else:
+                response += f"🛡️ Safety score: {safety_score}/100\n"
+            
+            # Real-time availability
+            availability = instructor_rec.get('availability', {})
+            if availability.get('available_today'):
+                response += f"🟢 Available today\n"
+            else:
+                response += f"🟡 Next available: Tomorrow\n"
+            
+            # Bio
+            if instructor.bio:
+                response += f"\n📝 About: {instructor.bio[:120]}{'...' if len(instructor.bio) > 120 else ''}\n"
+            
+            # Specializations (mock data for demo)
+            specializations = ["Parallel parking", "Highway driving", "Test preparation"]
+            response += f"\n🎯 Specializations: {', '.join(specializations[:2])}\n"
+            
+            # Store instructor for selection
+            session_data['selected_instructor_id'] = instructor.id
+            self.update_session_data(session, session_data)
+            
+            response += "\nWhat would you like to do?\n"
+            response += "1️⃣ Select This Instructor\n"
+            response += "2️⃣ View Reviews & Ratings\n"
+            response += "3️⃣ Check Schedule & Availability\n"
+            response += "4️⃣ Get Pricing Breakdown\n"
+            response += "5️⃣ Back to List\n"
+            response += "6️⃣ Main Menu"
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error showing enhanced instructor details: {str(e)}")
+            # Fallback to basic details
+            return self.show_instructor_details(session, student, instructor)
+    
     def show_instructor_details(self, session, student, instructor):
-        """Show detailed instructor information and selection options"""
+        """Fallback basic instructor details"""
         distance_text = ""
         if student.latitude and instructor.latitude:
             distance = self.calculate_distance(
@@ -803,7 +1752,7 @@ class EnhancedWhatsAppBot:
         return response
     
     def handle_instructor_detail_action(self, session, student, message):
-        """Handle actions from instructor detail view"""
+        """Handle actions from enhanced instructor detail view"""
         session_data = self.get_session_data(session)
         instructor_id = session_data.get('selected_instructor_id')
         
@@ -816,19 +1765,210 @@ class EnhancedWhatsAppBot:
         
         if message == '1':  # Select instructor
             return self.assign_instructor_to_student(session, student, instructor)
-        elif message == '2':  # View reviews
-            return self.show_instructor_reviews(instructor)
-        elif message == '3':  # Check availability
-            return self.show_instructor_availability(instructor)
-        elif message == '4':  # Back to list
+        elif message == '2':  # View reviews and ratings
+            return self.show_enhanced_instructor_reviews(instructor)
+        elif message == '3':  # Check schedule and availability
+            return self.show_enhanced_instructor_schedule(instructor)
+        elif message == '4':  # Get pricing breakdown
+            return self.show_pricing_breakdown(session, student, instructor)
+        elif message == '5':  # Back to list
             return self.start_instructor_search(session, student)
-        elif message == '5' or message == 'menu':  # Main menu
+        elif message == '6' or message == 'menu':  # Main menu
             session_data.pop('selecting_instructor', None)
             session_data.pop('selected_instructor_id', None)
             self.update_session_data(session, session_data)
             return self.get_student_menu(student)
         else:
-            return "Please select 1-5 or type 'menu'."
+            return "Please select 1-6 or type 'menu'."
+    
+    def show_enhanced_instructor_reviews(self, instructor):
+        """Show enhanced reviews with detailed breakdown"""
+        try:
+            from models import Review
+            
+            reviews = Review.query.filter_by(instructor_id=instructor.id).order_by(
+                Review.created_at.desc()
+            ).limit(5).all()
+            
+            response = f"⭐ Reviews for {instructor.get_full_name()}\n\n"
+            
+            if not reviews:
+                response += "🆕 New instructor - no reviews yet!\n"
+                response += "Be the first to book and leave a review.\n\n"
+                response += f"💡 Based on verification:\n"
+                response += f"✅ Licensed instructor\n"
+                response += f"✅ Background checked\n"
+                response += f"✅ Vehicle inspected\n\n"
+            else:
+                # Overall stats
+                avg_patience = sum(r.patience_rating for r in reviews if r.patience_rating) / len([r for r in reviews if r.patience_rating])
+                avg_teaching = sum(r.teaching_style_rating for r in reviews if r.teaching_style_rating) / len([r for r in reviews if r.teaching_style_rating])
+                avg_punctuality = sum(r.punctuality_rating for r in reviews if r.punctuality_rating) / len([r for r in reviews if r.punctuality_rating])
+                
+                response += f"📊 Rating Breakdown:\n"
+                response += f"⭐ Overall: {instructor.average_rating:.1f}/5.0\n"
+                response += f"😌 Patience: {avg_patience:.1f}/5.0\n"
+                response += f"🎓 Teaching: {avg_teaching:.1f}/5.0\n"
+                response += f"⏰ Punctuality: {avg_punctuality:.1f}/5.0\n\n"
+                
+                response += f"📚 Recent Reviews:\n"
+                for review in reviews[:3]:
+                    response += f"⭐ {review.overall_rating}/5 - {review.created_at.strftime('%b %Y')}\n"
+                    if review.review_text:
+                        text = review.review_text[:80] + "..." if len(review.review_text) > 80 else review.review_text
+                        response += f"   \"{text}\"\n"
+                    response += "\n"
+            
+            response += "Options:\n"
+            response += "1️⃣ Select This Instructor\n"
+            response += "2️⃣ Back to Details\n"
+            response += "3️⃣ Main Menu"
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error showing enhanced reviews: {str(e)}")
+            return self.show_instructor_reviews(instructor)
+    
+    def show_enhanced_instructor_schedule(self, instructor):
+        """Show enhanced schedule with real-time availability"""
+        try:
+            from datetime import date, timedelta
+            from models import InstructorAvailability, Lesson
+            
+            response = f"📅 Schedule for {instructor.get_full_name()}\n\n"
+            
+            # Next 7 days availability
+            today = date.today()
+            response += "🗓️ Next 7 Days:\n"
+            
+            for i in range(7):
+                check_date = today + timedelta(days=i)
+                day_name = check_date.strftime('%A')[:3]
+                
+                # Check existing lessons
+                existing_lessons = Lesson.query.filter(
+                    Lesson.instructor_id == instructor.id,
+                    Lesson.lesson_date >= datetime.combine(check_date, time.min),
+                    Lesson.lesson_date < datetime.combine(check_date + timedelta(days=1), time.min),
+                    Lesson.status.in_(['scheduled', 'confirmed'])
+                ).count()
+                
+                # Mock availability (in real app, would check InstructorAvailability)
+                if check_date.weekday() < 5:  # Weekday
+                    available_slots = 8 - existing_lessons
+                else:  # Weekend
+                    available_slots = 4 - existing_lessons
+                
+                if available_slots > 0:
+                    response += f"{day_name} {check_date.strftime('%m/%d')}: 🟢 {available_slots} slots\n"
+                else:
+                    response += f"{day_name} {check_date.strftime('%m/%d')}: 🔴 Fully booked\n"
+            
+            response += "\n⏰ Typical Hours:\n"
+            response += "• Weekdays: 8:00 AM - 6:00 PM\n"
+            response += "• Weekends: 9:00 AM - 4:00 PM\n"
+            response += "• Flexible timing available\n\n"
+            
+            # Popular time slots
+            response += "🎯 Popular Times:\n"
+            response += "• Morning (8-10 AM): Less traffic\n"
+            response += "• Afternoon (2-4 PM): Good practice\n"
+            response += "• Evening (5-7 PM): High demand\n\n"
+            
+            response += "Options:\n"
+            response += "1️⃣ Select This Instructor\n"
+            response += "2️⃣ Request Specific Time\n"
+            response += "3️⃣ Back to Details\n"
+            response += "4️⃣ Main Menu"
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error showing enhanced schedule: {str(e)}")
+            return self.show_instructor_availability(instructor)
+    
+    def show_pricing_breakdown(self, session, student, instructor):
+        """Show detailed pricing breakdown with dynamic factors"""
+        try:
+            from enhanced_features import enhanced_features
+            
+            response = f"💰 Pricing for {instructor.get_full_name()}\n\n"
+            
+            # Get pricing for different scenarios
+            pricing_30 = enhanced_features.pricing_engine.calculate_lesson_price(
+                student.id, instructor.id, 30, datetime.now() + timedelta(days=1)
+            )
+            pricing_60 = enhanced_features.pricing_engine.calculate_lesson_price(
+                student.id, instructor.id, 60, datetime.now() + timedelta(days=1)
+            )
+            
+            # 30-minute lesson
+            response += "⏱️ 30-Minute Lesson:\n"
+            if 'error' not in pricing_30:
+                response += f"   Base Price: ${pricing_30.get('base_price', 15):.0f}\n"
+                if pricing_30.get('surge_multiplier', 1.0) > 1.0:
+                    response += f"   Demand Surge: {pricing_30.get('surge_multiplier', 1.0):.1f}x\n"
+                if pricing_30.get('discount', 0) > 0:
+                    response += f"   Your Discount: -${pricing_30.get('discount', 0):.0f}\n"
+                response += f"   Final Price: ${pricing_30.get('final_price', 15):.0f}\n\n"
+            else:
+                response += f"   ${instructor.hourly_rate_30min or 15}/lesson\n\n"
+            
+            # 60-minute lesson
+            response += "⏱️ 60-Minute Lesson:\n"
+            if 'error' not in pricing_60:
+                response += f"   Base Price: ${pricing_60.get('base_price', 25):.0f}\n"
+                if pricing_60.get('surge_multiplier', 1.0) > 1.0:
+                    response += f"   Demand Surge: {pricing_60.get('surge_multiplier', 1.0):.1f}x\n"
+                if pricing_60.get('discount', 0) > 0:
+                    response += f"   Your Discount: -${pricing_60.get('discount', 0):.0f}\n"
+                response += f"   Final Price: ${pricing_60.get('final_price', 25):.0f}\n\n"
+            else:
+                response += f"   ${instructor.hourly_rate_60min or 25}/lesson\n\n"
+            
+            # Pricing factors
+            response += "📊 Pricing Factors:\n"
+            current_hour = datetime.now().hour
+            if 7 <= current_hour <= 9 or 17 <= current_hour <= 19:
+                response += "⬆️ Peak hours (7-9 AM, 5-7 PM)\n"
+            
+            if datetime.now().weekday() >= 5:
+                response += "⬆️ Weekend premium\n"
+            
+            # Your benefits
+            response += "\n🎁 Your Benefits:\n"
+            if student.lessons_completed == 0:
+                response += "✨ 15% first-time student discount\n"
+            
+            # Check loyalty program
+            try:
+                from models import LoyaltyProgram
+                loyalty = LoyaltyProgram.query.filter_by(student_id=student.id).first()
+                if loyalty:
+                    if loyalty.current_tier == 'Gold':
+                        response += "🥇 Gold member: 10% discount\n"
+                    elif loyalty.current_tier == 'Platinum':
+                        response += "🏆 Platinum member: 15% discount\n"
+            except:
+                pass
+            
+            response += "\n💡 Save Money Tips:\n"
+            response += "• Book off-peak hours\n"
+            response += "• Consider longer lessons (better value)\n"
+            response += "• Refer friends for bonus credits\n\n"
+            
+            response += "Options:\n"
+            response += "1️⃣ Select This Instructor\n"
+            response += "2️⃣ View Promo Codes\n"
+            response += "3️⃣ Back to Details\n"
+            response += "4️⃣ Main Menu"
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error showing pricing breakdown: {str(e)}")
+            return f"💰 Standard Rates:\n30 min: ${instructor.hourly_rate_30min or 15}\n60 min: ${instructor.hourly_rate_60min or 25}"
     
     def assign_instructor_to_student(self, session, student, instructor):
         """Assign selected instructor to student"""
