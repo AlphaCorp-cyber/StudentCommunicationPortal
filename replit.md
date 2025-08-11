@@ -144,14 +144,14 @@ The application now uses a .env file for easy configuration management:
 
 ## Changelog
 
-- August 11, 2025: **COMPREHENSIVE KYC SYSTEM**: Implemented complete KYC verification for both instructors and students:
-  - **Instructor KYC**: Enhanced registration with driving license details, experience validation, and identity verification
-  - **Student KYC**: Created separate registration with provisional license verification, age validation, and medical declarations
-  - **Dual Registration System**: Both instructor (/register) and student (/student-registration) registration paths
-  - **Enhanced User Model**: Added comprehensive KYC fields for both user types including provisional licenses and medical fitness
-  - **Validation Logic**: Server-side validation for phone formats, age requirements, license verification, and medical declarations
-  - **KYC Status Tracking**: Pending/approved/rejected status with timestamps for document review workflow
-  - **Navigation Updates**: Added "Register as Student" buttons throughout the platform for easy access
+- August 11, 2025: **COMPREHENSIVE KYC & DOCUMENT UPLOAD SYSTEM**: Implemented complete KYC verification with document uploads:
+  - **Document Upload Infrastructure**: File upload handling with secure storage, validation, and size limits (16MB max)
+  - **Instructor Document Requirements**: National ID, driving license, instructor certificate, proof of residence, profile photo
+  - **Student Document Requirements**: National ID, provisional license, proof of residence, profile photo  
+  - **File Security**: Secure filename handling, user-specific directories, allowed file types (JPG, PNG, PDF, DOC, DOCX)
+  - **Enhanced Database Model**: Document file path storage for all uploaded verification documents
+  - **Registration Integration**: Both registration forms now include file upload fields with real-time validation
+  - **Error Handling**: Comprehensive file upload error handling with rollback on failures
 - August 10, 2025: **MIGRATION COMPLETED**: Successfully migrated from Replit Agent to Replit environment:
   - Created PostgreSQL database and established proper connection
   - Fixed navigation bar styling for dark theme visibility

@@ -6,6 +6,8 @@ from sqlalchemy import or_, and_
 from app import app, db
 from models import User, Student, Lesson, WhatsAppSession, SystemConfig, Vehicle, Payment, LessonPricing, LESSON_SCHEDULED, LESSON_COMPLETED, LESSON_CANCELLED, ROLE_STUDENT, ROLE_INSTRUCTOR, ROLE_ADMIN, ROLE_SUPER_ADMIN, InstructorSubscription, SubscriptionPlan, SUBSCRIPTION_ACTIVE
 from auth import require_login, require_role
+from file_utils import save_uploaded_file, allowed_file
+import os
 # WhatsApp functionality will be imported when needed
 
 # WhatsApp bot initialization - moved to app context block in app.py
@@ -135,7 +137,44 @@ def register():
         user.kyc_status = 'pending'
         user.kyc_submitted_at = datetime.now()
         
+        # Save user first to get ID for file uploads
         db.session.add(user)
+        db.session.flush()  # Get user ID without committing
+        
+        # Process file uploads
+        try:
+            # Required files
+            if 'national_id_file' in request.files:
+                file = request.files['national_id_file']
+                if file and allowed_file(file.filename):
+                    user.national_id_document = save_uploaded_file(file, 'national_id', user.id)
+            
+            if 'driving_license_file' in request.files:
+                file = request.files['driving_license_file']
+                if file and allowed_file(file.filename):
+                    user.driving_license_document = save_uploaded_file(file, 'driving_license', user.id)
+            
+            if 'instructor_certificate_file' in request.files:
+                file = request.files['instructor_certificate_file']
+                if file and allowed_file(file.filename):
+                    user.instructor_certificate_document = save_uploaded_file(file, 'instructor_cert', user.id)
+            
+            if 'profile_photo_file' in request.files:
+                file = request.files['profile_photo_file']
+                if file and allowed_file(file.filename):
+                    user.profile_photo = save_uploaded_file(file, 'profile_photo', user.id)
+            
+            # Optional files
+            if 'proof_residence_file' in request.files:
+                file = request.files['proof_residence_file']
+                if file and allowed_file(file.filename):
+                    user.proof_of_residence_document = save_uploaded_file(file, 'proof_residence', user.id)
+        
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error uploading files: {str(e)}', 'error')
+            return render_template('register.html')
+        
         db.session.commit()
         
         flash('Registration successful! Your KYC documents are under review. You will be notified once approved.', 'success')
@@ -239,7 +278,38 @@ def student_registration():
         user.kyc_status = 'pending'
         user.kyc_submitted_at = datetime.now()
         
+        # Save user first to get ID for file uploads
         db.session.add(user)
+        db.session.flush()  # Get user ID without committing
+        
+        # Process file uploads
+        try:
+            # Required files for students
+            if 'national_id_file' in request.files:
+                file = request.files['national_id_file']
+                if file and allowed_file(file.filename):
+                    user.national_id_document = save_uploaded_file(file, 'national_id', user.id)
+            
+            if 'provisional_license_file' in request.files:
+                file = request.files['provisional_license_file']
+                if file and allowed_file(file.filename):
+                    user.provisional_license_document = save_uploaded_file(file, 'provisional_license', user.id)
+            
+            if 'proof_residence_file' in request.files:
+                file = request.files['proof_residence_file']
+                if file and allowed_file(file.filename):
+                    user.proof_of_residence_document = save_uploaded_file(file, 'proof_residence', user.id)
+            
+            if 'profile_photo_file' in request.files:
+                file = request.files['profile_photo_file']
+                if file and allowed_file(file.filename):
+                    user.profile_photo = save_uploaded_file(file, 'profile_photo', user.id)
+        
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error uploading files: {str(e)}', 'error')
+            return render_template('student_register.html')
+        
         db.session.commit()
         
         flash('Student registration successful! Your documents are under review. You will be notified once approved.', 'success')

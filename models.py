@@ -92,6 +92,14 @@ class User(UserMixin, db.Model):
     medical_fitness_declared = db.Column(db.Boolean, default=False)
     vision_check_declared = db.Column(db.Boolean, default=False)
     
+    # Document upload fields
+    national_id_document = db.Column(db.String(255), nullable=True)  # File path
+    provisional_license_document = db.Column(db.String(255), nullable=True)  # File path for students
+    driving_license_document = db.Column(db.String(255), nullable=True)  # File path for instructors
+    instructor_certificate_document = db.Column(db.String(255), nullable=True)  # Teaching certificate
+    proof_of_residence_document = db.Column(db.String(255), nullable=True)  # File path
+    profile_photo = db.Column(db.String(255), nullable=True)  # File path
+    
     # Performance metrics
     total_earnings = db.Column(db.Numeric(10, 2), default=0.00)
     commission_paid = db.Column(db.Numeric(10, 2), default=0.00)

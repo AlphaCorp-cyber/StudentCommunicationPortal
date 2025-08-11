@@ -15,7 +15,7 @@
                             <p class="text-muted">Join DriveLink as an Instructor</p>
                         </div>
 
-                        <form method="POST">
+                        <form method="POST" enctype="multipart/form-data">
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label for="first_name" class="form-label">First Name</label>
@@ -119,19 +119,46 @@
                                 <div class="mt-4">
                                     <h6 class="mb-3">
                                         <i data-feather="upload" class="me-2"></i>
-                                        Required Documents
+                                        Required Documents Upload
                                     </h6>
-                                    <div class="alert alert-info" role="alert">
-                                        <i data-feather="info" class="me-2"></i>
-                                        <strong>Note:</strong> Document verification will be completed after registration. 
-                                        You will receive an email with upload instructions.
+                                    
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="national_id_file" class="form-label">National ID Document *</label>
+                                            <input type="file" class="form-control" id="national_id_file" name="national_id_file" 
+                                                   accept=".jpg,.jpeg,.png,.pdf" required>
+                                            <small class="text-muted">Upload clear photo/scan of your National ID</small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="driving_license_file" class="form-label">Driving License *</label>
+                                            <input type="file" class="form-control" id="driving_license_file" name="driving_license_file" 
+                                                   accept=".jpg,.jpeg,.png,.pdf" required>
+                                            <small class="text-muted">Upload your full driving license (both sides)</small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="instructor_certificate_file" class="form-label">Instructor Certificate *</label>
+                                            <input type="file" class="form-control" id="instructor_certificate_file" name="instructor_certificate_file" 
+                                                   accept=".jpg,.jpeg,.png,.pdf" required>
+                                            <small class="text-muted">Certificate to teach driving or related qualification</small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="proof_residence_file" class="form-label">Proof of Residence</label>
+                                            <input type="file" class="form-control" id="proof_residence_file" name="proof_residence_file" 
+                                                   accept=".jpg,.jpeg,.png,.pdf">
+                                            <small class="text-muted">Utility bill or bank statement (optional)</small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="profile_photo_file" class="form-label">Profile Photo *</label>
+                                            <input type="file" class="form-control" id="profile_photo_file" name="profile_photo_file" 
+                                                   accept=".jpg,.jpeg,.png" required>
+                                            <small class="text-muted">Recent passport-sized photograph</small>
+                                        </div>
                                     </div>
-                                    <ul class="small text-muted">
-                                        <li>Copy of National ID</li>
-                                        <li>Copy of Driving License</li>
-                                        <li>Proof of Residence (utility bill, bank statement)</li>
-                                        <li>Professional driving instructor certificate (if applicable)</li>
-                                    </ul>
+                                    
+                                    <div class="alert alert-info mt-3" role="alert">
+                                        <i data-feather="info" class="me-2"></i>
+                                        <strong>File Requirements:</strong> Max 16MB per file. Accepted formats: JPG, PNG, PDF, DOC, DOCX
+                                    </div>
                                 </div>
 
                                 <!-- Terms and Conditions -->
