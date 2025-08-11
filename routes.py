@@ -143,6 +143,110 @@ def register():
     
     return render_template('register.html')
 
+@app.route('/student-registration', methods=['GET', 'POST'])
+def student_registration():
+    """Student registration with KYC verification"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        first_name = request.form.get('first_name', '')
+        last_name = request.form.get('last_name', '')
+        
+        # Check if username or email already exists
+        if User.query.filter_by(username=username).first():
+            flash('Username already exists.', 'error')
+            return render_template('student_register.html')
+        
+        if User.query.filter_by(email=email).first():
+            flash('Email already exists.', 'error')
+            return render_template('student_register.html')
+        
+        # Get Student KYC fields
+        phone = request.form.get('phone', '')
+        id_number = request.form.get('id_number', '')
+        provisional_license = request.form.get('provisional_license', '')
+        date_of_birth = request.form.get('date_of_birth', '')
+        license_type_wanted = request.form.get('license_type_wanted', '')
+        address = request.form.get('address', '')
+        city = request.form.get('city', '')
+        guardian_contact = request.form.get('guardian_contact', '')
+        guardian_name = request.form.get('guardian_name', '')
+        medical_fitness = request.form.get('medical_fitness') == 'on'
+        vision_check = request.form.get('vision_check') == 'on'
+        
+        # Validate Student KYC fields
+        required_fields = [phone, id_number, provisional_license, date_of_birth, 
+                          license_type_wanted, address, city, guardian_contact, guardian_name]
+        if not all(required_fields) or not medical_fitness or not vision_check:
+            flash('All fields are required for student registration, including medical declarations.', 'error')
+            return render_template('student_register.html')
+        
+        # Validate phone format
+        if not phone.startswith('+263'):
+            phone = '+263' + phone.lstrip('0').lstrip('+263')
+        
+        # Validate age (must be at least 18)
+        from datetime import date
+        try:
+            dob = datetime.strptime(date_of_birth, '%Y-%m-%d').date()
+            today = date.today()
+            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            if age < 18:
+                flash('You must be at least 18 years old to register as a student.', 'error')
+                return render_template('student_register.html')
+        except ValueError:
+            flash('Please enter a valid date of birth.', 'error')
+            return render_template('student_register.html')
+        
+        # Check if phone, ID, or provisional license already exists
+        if User.query.filter_by(phone=phone).first():
+            flash('Phone number already registered.', 'error')
+            return render_template('student_register.html')
+        
+        if User.query.filter_by(id_number=id_number).first():
+            flash('National ID already registered.', 'error')
+            return render_template('student_register.html')
+        
+        if User.query.filter_by(provisional_license=provisional_license).first():
+            flash('Provisional license already registered.', 'error')
+            return render_template('student_register.html')
+        
+        # Create new student user
+        user = User()
+        user.username = username
+        user.email = email
+        user.first_name = first_name
+        user.last_name = last_name
+        user.role = ROLE_STUDENT
+        user.set_password(password)
+        
+        # Set Student KYC fields
+        user.phone = phone
+        user.id_number = id_number
+        user.provisional_license = provisional_license
+        user.date_of_birth = dob
+        user.license_type_wanted = license_type_wanted
+        user.physical_address = address
+        user.city = city
+        user.emergency_contact = guardian_contact
+        user.emergency_contact_name = guardian_name
+        user.medical_fitness_declared = medical_fitness
+        user.vision_check_declared = vision_check
+        user.kyc_status = 'pending'
+        user.kyc_submitted_at = datetime.now()
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        flash('Student registration successful! Your documents are under review. You will be notified once approved.', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('student_register.html')
+
 @app.route('/dashboard')
 @require_login
 def dashboard():

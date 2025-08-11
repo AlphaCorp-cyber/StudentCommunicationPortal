@@ -1,68 +1,220 @@
-
 {% extends "base.html" %}
 
-{% block title %}Set Up PIN - DriveLink{% endblock %}
+{% block title %}Student Registration - DriveLink{% endblock %}
 
 {% block content %}
 <div class="min-vh-100 d-flex align-items-center">
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-lg-5 col-md-7">
+            <div class="col-lg-6 col-md-8">
                 <div class="card shadow">
                     <div class="card-body p-5">
                         <div class="text-center mb-4">
-                            <i data-feather="shield" style="width: 60px; height: 60px" class="text-primary mb-3"></i>
-                            <h2>Set Up Your PIN</h2>
-                            <p class="text-muted">Create a 4-digit PIN for secure access</p>
+                            <i data-feather="navigation" style="width: 60px; height: 60px;" class="text-primary mb-3"></i>
+                            <h2>Student Registration</h2>
+                            <p class="text-muted">Join DriveLink as a Student</p>
                         </div>
 
                         <form method="POST">
-                            <div class="mb-3">
-                                <label for="phone" class="form-label">Phone Number</label>
-                                <input type="tel" class="form-control" id="phone" name="phone" required autofocus 
-                                       placeholder="+263 77 123 4567" pattern="^\+263[0-9]{9}$">
-                                <div class="form-text">Enter your registered WhatsApp number</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="first_name" class="form-label">First Name *</label>
+                                    <input type="text" class="form-control" id="first_name" name="first_name" 
+                                           required placeholder="Enter your first name">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="last_name" class="form-label">Last Name *</label>
+                                    <input type="text" class="form-control" id="last_name" name="last_name" 
+                                           required placeholder="Enter your last name">
+                                </div>
+                                <div class="col-12">
+                                    <label for="username" class="form-label">Username *</label>
+                                    <input type="text" class="form-control" id="username" name="username" 
+                                           required autofocus placeholder="Choose a username">
+                                </div>
+                                <div class="col-12">
+                                    <label for="email" class="form-label">Email Address *</label>
+                                    <input type="email" class="form-control" id="email" name="email" 
+                                           required placeholder="Enter your email address">
+                                </div>
+                                <div class="col-12">
+                                    <label for="password" class="form-label">Password *</label>
+                                    <input type="password" class="form-control" id="password" name="password" 
+                                           required placeholder="Create a password">
+                                    <small class="text-muted">Password should be at least 8 characters long</small>
+                                </div>
                             </div>
 
-                            <div class="mb-3">
-                                <label for="pin" class="form-label">Create PIN</label>
-                                <input type="password" class="form-control" id="pin" name="pin" required 
-                                       placeholder="4-digit PIN" pattern="[0-9]{4}" maxlength="4">
-                                <div class="form-text">Choose a 4-digit PIN you'll remember</div>
-                            </div>
+                            <!-- Student KYC Verification Section -->
+                            <div class="mt-4">
+                                <h5 class="mb-3">
+                                    <i data-feather="shield-check" class="me-2"></i>
+                                    Student Verification (Required)
+                                </h5>
+                                
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="phone" class="form-label">Phone Number *</label>
+                                        <input type="tel" class="form-control" id="phone" name="phone" 
+                                               required placeholder="+263 77 123 4567">
+                                        <small class="text-muted">Include country code (+263)</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="id_number" class="form-label">National ID Number *</label>
+                                        <input type="text" class="form-control" id="id_number" name="id_number" 
+                                               required placeholder="63-123456A63" pattern="[0-9]{2}-[0-9]{6}[A-Z][0-9]{2}">
+                                        <small class="text-muted">Format: 63-123456A63</small>
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="provisional_license" class="form-label">Provisional License Number *</label>
+                                        <input type="text" class="form-control" id="provisional_license" name="provisional_license" 
+                                               required placeholder="Enter your provisional license number">
+                                        <small class="text-muted">You must have a valid provisional license to learn driving</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="date_of_birth" class="form-label">Date of Birth *</label>
+                                        <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" 
+                                               required>
+                                        <small class="text-muted">Must be at least 18 years old</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="license_type_wanted" class="form-label">License Type Wanted *</label>
+                                        <select class="form-select" id="license_type_wanted" name="license_type_wanted" required>
+                                            <option value="">Select license type</option>
+                                            <option value="Class 1">Class 1 (Motorcycles)</option>
+                                            <option value="Class 2">Class 2 (Heavy Vehicles)</option>
+                                            <option value="Class 3">Class 3 (Medium Vehicles)</option>
+                                            <option value="Class 4">Class 4 (Light Vehicles)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="address" class="form-label">Physical Address *</label>
+                                        <textarea class="form-control" id="address" name="address" rows="3" 
+                                                  required placeholder="Enter your complete physical address"></textarea>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="city" class="form-label">City *</label>
+                                        <select class="form-select" id="city" name="city" required>
+                                            <option value="">Select city</option>
+                                            <option value="Harare">Harare</option>
+                                            <option value="Bulawayo">Bulawayo</option>
+                                            <option value="Chitungwiza">Chitungwiza</option>
+                                            <option value="Mutare">Mutare</option>
+                                            <option value="Epworth">Epworth</option>
+                                            <option value="Gweru">Gweru</option>
+                                            <option value="Kwekwe">Kwekwe</option>
+                                            <option value="Kadoma">Kadoma</option>
+                                            <option value="Masvingo">Masvingo</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="guardian_contact" class="form-label">Guardian/Emergency Contact *</label>
+                                        <input type="tel" class="form-control" id="guardian_contact" name="guardian_contact" 
+                                               required placeholder="+263 77 123 4567">
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="guardian_name" class="form-label">Guardian/Emergency Contact Name *</label>
+                                        <input type="text" class="form-control" id="guardian_name" name="guardian_name" 
+                                               required placeholder="Full name of guardian or emergency contact">
+                                    </div>
+                                </div>
 
-                            <div class="mb-3">
-                                <label for="confirm_pin" class="form-label">Confirm PIN</label>
-                                <input type="password" class="form-control" id="confirm_pin" name="confirm_pin" required 
-                                       placeholder="Re-enter your PIN" pattern="[0-9]{4}" maxlength="4">
-                                <div class="form-text">Enter the same PIN again</div>
-                            </div>
+                                <!-- Medical Declaration -->
+                                <div class="mt-4">
+                                    <h6 class="mb-3">
+                                        <i data-feather="heart" class="me-2"></i>
+                                        Medical Declaration
+                                    </h6>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="medical_fitness" name="medical_fitness" required>
+                                        <label class="form-check-label" for="medical_fitness">
+                                            I declare that I am medically fit to drive and have no conditions that would impair my ability to drive safely *
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="vision_check" name="vision_check" required>
+                                        <label class="form-check-label" for="vision_check">
+                                            I confirm that my vision meets the requirements for driving (with or without corrective lenses) *
+                                        </label>
+                                    </div>
+                                </div>
 
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i data-feather="shield" class="me-2"></i>
-                                Set Up PIN
-                            </button>
+                                <!-- Document Upload Section -->
+                                <div class="mt-4">
+                                    <h6 class="mb-3">
+                                        <i data-feather="upload" class="me-2"></i>
+                                        Required Documents
+                                    </h6>
+                                    <div class="alert alert-info" role="alert">
+                                        <i data-feather="info" class="me-2"></i>
+                                        <strong>Note:</strong> Document verification will be completed after registration. 
+                                        You will receive an email with upload instructions.
+                                    </div>
+                                    <ul class="small text-muted">
+                                        <li>Copy of National ID</li>
+                                        <li>Copy of Provisional License</li>
+                                        <li>Proof of Residence (utility bill, bank statement)</li>
+                                        <li>Recent passport-sized photograph</li>
+                                        <li>Medical certificate (if applicable)</li>
+                                    </ul>
+                                </div>
+
+                                <!-- Terms and Conditions -->
+                                <div class="mt-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="agree_terms" name="agree_terms" required>
+                                        <label class="form-check-label" for="agree_terms">
+                                            I agree to the <a href="#" target="_blank">Terms and Conditions</a> and 
+                                            <a href="#" target="_blank">Privacy Policy</a> *
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="kyc_consent" name="kyc_consent" required>
+                                        <label class="form-check-label" for="kyc_consent">
+                                            I consent to student verification and understand my documents will be reviewed *
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i data-feather="user-plus" class="me-2"></i>
+                                    Register as Student
+                                </button>
+                            </div>
                         </form>
 
-                        <div class="text-center mt-4">
-                            <p class="text-muted">Already have a PIN? <a href="{{ url_for('student_login') }}">Sign In</a></p>
-                            <p class="text-muted">Back to <a href="{{ url_for('login') }}">Staff Login</a></p>
+                        <hr class="my-4">
+                        
+                        <div class="text-center">
+                            <p class="text-muted">Already have an account?</p>
+                            <a href="{{ url_for('login') }}" class="btn btn-outline-secondary me-2">
+                                <i data-feather="log-in" class="me-2"></i>
+                                Sign In
+                            </a>
+                            <a href="{{ url_for('register') }}" class="btn btn-outline-primary">
+                                <i data-feather="star" class="me-2"></i>
+                                Register as Instructor
+                            </a>
                         </div>
                     </div>
                 </div>
 
-                <!-- Security Info -->
-                <div class="card mt-4 bg-light">
+                <!-- Registration Info -->
+                <div class="card mt-4 bg-secondary">
                     <div class="card-body">
                         <h6 class="card-title">
                             <i data-feather="info" class="me-2"></i>
-                            Security Information
+                            Student Requirements
                         </h6>
-                        <ul class="text-sm mb-0">
-                            <li>Use the same PIN for WhatsApp and web access</li>
-                            <li>Choose a PIN that's easy to remember but hard to guess</li>
-                            <li>Don't share your PIN with anyone</li>
-                            <li>You can update your PIN anytime from your dashboard</li>
+                        <p class="small mb-2">To register as a student, you must:</p>
+                        <ul class="small mb-0">
+                            <li>Be at least 18 years old</li>
+                            <li>Have a valid provisional license</li>
+                            <li>Provide valid identification documents</li>
+                            <li>Complete medical fitness declaration</li>
                         </ul>
                     </div>
                 </div>
@@ -70,42 +222,4 @@
         </div>
     </div>
 </div>
-
-<script>
-document.getElementById('phone').addEventListener('input', function() {
-    let value = this.value.replace(/\D/g, '');
-    if (value.startsWith('263')) {
-        this.value = '+' + value;
-    } else if (value.startsWith('0')) {
-        this.value = '+263' + value.substring(1);
-    } else if (value.length > 0 && !value.startsWith('263')) {
-        this.value = '+263' + value;
-    }
-});
-
-document.getElementById('pin').addEventListener('input', function() {
-    this.value = this.value.replace(/\D/g, '').substring(0, 4);
-});
-
-document.getElementById('confirm_pin').addEventListener('input', function() {
-    this.value = this.value.replace(/\D/g, '').substring(0, 4);
-});
-
-document.querySelector('form').addEventListener('submit', function(e) {
-    const pin = document.getElementById('pin').value;
-    const confirmPin = document.getElementById('confirm_pin').value;
-    
-    if (pin !== confirmPin) {
-        e.preventDefault();
-        alert('PINs do not match. Please try again.');
-        return false;
-    }
-    
-    if (pin.length !== 4) {
-        e.preventDefault();
-        alert('PIN must be exactly 4 digits.');
-        return false;
-    }
-});
-</script>
 {% endblock %}

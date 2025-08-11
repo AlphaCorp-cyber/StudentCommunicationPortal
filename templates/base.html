@@ -286,6 +286,11 @@ Adding student navigation links to the base template based on session status for
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('student_registration') }}">
+                            <i data-feather="book-open" class="me-1"></i>Register as Student
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('register') }}">
                             <i data-feather="star" class="me-1"></i>Become an Instructor
                         </a>

@@ -72,15 +72,25 @@ class User(UserMixin, db.Model):
     certification_documents = db.Column(db.Text, nullable=True)  # JSON array of document URLs
     vehicle_owned = db.Column(db.Boolean, default=False)
     
-    # KYC fields
+    # KYC fields (for both instructors and students)
     id_number = db.Column(db.String(20), nullable=True)  # National ID
     physical_address = db.Column(db.Text, nullable=True)
     city = db.Column(db.String(50), nullable=True)
     emergency_contact = db.Column(db.String(20), nullable=True)
-    years_experience = db.Column(db.Integer, nullable=True)
+    emergency_contact_name = db.Column(db.String(100), nullable=True)
+    date_of_birth = db.Column(db.Date, nullable=True)
     kyc_status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
     kyc_submitted_at = db.Column(db.DateTime, nullable=True)
     kyc_approved_at = db.Column(db.DateTime, nullable=True)
+    
+    # Instructor-specific KYC fields
+    years_experience = db.Column(db.Integer, nullable=True)
+    
+    # Student-specific KYC fields
+    provisional_license = db.Column(db.String(100), nullable=True)
+    license_type_wanted = db.Column(db.String(20), nullable=True)
+    medical_fitness_declared = db.Column(db.Boolean, default=False)
+    vision_check_declared = db.Column(db.Boolean, default=False)
     
     # Performance metrics
     total_earnings = db.Column(db.Numeric(10, 2), default=0.00)
