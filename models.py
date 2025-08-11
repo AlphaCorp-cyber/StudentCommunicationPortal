@@ -67,9 +67,20 @@ class User(UserMixin, db.Model):
     # Instructor verification and onboarding
     is_verified = db.Column(db.Boolean, default=False)
     license_number = db.Column(db.String(100), nullable=True)
+    license_class = db.Column(db.String(20), nullable=True)
     license_expiry = db.Column(db.Date, nullable=True)
     certification_documents = db.Column(db.Text, nullable=True)  # JSON array of document URLs
     vehicle_owned = db.Column(db.Boolean, default=False)
+    
+    # KYC fields
+    id_number = db.Column(db.String(20), nullable=True)  # National ID
+    physical_address = db.Column(db.Text, nullable=True)
+    city = db.Column(db.String(50), nullable=True)
+    emergency_contact = db.Column(db.String(20), nullable=True)
+    years_experience = db.Column(db.Integer, nullable=True)
+    kyc_status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
+    kyc_submitted_at = db.Column(db.DateTime, nullable=True)
+    kyc_approved_at = db.Column(db.DateTime, nullable=True)
     
     # Performance metrics
     total_earnings = db.Column(db.Numeric(10, 2), default=0.00)

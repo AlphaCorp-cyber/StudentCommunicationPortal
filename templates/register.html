@@ -44,11 +44,118 @@
                                     <small class="text-muted">Password should be at least 8 characters long</small>
                                 </div>
                             </div>
+
+                            <!-- KYC Verification Section -->
+                            <div class="mt-4">
+                                <h5 class="mb-3">
+                                    <i data-feather="shield-check" class="me-2"></i>
+                                    KYC Verification (Required for Instructors)
+                                </h5>
+                                
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="phone" class="form-label">Phone Number *</label>
+                                        <input type="tel" class="form-control" id="phone" name="phone" 
+                                               required placeholder="+263 77 123 4567">
+                                        <small class="text-muted">Include country code (+263)</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="id_number" class="form-label">National ID Number *</label>
+                                        <input type="text" class="form-control" id="id_number" name="id_number" 
+                                               required placeholder="63-123456A63" pattern="[0-9]{2}-[0-9]{6}[A-Z][0-9]{2}">
+                                        <small class="text-muted">Format: 63-123456A63</small>
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="license_number" class="form-label">Driving License Number *</label>
+                                        <input type="text" class="form-control" id="license_number" name="license_number" 
+                                               required placeholder="Enter your driving license number">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="license_class" class="form-label">License Class *</label>
+                                        <select class="form-select" id="license_class" name="license_class" required>
+                                            <option value="">Select license class</option>
+                                            <option value="Class 1">Class 1 (Motorcycles)</option>
+                                            <option value="Class 2">Class 2 (Heavy Vehicles)</option>
+                                            <option value="Class 3">Class 3 (Medium Vehicles)</option>
+                                            <option value="Class 4">Class 4 (Light Vehicles)</option>
+                                            <option value="Class 5">Class 5 (Learner's Permit)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="years_experience" class="form-label">Years of Driving Experience *</label>
+                                        <input type="number" class="form-control" id="years_experience" name="years_experience" 
+                                               required min="2" max="50" placeholder="5">
+                                        <small class="text-muted">Minimum 2 years required</small>
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="address" class="form-label">Physical Address *</label>
+                                        <textarea class="form-control" id="address" name="address" rows="3" 
+                                                  required placeholder="Enter your complete physical address"></textarea>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="city" class="form-label">City *</label>
+                                        <select class="form-select" id="city" name="city" required>
+                                            <option value="">Select city</option>
+                                            <option value="Harare">Harare</option>
+                                            <option value="Bulawayo">Bulawayo</option>
+                                            <option value="Chitungwiza">Chitungwiza</option>
+                                            <option value="Mutare">Mutare</option>
+                                            <option value="Epworth">Epworth</option>
+                                            <option value="Gweru">Gweru</option>
+                                            <option value="Kwekwe">Kwekwe</option>
+                                            <option value="Kadoma">Kadoma</option>
+                                            <option value="Masvingo">Masvingo</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="emergency_contact" class="form-label">Emergency Contact *</label>
+                                        <input type="tel" class="form-control" id="emergency_contact" name="emergency_contact" 
+                                               required placeholder="+263 77 123 4567">
+                                    </div>
+                                </div>
+
+                                <!-- Document Upload Section -->
+                                <div class="mt-4">
+                                    <h6 class="mb-3">
+                                        <i data-feather="upload" class="me-2"></i>
+                                        Required Documents
+                                    </h6>
+                                    <div class="alert alert-info" role="alert">
+                                        <i data-feather="info" class="me-2"></i>
+                                        <strong>Note:</strong> Document verification will be completed after registration. 
+                                        You will receive an email with upload instructions.
+                                    </div>
+                                    <ul class="small text-muted">
+                                        <li>Copy of National ID</li>
+                                        <li>Copy of Driving License</li>
+                                        <li>Proof of Residence (utility bill, bank statement)</li>
+                                        <li>Professional driving instructor certificate (if applicable)</li>
+                                    </ul>
+                                </div>
+
+                                <!-- Terms and Conditions -->
+                                <div class="mt-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="agree_terms" name="agree_terms" required>
+                                        <label class="form-check-label" for="agree_terms">
+                                            I agree to the <a href="#" target="_blank">Terms and Conditions</a> and 
+                                            <a href="#" target="_blank">Privacy Policy</a> *
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="kyc_consent" name="kyc_consent" required>
+                                        <label class="form-check-label" for="kyc_consent">
+                                            I consent to KYC verification and understand my documents will be reviewed *
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <div class="mt-4">
                                 <button type="submit" class="btn btn-primary w-100">
                                     <i data-feather="user-plus" class="me-2"></i>
-                                    Create Account
+                                    Register as Instructor
                                 </button>
                             </div>
                         </form>

@@ -76,6 +76,44 @@ def register():
             flash('Email already exists.', 'error')
             return render_template('register.html')
         
+        # Get KYC fields
+        phone = request.form.get('phone', '')
+        id_number = request.form.get('id_number', '')
+        license_number = request.form.get('license_number', '')
+        license_class = request.form.get('license_class', '')
+        years_experience = request.form.get('years_experience', '')
+        address = request.form.get('address', '')
+        city = request.form.get('city', '')
+        emergency_contact = request.form.get('emergency_contact', '')
+        
+        # Validate KYC fields
+        if not all([phone, id_number, license_number, license_class, years_experience, address, city, emergency_contact]):
+            flash('All KYC fields are required for instructor registration.', 'error')
+            return render_template('register.html')
+        
+        # Validate phone format
+        if not phone.startswith('+263'):
+            phone = '+263' + phone.lstrip('0').lstrip('+263')
+        
+        # Validate experience years
+        try:
+            years_exp = int(years_experience)
+            if years_exp < 2:
+                flash('Minimum 2 years of driving experience required.', 'error')
+                return render_template('register.html')
+        except ValueError:
+            flash('Please enter a valid number for years of experience.', 'error')
+            return render_template('register.html')
+        
+        # Check if phone or ID already exists
+        if User.query.filter_by(phone=phone).first():
+            flash('Phone number already registered.', 'error')
+            return render_template('register.html')
+        
+        if User.query.filter_by(id_number=id_number).first():
+            flash('National ID already registered.', 'error')
+            return render_template('register.html')
+        
         # Create new user
         user = User()
         user.username = username
@@ -85,10 +123,22 @@ def register():
         user.role = ROLE_INSTRUCTOR
         user.set_password(password)
         
+        # Set KYC fields
+        user.phone = phone
+        user.id_number = id_number
+        user.license_number = license_number
+        user.license_class = license_class
+        user.years_experience = years_exp
+        user.physical_address = address
+        user.city = city
+        user.emergency_contact = emergency_contact
+        user.kyc_status = 'pending'
+        user.kyc_submitted_at = datetime.now()
+        
         db.session.add(user)
         db.session.commit()
         
-        flash('Registration successful! Please log in.', 'success')
+        flash('Registration successful! Your KYC documents are under review. You will be notified once approved.', 'success')
         return redirect(url_for('login'))
     
     return render_template('register.html')

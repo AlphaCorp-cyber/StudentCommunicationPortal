@@ -144,6 +144,14 @@ The application now uses a .env file for easy configuration management:
 
 ## Changelog
 
+- August 11, 2025: **KYC VERIFICATION SYSTEM**: Implemented comprehensive KYC verification for instructor registration:
+  - "Become an Instructor" button now redirects to registration page instead of subscription plans
+  - Added extensive KYC fields: phone number, national ID, driving license details, experience years, address, emergency contact
+  - Implemented server-side validation for all KYC fields including phone format and experience requirements
+  - Added KYC status tracking (pending, approved, rejected) with timestamps
+  - Enhanced User model with all necessary KYC fields and verification status
+  - Updated registration form with comprehensive instructor verification section
+  - Added terms and conditions acceptance and KYC consent checkboxes
 - August 10, 2025: **MIGRATION COMPLETED**: Successfully migrated from Replit Agent to Replit environment:
   - Created PostgreSQL database and established proper connection
   - Fixed navigation bar styling for dark theme visibility
