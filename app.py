@@ -70,6 +70,10 @@ def init_app_with_routes():
         from onboarding_routes import onboarding_bp
         app.register_blueprint(onboarding_bp)
         
+        # Register WhatsApp blueprint
+        from whatsapp_routes import whatsapp_bp
+        app.register_blueprint(whatsapp_bp)
+        
         logging.info("DriveLink initialized successfully")
         return True
     except Exception as e:

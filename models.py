@@ -284,7 +284,7 @@ class Lesson(db.Model):
     vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicles.id'), nullable=True)
     
     # Lesson details
-    scheduled_date = db.Column(db.DateTime, nullable=False)
+    lesson_date = db.Column(db.DateTime, nullable=False)  # Changed from scheduled_date for consistency
     duration_minutes = db.Column(db.Integer, default=60)
     lesson_type = db.Column(db.String(50), default='practical')  # practical, theory, test
     location = db.Column(db.String(200), nullable=True)
@@ -323,11 +323,15 @@ class WhatsAppSession(db.Model):
     __tablename__ = 'whatsapp_sessions'
     id = db.Column(db.Integer, primary_key=True)
     
-    # Foreign key
-    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    # Support for all user types
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # For instructors/admins
+    phone_number = db.Column(db.String(20), nullable=False)
+    user_type = db.Column(db.String(20), nullable=False)  # student, instructor, admin, super_admin, unknown
     
     # Session details
     session_id = db.Column(db.String(100), unique=True, nullable=False)
+    session_data = db.Column(db.Text, nullable=True)  # JSON data for registration/booking flows
     last_message = db.Column(db.Text, nullable=True)
     last_activity = db.Column(db.DateTime, default=datetime.now)
     is_active = db.Column(db.Boolean, default=True)
